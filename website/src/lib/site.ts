@@ -7,7 +7,10 @@ export const site = {
   description:
     "A fast, open-source coding agent for your Mac. Keep the conversation going while it works on several tasks at once.",
   github,
-  download: `${github}/releases/latest`,
+  // Redirects to the latest release's DMG (app/download/route.ts).
+  download: "/download",
+  releases: `${github}/releases/latest`,
+  latestReleaseApi: "https://api.github.com/repos/stoyan-stoyanov/wavefunction/releases/latest",
   license: `${github}/blob/main/LICENSE`,
   security: `${github}/blob/main/SECURITY.md`,
 };
