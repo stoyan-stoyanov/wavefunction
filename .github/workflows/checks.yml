@@ -1,0 +1,156 @@
+name: Checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  # A newer push to a pull request replaces its running checks. On main a running check finishes;
+  # GitHub still keeps only the newest waiting one when several merges queue up behind it.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  # Whether a pull request changes more than docs. The macOS jobs, about ten times the cost of a
+  # Linux one, skip docs-only changes.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          changed=$(git diff --name-only "origin/$BASE...HEAD")
+          echo "$changed"
+          if echo "$changed" | grep -qvE '\.md$|^docs/|^assets/|^website/'; then code=true; else code=false; fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The code-health ratchet compares this commit with its first parent.
+          fetch-depth: 2
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm --prefix frontend ci --no-audit --no-fund
+      - name: API types match backend/openapi.json (npm run generate:api)
+        run: |
+          npm run generate:api:types
+          git diff --exit-code -- frontend/src/lib/api.gen.ts || { echo "::error::frontend/src/lib/api.gen.ts is stale. Run npm run generate:api and commit the result."; exit 1; }
+      - run: npm --prefix frontend run lint
+      - name: Formatting (run npm run fix to fix)
+        run: npm --prefix frontend run format:check
+      - name: Code health of changed TypeScript (npm run check:health)
+        run: node scripts/check-code-health.mjs --lang ts --base HEAD^1
+      - name: Script syntax
+        run: for script in scripts/*.mjs; do node --check "$script"; done
+      - name: Docs links and agent file sizes
+        run: node scripts/check-docs.mjs
+      - run: npm run test:frontend
+      # The build includes tsc; running a separate typecheck duplicates that work.
+      - run: npm run build
+      - name: Nothing left changed (commit what the job generated, or ignore it)
+        run: git status --porcelain && test -z "$(git status --porcelain)"
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The type-check ratchet compares this commit with its first parent.
+          fetch-depth: 2
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked --project backend --python 3.12 --extra dev
+      - run: uv run --no-sync --project backend ruff check backend
+      - run: uv run --no-sync --project backend ruff check --config backend/pyproject.toml scripts
+      - name: Formatting (run npm run fix to fix)
+        run: |
+          uv run --no-sync --project backend ruff format --check backend
+          uv run --no-sync --project backend ruff format --check --config backend/pyproject.toml scripts
+      - name: Code health of changed Python (npm run check:health)
+        run: node scripts/check-code-health.mjs --lang py --base HEAD^1
+      - name: Type-check changed backend files (npm run typecheck:backend)
+        run: npm run typecheck:backend -- --base HEAD^1
+      - name: OpenAPI schema is current (npm run generate:api)
+        run: |
+          uv run --no-sync --project backend python scripts/generate-openapi.py
+          git diff --exit-code -- backend/openapi.json || { echo "::error::backend/openapi.json is stale. Run npm run generate:api and commit the result."; exit 1; }
+      - run: npm run test:backend
+      - name: Nothing left changed (commit what the job generated, or ignore it)
+        run: git status --porcelain && test -z "$(git status --porcelain)"
+  # Cases marked `sandbox`, and the launcher integration, whose fixture chat runs in a repository,
+  # run commands through the macOS sandbox, which Linux lacks.
+  backend-macos:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: macos-14
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: uv sync --locked --project backend --python 3.12 --extra dev
+      - run: npm run test:backend
+      # Tests that run real deletion commands in temporary repositories run here only, never locally.
+      - name: Destructive tests
+        working-directory: backend
+        run: uv run --no-sync pytest -n 2 --dist loadfile -m "destructive and not live"
+      # Only the launcher integration needs browser dependencies. Install after Python checks.
+      - run: npm --prefix frontend ci --no-audit --no-fund
+      - run: npm run test:launcher
+  # The desktop shell. It bundles the frozen backend, which compiling and testing it never runs,
+  # so an empty stand-in takes its place.
+  native:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: macos-14
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: src-tauri
+      - name: Formatting (run npm run fix to fix)
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+      - run: mkdir -p backend/dist/wavefunction-backend
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
+  # The one check to require in branch protection: it passes when every job passed or was skipped.
+  all-checks:
+    if: always()
+    needs: [changes, frontend, backend, backend-macos, native]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          echo "$RESULTS"
+          if echo "$RESULTS" | grep -qE '"(failure|cancelled)"'; then exit 1; fi

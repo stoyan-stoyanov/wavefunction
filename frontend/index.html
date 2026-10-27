@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f2f2f5" />
+    <link rel="icon" type="image/png" href="/wavefunction-icon.png" />
+    <title>Wavefunction</title>
+    <script>
+      // Resolve the stored theme before first paint. next-themes only applies the
+      // class on mount, which would otherwise flash the wrong palette on launch.
+      // Same storage key and default as the ThemeProvider in src/coding/app.tsx.
+      (() => {
+        try {
+          const stored = localStorage.getItem("harness.theme") ?? "dark";
+          const dark =
+            stored === "dark" ||
+            (stored !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.classList.add(dark ? "dark" : "light");
+          document.documentElement.style.colorScheme = dark ? "dark" : "light";
+          document
+            .querySelector('meta[name="theme-color"]')
+            ?.setAttribute("content", dark ? "#131314" : "#f2f2f5");
+        } catch {
+          document.documentElement.classList.add("dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

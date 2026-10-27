@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Wavefunction",
+  "version": "0.1.0",
+  "identifier": "app.harness.coding",
+  "build": {
+    "beforeDevCommand": "npm --prefix frontend run dev",
+    "beforeBuildCommand": "npm --prefix frontend run build",
+    "devUrl": "http://127.0.0.1:5173",
+    "frontendDist": "../frontend/dist"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:* ws://127.0.0.1:*; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
+    },
+    "windows": [
+      {
+        "label": "main",
+        "dragDropEnabled": false,
+        "title": "Wavefunction",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 880,
+        "minHeight": 700,
+        "center": true,
+        "decorations": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "transparent": true
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app"
+    ],
+    "category": "Productivity",
+    "shortDescription": "A local-first desktop coding agent",
+    "copyright": "Copyright © 2026 Morphologic AI Inc. MIT licensed.",
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
+    "resources": {
+      "../backend/dist/wavefunction-backend": "backend",
+      "../LICENSE": "LICENSE",
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDlERkVGNzIxNEIzM0VDMzMKUldRejdETkxJZmYrblNtalVaQ0ptdlE2TGVLUy9reldibk1vRENHcndKUTZuaGFqTFZhU09tZ1EK",
+      "endpoints": [
+        "https://github.com/stoyan-stoyanov/wavefunction/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

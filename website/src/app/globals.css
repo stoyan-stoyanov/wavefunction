@@ -1,0 +1,158 @@
+@import "tailwindcss";
+
+/* White space, soft blue waves, and slate text echo the desktop photograph. */
+:root {
+  --bg: #ffffff;
+  --panel: #f5f7fa;
+  --panel-raised: #e9edf3;
+  --text: #1b2638;
+  --text-soft: #586578;
+  --text-faint: #68758a;
+  --accent: #486d9c;
+  --running: #4b76ae;
+  --done: #2e775b;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+  --color-text: var(--text);
+  --color-soft: var(--text-soft);
+  --color-faint: var(--text-faint);
+  --color-accent: var(--accent);
+  --color-running: var(--running);
+  --color-done: var(--done);
+  --font-sans: var(--font-geist);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--bg);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Fade through the sky, eased so that its end draws no line, while the app window stays fully
+   visible: the second layer is the window's own rectangle (18.75%–81.28% across, from 19.07%
+   down in the image). Measure it again whenever the screenshot changes: a window that starts
+   above it shows the page through the fade as a light band along its top. The sky keeps getting
+   lighter down to about a quarter of the way, so the fade ends where it has evened out, below
+   the window's top. On the image, not the figure, so the percentages hold when the image is
+   wider than the screen. */
+.hero-desktop-image {
+  width: 100%;
+  mask-image:
+    linear-gradient(
+      to bottom,
+      transparent 3%,
+      rgb(0 0 0 / 0.07) 7%,
+      rgb(0 0 0 / 0.26) 11%,
+      rgb(0 0 0 / 0.50) 15%,
+      rgb(0 0 0 / 0.74) 19%,
+      rgb(0 0 0 / 0.93) 23%,
+      black 27%
+    ),
+    linear-gradient(black, black);
+  mask-size: 100% 100%, 62.6% 80.93%;
+  mask-position: 0 0, 50% 100%;
+  mask-repeat: no-repeat;
+}
+
+@media (max-width: 639px) {
+  .hero-desktop-image {
+    width: 160%;
+    max-width: none;
+    margin-left: -26%;
+  }
+}
+
+::selection {
+  background: var(--text);
+  color: var(--bg);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 10px;
+}
+
+/* A monochrome brand mark drawn in the current text color. */
+.mark {
+  display: inline-block;
+  background: currentColor;
+  mask: var(--mark) center / contain no-repeat;
+}
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+.enter {
+  animation: enter 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Like enter, without the blur: a blur re-renders every scroll frame while sections enter. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Sections rise into place as they scroll in, where the browser supports scroll timelines. */
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 45%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .enter,
+  .reveal {
+    animation: none;
+  }
+}
+
+/* Computer use: the click on the button, played once. Two rings, the second a beat later. */
+@keyframes computer-ripple {
+  from { opacity: 0.55; transform: translate(-50%, -50%) scale(0.3); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(2.4); }
+}
+
+.computer-ripple {
+  animation: computer-ripple 650ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .computer-ripple {
+    animation: none;
+    opacity: 0;
+  }
+}

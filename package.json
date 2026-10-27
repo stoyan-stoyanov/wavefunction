@@ -1,0 +1,38 @@
+{
+  "name": "wavefunction",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "setup": "npm --prefix frontend ci && uv sync --locked --project backend --python 3.12 --extra dev",
+    "dev": "node scripts/dev.mjs",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "uv run --no-sync --project backend uvicorn wavefunction.main:app --host 127.0.0.1 --port 8765 --reload --reload-dir backend/src",
+    "build": "npm --prefix frontend run build",
+    "typecheck": "npm --prefix frontend run typecheck",
+    "test": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "npm --prefix frontend run test",
+    "test:backend": "cd backend && uv run --no-sync pytest -n 4 --dist loadfile",
+    "test:connectors:live": "cd backend && uv run --no-sync pytest tests/test_connectors.py -q -m live",
+    "lint": "npm --prefix frontend run lint && uv run --no-sync --project backend ruff check backend",
+    "check": "node scripts/check.mjs",
+    "fix": "node scripts/fix.mjs",
+    "check:health": "node scripts/check-code-health.mjs",
+    "sidecar:build": "node scripts/build-sidecar.mjs",
+    "tauri": "./frontend/node_modules/.bin/tauri",
+    "tauri:dev": "npm run desktop:dev",
+    "tauri:build": "npm run desktop:build",
+    "dev:fixture": "node scripts/dev.mjs --fixture",
+    "desktop:build": "npm run sidecar:build && ./frontend/node_modules/.bin/tauri build --ci --config src-tauri/tauri.conf.json && node scripts/package-desktop.mjs",
+    "release:local": "node scripts/release-local.mjs",
+    "desktop:dev": "npm run sidecar:build && ./frontend/node_modules/.bin/tauri dev --config src-tauri/tauri.conf.json",
+    "test:launcher": "node --test scripts/dev.test.mjs",
+    "generate:api": "uv run --no-sync --project backend python scripts/generate-openapi.py && npm run generate:api:types",
+    "generate:api:types": "./frontend/node_modules/.bin/openapi-typescript backend/openapi.json --output frontend/src/lib/api.gen.ts",
+    "typecheck:backend": "node scripts/typecheck-backend.mjs",
+    "generate:prompt-surface": "uv run --no-sync --project backend python scripts/generate-prompt-surface.py"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}

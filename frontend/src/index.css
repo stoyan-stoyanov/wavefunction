@@ -1,0 +1,309 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/inter";
+@import "streamdown/styles.css";
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sd-animate],
+  [data-sd-animate-marker]::marker {
+    animation: none !important;
+  }
+}
+
+/* Streamdown emits Tailwind utilities from inside its bundle. Tailwind skips
+   node_modules during source detection, so the markdown in assistant replies
+   renders unstyled without this. */
+@source "../node_modules/streamdown/dist/*.js";
+
+@custom-variant dark (&:is(.dark *));
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+:root {
+  /* Overwritten at startup with the traffic lights' measured centre. See lib/titlebar.ts.
+     This default matches where the native window places them before the page reports its zoom
+     (DEFAULT_CENTER in src-tauri/src/lib.rs), so the toggle does not visibly jump while that
+     measurement is in flight. The measurement still wins. */
+  --traffic-light-center: 23px;
+}
+
+body {
+  margin: 0;
+}
+
+@theme inline {
+  --font-heading: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  /* A dense desktop ladder anchored on a 13px base, replacing the nine ad-hoc
+     px sizes this app used to mix with Tailwind's web-sized defaults. */
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.875rem;
+  --text-xs: 0.6875rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.75rem;
+  --text-sm--line-height: 1.125rem;
+  --text-base: 0.8125rem;
+  --text-base--line-height: 1.25rem;
+  --text-lg: 0.875rem;
+  --text-lg--line-height: 1.375rem;
+  --text-xl: 1rem;
+  --text-xl--line-height: 1.5rem;
+  --text-2xl: 1.125rem;
+  --text-2xl--line-height: 1.625rem;
+  --text-3xl: 1.5rem;
+  --text-3xl--line-height: 1.875rem;
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.25);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-3xl: calc(var(--radius) * 2);
+  --radius-4xl: calc(var(--radius) * 2.4);
+
+  /* Elevation carries the structure that borders used to. Each level is a wide
+     ambient shadow plus a tight contact shadow; dark mode adds a top highlight
+     because shadows alone barely register on a dark ground. */
+  --shadow-2xs: var(--elevation-1);
+  --shadow-xs: var(--elevation-1);
+  --shadow-sm: var(--elevation-2);
+  --shadow-md: var(--elevation-3);
+  --shadow-lg: var(--elevation-4);
+  --shadow-xl: var(--elevation-5);
+  --shadow-2xl: var(--elevation-6);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-hairline: var(--hairline);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-canvas: var(--canvas);
+}
+
+:root {
+  color-scheme: light;
+  --radius: 0.875rem;
+
+  /* Content floats as white on a grouped gray ground, the way iOS and macOS
+     separate surfaces without drawing outlines. */
+  --background: oklch(0.963 0.004 286);
+  --foreground: oklch(0.232 0.004 286);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.232 0.004 286);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.232 0.004 286);
+  --primary: oklch(0.25 0.004 286);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(1 0 0);
+  --secondary-foreground: oklch(0.28 0.004 286);
+  --muted: oklch(0.925 0.004 286);
+  --muted-foreground: oklch(0.502 0.008 286);
+  --accent: oklch(0.906 0.005 286);
+  --accent-foreground: oklch(0.232 0.004 286);
+  /* Darkened from the macOS system hues, which are tuned for fills rather than
+     the small text these carry here. These clear 4.5:1 on both surfaces. */
+  --destructive: oklch(0.568 0.223 28.7);
+  --success: oklch(0.526 0.154 147.4);
+  --warning: oklch(0.55 0.125 62.6);
+  --border: oklch(0.232 0.004 286 / 11%);
+  --hairline: oklch(0.232 0.004 286 / 7%);
+  --input: oklch(0.232 0.004 286 / 14%);
+  --ring: oklch(0.523 0.008 286 / 55%);
+  --canvas: oklch(0.943 0.004 286);
+  --sidebar: oklch(0.948 0.005 286);
+  /* Painted over the native sidebar vibrancy in the desktop app. Low enough for the material and
+     the desktop behind it to read through, high enough to keep small sidebar text legible. In a
+     plain browser the shell paints opaque --sidebar underneath, so this stays solid there. */
+  --sidebar-tint: oklch(0.948 0.005 286 / var(--sidebar-light-opacity, 15%));
+  --sidebar-foreground: oklch(0.28 0.004 286);
+  --sidebar-primary: oklch(0.25 0.004 286);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.888 0.005 286);
+  --sidebar-accent-foreground: oklch(0.212 0.004 286);
+  --sidebar-border: oklch(0.232 0.004 286 / 9%);
+  --sidebar-ring: oklch(0.523 0.008 286 / 55%);
+
+  --elevation-1: 0 1px 1.5px oklch(0.2 0.01 286 / 0.05);
+  --elevation-2: 0 1px 2px oklch(0.2 0.01 286 / 0.06), 0 2px 6px oklch(0.2 0.01 286 / 0.05);
+  --elevation-3: 0 1px 2px oklch(0.2 0.01 286 / 0.06), 0 6px 16px oklch(0.2 0.01 286 / 0.08);
+  --elevation-4: 0 2px 4px oklch(0.2 0.01 286 / 0.06), 0 14px 34px oklch(0.2 0.01 286 / 0.12);
+  --elevation-5: 0 4px 8px oklch(0.2 0.01 286 / 0.08), 0 28px 68px oklch(0.2 0.01 286 / 0.18);
+  --elevation-6: 0 6px 14px oklch(0.2 0.01 286 / 0.16), 0 32px 80px oklch(0.2 0.01 286 / 0.34);
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: oklch(0.201 0.004 286);
+  --foreground: oklch(0.958 0.003 286);
+  --card: oklch(0.253 0.004 286);
+  --card-foreground: oklch(0.958 0.003 286);
+  --popover: oklch(0.272 0.004 286);
+  --popover-foreground: oklch(0.958 0.003 286);
+  --primary: oklch(0.94 0.003 286);
+  --primary-foreground: oklch(0.201 0.004 286);
+  --secondary: oklch(0.288 0.004 286);
+  --secondary-foreground: oklch(0.94 0.003 286);
+  --muted: oklch(0.276 0.004 286);
+  --muted-foreground: oklch(0.676 0.008 286);
+  --accent: oklch(0.316 0.004 286);
+  --accent-foreground: oklch(0.968 0.003 286);
+  --destructive: oklch(0.68 0.2 28.3);
+  --success: oklch(0.756 0.18 147);
+  --warning: oklch(0.79 0.15 67.2);
+  --border: oklch(1 0 0 / 11%);
+  --hairline: oklch(1 0 0 / 7%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.72 0.006 286 / 55%);
+  --canvas: oklch(0.174 0.004 286);
+  --sidebar: oklch(0.178 0.004 286);
+  --sidebar-tint: oklch(0.178 0.004 286 / var(--sidebar-dark-opacity, 25%));
+  --sidebar-foreground: oklch(0.9 0.004 286);
+  --sidebar-primary: oklch(0.94 0.003 286);
+  --sidebar-primary-foreground: oklch(0.201 0.004 286);
+  --sidebar-accent: oklch(0.3 0.004 286);
+  --sidebar-accent-foreground: oklch(0.968 0.003 286);
+  --sidebar-border: oklch(1 0 0 / 9%);
+  --sidebar-ring: oklch(0.72 0.006 286 / 55%);
+
+  --elevation-1: 0 1px 1.5px oklch(0 0 0 / 0.3), inset 0 1px 0 oklch(1 0 0 / 0.03);
+  --elevation-2:
+    0 1px 2px oklch(0 0 0 / 0.36), 0 2px 6px oklch(0 0 0 / 0.28), inset 0 1px 0 oklch(1 0 0 / 0.04);
+  --elevation-3:
+    0 1px 2px oklch(0 0 0 / 0.4), 0 6px 16px oklch(0 0 0 / 0.34), inset 0 1px 0 oklch(1 0 0 / 0.05);
+  --elevation-4:
+    0 2px 4px oklch(0 0 0 / 0.44), 0 14px 34px oklch(0 0 0 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.06);
+  --elevation-5:
+    0 4px 8px oklch(0 0 0 / 0.5), 0 28px 68px oklch(0 0 0 / 0.52), inset 0 1px 0 oklch(1 0 0 / 0.07);
+  --elevation-6:
+    0 6px 14px oklch(0 0 0 / 0.75), 0 32px 80px oklch(0 0 0 / 0.8), inset 0 1px 0 oklch(1 0 0 / 0.07);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring;
+  }
+
+  html {
+    @apply font-sans;
+    font-synthesis-weight: none;
+  }
+
+  body {
+    /* No background. macOS blurs whatever is behind the window and paints it under the page;
+       an opaque body would cover that up, which is why backdrop-blur alone never showed
+       anything. Surfaces that need to be solid say so themselves. */
+    @apply overflow-hidden text-base text-foreground;
+    background: transparent;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings:
+      "cv05" 1,
+      "ss03" 1;
+  }
+
+  /* Shared affordance for every page, including portalled menus and dialogs.
+     Keep this in the base layer so text, resize and drag cursors can override it. */
+  :where(
+      button,
+      a[href],
+      summary,
+      select,
+      input[type="button"],
+      input[type="submit"],
+      input[type="reset"],
+      input[type="checkbox"],
+      input[type="radio"],
+      input[type="file"],
+      input[type="color"],
+      [role="button"],
+      [role="link"],
+      [role="tab"],
+      [role="checkbox"],
+      [role="radio"],
+      [role="switch"],
+      [role="option"],
+      [role="menuitem"],
+      [role="menuitemcheckbox"],
+      [role="menuitemradio"],
+      [role="combobox"]:not(input):not([contenteditable="true"]),
+      label[for],
+      label:has(input:not(:disabled), button:not(:disabled)),
+      [data-slot="select-scroll-up-button"],
+      [data-slot="select-scroll-down-button"]
+    ):not(:disabled):not([aria-disabled="true"]):not([data-disabled="true"]):not([data-disabled=""]) {
+    cursor: pointer;
+  }
+
+  :where(:disabled, [aria-disabled="true"], [data-disabled="true"], [data-disabled=""]) {
+    cursor: default;
+  }
+
+  input[type="file"]:not(:disabled)::file-selector-button {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--foreground) 18%, transparent);
+  }
+}
+
+@utility surface {
+  background-color: var(--card);
+  color: var(--card-foreground);
+  box-shadow: var(--elevation-2);
+}
+
+button,
+input,
+select,
+summary,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklch, var(--foreground) 22%, transparent) transparent;
+}
+
+.tauri [data-tauri-drag-region] {
+  -webkit-app-region: drag;
+  cursor: default;
+  user-select: none;
+}

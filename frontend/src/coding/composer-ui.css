@@ -1,0 +1,172 @@
+/* Below the composer on the left, at the footer's size: the chat's folder, then a new chat's
+   worktree choice. */
+.composer-footer .composer-place {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  margin-right: auto;
+}
+
+.composer-footer .composer-repository {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 1px 2px;
+  border-radius: var(--radius-sm);
+  color: var(--muted-foreground);
+  text-align: left;
+}
+
+.composer-footer .composer-repository > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-footer .composer-repository > svg {
+  flex-shrink: 0;
+}
+
+.composer-footer .composer-repository:hover {
+  color: var(--foreground);
+}
+
+.composer-footer .composer-repository:focus-visible,
+.composer-footer .composer-base-branch:focus-visible,
+.coding-composer .composer-branch-error > button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.composer-footer .composer-worktree-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--muted-foreground);
+}
+
+.composer-footer .composer-base-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: min(180px, 100%);
+  padding: 1px 2px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.composer-footer .composer-base-branch > span,
+.composer-branch-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-footer .composer-base-branch:disabled {
+  opacity: 0.6;
+}
+
+.composer-branch-menu {
+  width: 320px;
+  max-width: calc(100vw - 24px);
+}
+
+.composer-branch-name {
+  flex: 1;
+}
+
+.composer-branch-kind {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+
+.composer-branch-option > svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.composer-branch-limit {
+  padding: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.coding-composer .composer-branch-error {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px 18px 0;
+  color: var(--destructive);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.coding-composer .composer-branch-error > button {
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  text-decoration: underline;
+}
+
+.coding-composer .composer-context {
+  padding: 0 14px;
+}
+
+.coding-composer .context-chips:not(:empty) {
+  padding-top: 8px;
+}
+
+.coding-composer .composer-toolbar .model-selector {
+  max-width: min(280px, calc(100% - 110px));
+}
+
+/* A composer setting shown as a chip, such as Full access, at the model selector's size. */
+.coding-composer .composer-toolbar .model-selector,
+.coding-composer .composer-toolbar .composer-chip {
+  height: 29px !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+.composer-wrap .composer-footer {
+  justify-content: space-between;
+}
+
+/* Dictation. macOS's own cue is a small mic by the caret, so the mic button shows it is listening:
+   a red circle whose fill breathes, inside the button. */
+.coding-composer .composer-dictating {
+  border-radius: 9999px;
+  color: var(--destructive);
+  animation: composer-listening 1.4s ease-in-out infinite;
+}
+
+@keyframes composer-listening {
+  0%,
+  100% {
+    background: color-mix(in oklab, var(--destructive) 10%, transparent);
+  }
+  50% {
+    background: color-mix(in oklab, var(--destructive) 28%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coding-composer .composer-dictating {
+    animation: none;
+    background: color-mix(in oklab, var(--destructive) 18%, transparent);
+  }
+}

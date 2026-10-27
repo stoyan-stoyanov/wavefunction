@@ -1,0 +1,148 @@
+"""What a default chat sends the model: its system prompt, the messages of its first request
+and the tools offered with it, as the scripted model receives them through the real app.
+
+`npm run generate:prompt-surface` writes this to fixtures/prompt_surface/default_chat.md and
+tests/test_prompt_surface.py fails when that file is stale, so a change to what the model reads
+shows up in review. Machine-specific values (paths, the date, the platform) are placeholders.
+"""
+
+from __future__ import annotations
+
+import json
+import platform
+import re
+import subprocess
+from pathlib import Path
+from typing import Any, Literal
+
+import pytest
+from conftest import ScriptedModel
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
+from langchain_core.utils.function_calling import convert_to_openai_tool
+
+FIXTURE = Path(__file__).parent / "fixtures" / "prompt_surface" / "default_chat.md"
+COMMAND = "npm run generate:prompt-surface"
+
+
+class RecordingModel(ScriptedModel):
+    """A scripted model that also keeps the tools each model call was offered."""
+
+    # Any, not list: validating a list field would copy it.
+    offered: Any = None
+
+    def bind_tools(self, tools, **kwargs):  # noqa: ARG002 - recorded, not used
+        self.offered.append([convert_to_openai_tool(tool)["function"] for tool in tools])
+        return self
+
+
+async def _first_request(
+    root: Path, repo: Path, mode: Literal["auto", "plan"]
+) -> tuple[list[BaseMessage], list[dict]]:
+    """Send one message in a new chat in a synthetic repository and return the first model call."""
+    from wavefunction import github_cli, main
+    from wavefunction.coding_workspace import ThreadInput
+    from wavefunction.config import Settings
+    from wavefunction.skill_discovery import discover
+
+    with pytest.MonkeyPatch.context() as patch:
+        # Global skills come from a synthetic home, and gh is signed out, as in every test.
+        patch.setattr(
+            "wavefunction.coding_workspace.discover",
+            lambda folder, library, **kwargs: discover(folder, library, home=root / "home", **kwargs),
+        )
+
+        async def signed_out(root=None):
+            raise github_cli.SignInRequired("signed out")
+
+        async def no_account(root=None):
+            return ""
+
+        patch.setattr(github_cli, "token", signed_out)
+        patch.setattr(github_cli, "signed_in_account", no_account)
+        patch.setattr(github_cli, "_command_token", None)
+        services = main.Services(Settings(data_dir=root / "data", development_auth_bypass=True))
+        patch.setattr(main, "services", services)
+        seen: list = []
+        offered: list = []
+        # As script_gateway does: each model call is answered at once, with no tool call.
+        patch.setattr(
+            services.models,
+            "chat_model",
+            lambda _model, **_kwargs: RecordingModel(
+                script=[AIMessage(content="Done.")], seen=seen, offered=offered
+            ),
+        )
+        try:
+            ws = services.coding_workspace
+            thread = ws.create_thread(ThreadInput(folder=str(repo), mode=mode))
+            run = await ws.send(thread["id"], "Summarise this repository.")
+            task = services.runtime.tasks[run["id"]]
+            await services.runtime.wait(run["id"])
+            await task
+        finally:
+            await services.finish_optional_warmup()
+            await services.runtime.aclose()
+            await services.computer.shutdown()
+            await ws.terminals.shutdown()
+            await services.github_proxy.close()
+    return seen[0], offered[0]
+
+
+async def capture(root: Path) -> str:
+    """The prompt surface, rendered for review, from a fresh app in `root`."""
+    repo = root / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    messages, tools = await _first_request(root / "auto", repo, "auto")
+    _, plan_tools = await _first_request(root / "plan", repo, "plan")
+    # Each app's paths, then what is this machine's or this day's.
+    replacements = {str(root / name / "data"): "<DATA>" for name in ("auto", "plan")}
+    replacements[str(repo)] = "<REPOSITORY>"
+    replacements[f"{platform.system()} {platform.machine()}"] = "<OS> <ARCH>"
+    text = render(messages, tools, plan_tools)
+    for value, placeholder in sorted(replacements.items(), key=lambda item: -len(item[0])):
+        text = text.replace(value, placeholder)
+    return re.sub(r"Today is \w+, \d+ \w+ \d{4}\.", "Today is <DATE>.", text)
+
+
+def render(messages: list[BaseMessage], tools: list[dict], plan_tools: list[dict]) -> str:
+    def content(message: BaseMessage) -> str:
+        return message.content if isinstance(message.content, str) else json.dumps(message.content, indent=2)
+
+    system = [message for message in messages if isinstance(message, SystemMessage)]
+    lines = [
+        "# Prompt surface: a default chat's first model request",
+        "",
+        f"Generated by `{COMMAND}`. A chat in a Git repository, in Code mode, sends one message.",
+        "",
+        "## System prompt",
+        "",
+        *(content(message) for message in system),
+        "",
+        "## Messages",
+    ]
+    for message in messages:
+        if isinstance(message, SystemMessage):
+            continue
+        source = message.additional_kwargs.get("lc_source")
+        lines += ["", f"### {message.type}" + (f" ({source})" if source else ""), "", content(message)]
+    lines += ["", f"## Tools ({len(tools)})"]
+    for tool in tools:
+        lines += [
+            "",
+            f"### {tool['name']}",
+            "",
+            tool.get("description", ""),
+            "",
+            "```json",
+            json.dumps(tool.get("parameters", {}), indent=2),
+            "```",
+        ]
+    lines += [
+        "",
+        f"## Plan mode tools ({len(plan_tools)})",
+        "",
+        *(f"- {tool['name']}" for tool in plan_tools),
+        "",
+    ]
+    return "\n".join(lines)

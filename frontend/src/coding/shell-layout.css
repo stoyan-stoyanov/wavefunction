@@ -1,0 +1,77 @@
+.coding-shell {
+  position: relative;
+}
+.coding-sidebar-frame {
+  height: 100%;
+  min-height: 0;
+}
+/* Set by sidebar-resize.tsx for the length of a drag. Any width or colour transition, including
+   the sidebar collapse, would otherwise animate toward a target that moves every frame. */
+[data-sidebar-resizing] *,
+[data-sidebar-resizing] *::before,
+[data-sidebar-resizing] *::after {
+  transition: none !important;
+}
+.coding-sidebar-frame > .coding-sidebar {
+  height: 100%;
+  min-height: 0;
+}
+.coding-main {
+  position: relative;
+  min-width: 360px;
+}
+.navigation-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 16px;
+  height: 46px;
+  border-bottom: 1px solid transparent;
+  flex-shrink: 0;
+}
+.sidebar-toggle {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+.tauri .sidebar-hidden .shell-titlebar {
+  padding-left: calc(92px / var(--app-zoom, 1.15) + 8px);
+}
+.coding-workbench-frame {
+  width: min(var(--sidebar-preferred-width, 390px), max(300px, calc(100% - 560px)));
+  min-width: 300px;
+  flex-shrink: 1;
+}
+.coding-workbench-frame > .coding-sidebar-resize {
+  left: -3px;
+  right: auto;
+}
+.coding-workbench-frame > .coding-workbench {
+  position: static;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 100%;
+  flex: 1;
+  box-shadow: none;
+}
+.coding-workbench-frame .workbench-toolbar {
+  height: 46px;
+}
+.workbench-overlay-close {
+  display: none;
+}
+@media (max-width: 1100px) {
+  .workbench-overlay-close {
+    display: inline-flex;
+  }
+  .coding-main {
+    min-width: 0;
+  }
+  .coding-workbench-frame {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: min(var(--sidebar-preferred-width, 390px), calc(100% - 80px));
+    z-index: 25;
+    box-shadow: -10px 0 30px #00000014;
+  }
+}

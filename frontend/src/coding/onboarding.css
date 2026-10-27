@@ -1,0 +1,46 @@
+@import "@fontsource-variable/geist";
+
+/* The left column is the sidebar's material: in the desktop app the window's own blur shows
+   through its tint, as it does behind the sidebar. The form side is solid like the chat. */
+.onboarding-shell {
+  background: var(--sidebar);
+}
+.tauri .onboarding-shell {
+  background: transparent;
+}
+.onboarding-aside {
+  background: var(--sidebar-tint);
+  border-bottom: 1px solid var(--border);
+}
+@media (min-width: 64rem) {
+  .onboarding-aside {
+    border-bottom: 0;
+    border-right: 1px solid var(--border);
+  }
+}
+.onboarding-pane {
+  background: var(--background);
+}
+
+/* A new step's illustration fades in where it stands. */
+@keyframes onboarding-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.onboarding-fade {
+  animation: onboarding-fade 400ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-fade {
+    animation: none;
+  }
+}
+
+/* The landing page's typeface for the name. */
+.onboarding-wordmark {
+  font-family: "Geist Variable", system-ui, sans-serif;
+}

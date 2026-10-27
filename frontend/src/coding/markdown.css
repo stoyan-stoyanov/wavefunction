@@ -1,0 +1,68 @@
+.coding-markdown {
+  min-width: 0;
+  width: 100%;
+}
+.chat-table {
+  min-width: 0;
+  margin: 16px 0;
+}
+.chat-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.chat-table table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+.chat-table :is(th, td) {
+  min-width: 160px;
+  max-width: 480px;
+  padding: 12px 16px;
+  vertical-align: top;
+  text-align: left;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+}
+.chat-table th {
+  background: var(--muted);
+  font-weight: 600;
+}
+.chat-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.chat-table-pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 10px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.chat-table-pagination button {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* One card per code block: the code sits in the block's own card under its header. */
+.coding-markdown [data-streamdown="code-block-body"] {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0 8px 6px;
+}
+.coding-markdown [data-streamdown="code-block-body"] > pre {
+  background: transparent;
+}
+/* The copy icon matches the language label beside it. */
+.coding-markdown [data-streamdown="code-block-copy-button"] {
+  padding: 2px;
+}
+.coding-markdown [data-streamdown="code-block-copy-button"] svg {
+  width: 12px;
+  height: 12px;
+}

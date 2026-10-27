@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in Wavefunction doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search the open issues and the [known issues](https://github.com/stoyan-stoyanov/wavefunction/blob/main/docs/KNOWN_ISSUES.md) first. Don't include credentials, tokens, private code or personal data. Security problems go through [private reporting](https://github.com/stoyan-stoyanov/wavefunction/security/advisories/new), not an issue.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest steps that show it, ideally with a synthetic repository.
+      placeholder: |
+        1. Open a chat in a new project
+        2. Ask the agent to ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Wavefunction version
+      description: Settings → About, or the commit if you built from source.
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Model provider and model
+      description: For example ChatGPT sign-in with a GPT model, OpenRouter, or a local Ollama model.
+  - type: textarea
+    id: details
+    attributes:
+      label: Logs, screenshots or other details
+      description: Redact paths, names and anything private before pasting.

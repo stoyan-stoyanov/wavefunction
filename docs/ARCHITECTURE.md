@@ -1,0 +1,126 @@
+# Wavefunction architecture
+
+Wavefunction is one built-in coding agent with independent chats. Projects group chats and supply a repository folder. There is no agent-builder or team-management product layer.
+
+The desktop is a Tauri shell, React frontend, and bundled FastAPI/Python sidecar. `frontend/src/main.tsx` loads `coding/app.tsx`. `backend/src/wavefunction/main.py` composes the coding workspace and shared services, registers the supported APIs, and owns startup/shutdown. A few persisted identifiers from before the app was named Wavefunction remain for compatibility.
+
+## Follow a task
+
+1. The composer sends through `coding/store.ts` and `coding/api.ts` using the shared authenticated transport.
+2. `CodingWorkspace.send` resolves the owning chat and captures its model, instructions, working directory, selected context, tools, skills, and attachments into the run's spec.
+3. `RuntimeManager` admits or queues the run against its conversation. Only one execution owns a conversation's checkpoint writer at a time, including paused runs and final cleanup.
+4. `agent_factory.build_agent` builds the existing LangChain/LangGraph loop. `ToolContext` carries the task's captured identities and explicit coding services. Tools use the native sandbox, connector registry, skill library, and computer/terminal managers.
+5. Runtime events and run records are saved in SQLite. SSE subscribers replay from their cursor. The coding store applies results to the captured chat/run rather than the currently selected chat.
+6. Completion captures saved changes. Cancellation settles the task and its one-shot commands before a successor can take the checkpoint writer. Interactive terminals remain with the chat across completed, cancelled, and failed runs.
+
+The workspace is explicitly constructed once per service graph and passed to the runtime/tool contexts. The repository stores data; it does not acquire a dynamic application-mode back-reference.
+
+Message admission and steering query only outstanding run identities/statuses, including tasks still finishing cleanup. They do not load completed messages, activity or checkpoint payloads to decide whether a chat is busy.
+
+## Ownership and storage
+
+| Identity | Responsibility |
+| --- | --- |
+| Project | Chat collection, repository defaults, appearance. Removing one leaves its chats unassigned; a new project for the same folder takes back those in the folder or its managed worktrees |
+| Chat/thread | Conversation identity, selected model/folder, attachment membership, drafts, computer-copy identity |
+| Run | Captured spec (configuration), activity, usage, steering, questions/approvals, tool execution and terminal origin |
+| Conversation | Durable LangGraph checkpoint stream, serialized across its runs |
+| Managed worktree | Recorded checkout associated with its owning chat and delivery operations |
+
+`harness-workspace.sqlite` stores coding metadata, settings, attachment membership, review/recovery records, and delivery state. The repository stores conversations, run history/events (each run row carries the spec it executes), files, provider settings, and versioned skills. The agent's package holds that history database; LangGraph uses its SQLite checkpointer. LangGraph saves the full agent state at every step, so each finished run prunes its conversation to the latest checkpoint and those message points recorded; `scripts/prune-checkpoints.py` does the same once for databases written before this. These stores have different purposes. Message rewind uses the existing recovery journal to coordinate exact code restoration, the workspace conversation pointer, and run ownership. Journal completion follows both storage updates.
+
+The desktop data directory is `~/Library/Application Support/app.harness.coding`. Preserve the application identifier, built-in agent ID, skill versions, and storage keys. Display-name changes do not require data migrations. Source development uses checkout-local `.wavefunction-data`; verification uses disposable synthetic workspaces.
+
+## Runtime and tools
+
+`runtime.py` handles execution, queueing, resume, cancellation, events, usage, and checkpoint ownership. `agent_factory.py` assembles models, tools, and middleware. `steering.py` delivers persisted updates at model boundaries using the same checkpoint writer, including updates received while the final answer streams. The composer steers a running task by default, with an explicit queue option. The transcript keeps individual assistant messages and steering updates in event order, with one live plan at its original position. The transcript reconciles a completed response with its open streaming bubble even when the provider replaces the temporary message ID; separate replies remain distinct through reloads. Each update retains its captured context and attachments, records when it is applied, and receives a message checkpoint. Tasks waiting for a question or approval keep that pause; another message queues instead.
+
+Providers include ChatGPT/Codex, Anthropic, Google Gemini, OpenAI, OpenRouter, Vercel AI Gateway, Ollama, and compatible servers. Connected tools and skill versions are captured for the next task. The versioned skill library and `skill_discovery.py` retain repository/global SKILL.md discovery, including supported Claude/OpenCode locations. Explicit slash skills and prompt commands expand through `coding_context.py`; tests and formatters run as ordinary agent tools.
+
+`coding_questions.py` uses persisted interrupts for structured questions. `coding_access.py` handles outside-folder grants. Responses bind the owning run and expected event sequence. Attachments are pinned while a send is being accepted, then retained through saved, paused, completed, and forked history until their last reference is deleted.
+
+Computer sessions preserve per-chat/run ownership. Interactive terminals belong to their chat until closed or the app quits; later runs can manage earlier agent terminals in the same chat, while user terminals remain protected from agent input and closure. Folder, mode, or permission changes still stop affected sessions. Existing provider sign-in, connector setup, computer readiness, pending connector resumes, and the routine scheduler (which sends each due routine chat its instruction while the app is open) are the supported background services.
+
+## Files, Git, and permissions
+
+The workbench uses version-checked file reads/saves. Binary, oversized, truncated, escaped, and `.git` content is not exposed as editable text. Recovered drafts carry their original folder and version so changing a project's folder cannot redirect a later save.
+
+Agent file reads default to 6,000 characters, or 200 numbered lines within that character budget when a starting line is supplied. Explicit reads can request up to 40,000 characters and 2,000 lines. Truncated results provide continuation offsets; file versions and atomic edit checks remain independent of the read size. Guidance favors searching specific definitions with three surrounding lines and reading further when that context is insufficient or before editing. Larger reads expand contiguous ranges as needed.
+
+`change_review.py` records the files each task's own tools change, with bounded captures; a refused edit in a shared checkout uses them to name the chat that changed the file meanwhile. `coding_recovery.py` restores exact bytes and modes for rewind and for restoring a retained worktree, rejects stale or missing versions, and keeps interrupted restores across restart. `coding_delivery.py` and `coding_git_ops.py` serve the Changes tab's read-only Git state and diffs and manage worktrees. Commits, pushes and pull requests are the agent's, through `git` and `gh`.
+
+Code mode runs allowed project tools without action-by-action approval. Plan withholds mutation/command tools. Outside folders require a saved read-only or writable grant. macOS Seatbelt confines local tools and commands to the project/grants, task scratch, and required system/toolchain support while protecting private application data and credentials. A command the user approves runs outside the sandbox with their environment, as Codex escalates one; a chat with full access runs them without asking. A command that can't be undone, found by the fixed check in `irreversible.py`, asks in every mode. Network access is enabled by default; explicit offline settings remain effective. Commands that may use the network reach GitHub through the app's proxy with a placeholder: `git` and `gh` work as in the user's terminal, SSH remote URLs included, while the token stays in the app and pushes that delete branches or push tags are refused. See [security](../SECURITY.md).
+
+## Worktrees, checkpoints, and helpers
+
+`coding_checkpoints.py` coordinates message-boundary snapshots, forks, and rewind. `coding_snapshots.py` runs inside the filesystem sandbox: Git stores exact source blobs and trees in private refs without moving HEAD or changing the real index. A stat cache reuses unchanged blobs. Captures happen before user input, before steering is applied, and after a settled reply, not after every tool call. Model checkpoints use the existing LangGraph saver; steering preserves the exact pre-application state.
+
+New worktree chats start at the checked-out commit. A message fork copies its matching conversation and source snapshot, including eligible uncommitted edits, into an independently owned worktree. Older chats without complete code checkpoints remain readable but do not advertise rewind. Private/ignored generated content is excluded; linked files, submodules, and oversized source snapshots make the boundary unavailable with a reason rather than silently saving partial code.
+
+Rewind stops and settles owned execution, rejects another writer in the checkout, and validates every affected file and mode before changing bytes. Affected staged files must first be unstaged; unrelated staging and paths remain intact. The recovery journal keeps history and files coherent across interruption. The abandoned continuation is archived with its original code refs and can be forked again. Per-chat locking prevents a concurrent send from starting against abandoned history. The frontend fences old streams and preserves displaced chat drafts and existing file drafts.
+
+### Helpers
+
+`coding_agents.py` provides `spawn_agent`, `get_agent`, `wait_agents`, `send_message` and `stop_agent` as small adapters over the same runtime.
+
+- **Limits.** Direct helpers have no fixed concurrency cap; recursive delegation is disabled.
+- **What they inherit.** Helpers inherit the captured configuration and access, and run on the main chat's model unless `spawn_agent(model=…)` names another of the user's enabled models. The main task's cost includes its helpers'.
+- **Handover.** A task started after one that failed or was stopped takes over that task's helpers and is told their state.
+- **Shared checkout (default).** As in Codex and Claude Code, an editing helper shares the parent's checkout: its edits land in place, and it is told it works alongside other agents (edit only assigned files, never revert others' changes, no commit, branch switch, stash or reset). There is nothing to merge. A refused edit names the agent that changed the file meanwhile.
+- **Isolated helpers.** `spawn_agent(isolated=true)` is for work that could interfere: those helpers get ordinary Git worktrees. Read-only helpers share the checkout without write access.
+- **Worktree access.** An agent in any managed worktree is told which repository it came from, since gitignored files such as virtualenvs stay there. Its sandbox grants the checkout, its registered per-worktree Git directory, and the shared objects, refs, ref logs, fetch metadata and standard LFS cache. That permits staging, commits and fetches while parent and sibling working files and indexes stay read-only. Git history is shared: worktrees are not tamper-proof object or branch isolation. Metadata access derives from verified ownership and is revoked with checkout write access, without copying repositories or saving extra grants. Scoped helper Git writes support the files ref backend, not reftable.
+
+- **No wider access.** A child cannot broaden folder access. The same checkout permissions cover commands, terminals, Git hooks and filters, and backend checkpoint and file operations.
+- **Stopping.** Stop and failure settle child runs and their one-shot commands. A stopped helper's interactive terminals stay with its chat until its main task ends; the main agent's terminal tools list and close its helpers' terminals, and they close with the main task. A helper's desktop closes when the helper finishes. Deletion and rewind close affected terminals.
+- **Unresolved helpers.** Normal completion returns the parent to the model loop while helpers are unresolved, so it can collect results or stop obsolete work. Repeatedly ignoring that guard fails the run through the existing failure cleanup.
+- **Cards.** A helper stops on the same cards as its main task (commands outside the sandbox, ones that can't be undone, folders outside what it inherited) and follows the main chat's full access. Inside inherited folders its captured access is unchanged, so an isolated helper cannot gain write access to the checkout it was isolated from.
+- **Waiting on the user.** A helper can wait on the user for connector sign-in or computer takeover, which the parent cannot resolve, so the parent is not nudged or failed for it:
+  - the pause is copied onto the main task (`helper_waiting`/`helper_resolved`);
+  - the main chat shows the helper's card until it is answered in either chat, and the parent tells the user which helper is waiting;
+  - `wait_agents` returns `needs_user` at once;
+  - the finished turn stays open, without model calls or an idle limit, until that helper changes or the user writes, so the helper's result still reaches its live parent.
+
+  The sidebar marks a chat waiting on the user, and its parent, with a needs-input icon instead of the spinner; a helper's question is its parent's to answer and keeps the spinner.
+- **Results.** An isolated helper's edits stay in its own worktree; the parent receives their baseline, an immutable result commit or ref, and the diff, then integrates with the usual Git and file tools.
+- **Git while helpers run.** The parent's own Git operations, such as the snapshot for an isolated helper, still proceed; other chats' Git operations in that checkout wait.
+- **Worktree lifetime.** Removing a clean worktree uses Git's ordinary removal and keeps its branch. A helper's own worktree goes 24 hours after its last use, never while its main task runs, even with build output in it, but only when the rest is exactly its last saved snapshot and no private files are in it.
+- **Sidebar.** Child chats nest under their parent. Settled helpers collapse once the parent's run ends; a helpers icon expands their history. Active and pinned helpers stay visible. This is presentation only, not archive state or run ownership.
+
+Root tasks receive concise orchestration guidance: a request that is one task, however large, is done by the main agent itself; one naming several independent tasks gets a helper for each; and a new request sent while the task runs gets a helper for each independent task in it (each mid-task user message reaches the parent with a one-line note saying so; the transcript shows the message as typed), route corrections to the owning helper, preserve earlier requirements when steered, and review, integrate and validate helper results before finishing. Helpers receive separate focused-assignment guidance and cannot delegate recursively. `send_message` can answer an ordinary helper question with recorded parent provenance; it cannot approve commands, widen access, or complete connector/computer setup on the user's behalf.
+
+`coding_cleanup.py` deletes inactive managed checkouts after 14 days by default, with a configurable retention period or Never in Settings → General. Explicit chat opens, execution, and terminal activity refresh the checkout's activity clock; polling history does not. Existing checkouts receive a full grace period on upgrade. Cleanup retains dirty/ignored files, submodules, locked or detached worktrees, pinned/shared checkouts, active tasks, terminals, and unfinished recovery. It records deletion intent and the exact branch/head before Git's non-forced removal, retaining chat history and Git refs. Reading old chats never recreates files; sending, forking, or restoring a checkpoint recreates a deleted checkout before execution, rejecting occupied paths or changed branches. Interrupted deletion and checkout population can resume after restart. This lifecycle is independent of chat archiving.
+
+Manual chat deletion uses a separate explicit confirmation that warns about permanent loss of uncommitted, untracked, and ignored files. It settles owned tasks and helpers before removing the registered managed checkout with Git's forced removal, keeping branches. A chat's helpers are deleted with it, after the chat itself, under the same confirmation. Archived rewind chats retain their history and code refs, with folder references moved to the source repository. Their saved history alone does not block deletion. Independently shared live chats and foreign tasks or terminals must release the checkout first. Automatic retention remains non-forced and retains unsaved files.
+
+Helpers run `git` and `gh` like any command, inside their captured folder-access ceiling; later grants cannot widen a helper's permissions. Read-only helpers get no commands, and helpers still cannot configure accounts or request more folders.
+
+Helper observations read a bounded event tail and return a cursor. Passing that cursor to `get_agent` or `wait_agents` omits unchanged answers/diffs; a follow-up run or newly settled result changes the cursor. Diffs use the helper's saved completion snapshot, so checking again neither captures the workspace again nor attributes later user edits to the helper. Steering queries select only steering events instead of decoding tool-output history.
+
+`SteeringMiddleware` also delivers compact helper completion/pause notices at model boundaries, after each child releases its checkpoint writer. Cursors live in the parent's checkpoint state, surviving compaction and approval resumes; unchanged statuses are not repeated. Notifications carry a distinct source tag so they cannot replace the user's active request. The runtime reads only the current task's helper conversations and bounds notification batches; it does not load historical transcripts or generate diffs on the model hot path. `wait_agents` still wakes promptly for new user instructions. Tool results and notices share one cursor format. Only a wait that actually waited is exempt from the repeated-action limit; an immediate unchanged answer counts like any repeated call.
+
+### Model requests and caching
+
+- **Stable prefix.** Requests keep stable conversation cache keys, system instructions and tool order.
+- **Environment message.** The date, local environment, GitHub sign-in and repository instructions go in an environment message, not the system prompt: in full at a conversation's first model call, then only what changed, before the call where it changed (such as a folder chosen mid-turn). Repository instructions are fixed within a run once read, and reread for the next run.
+- **Tools.** Core coding, question and helper tools are offered at once, so delegation never waits on a search. Optional schemas (computer, documents, terminals, web, calculator, repository, access and GitHub setup, and connectors) load through discovery; related built-ins load together from the run's permitted catalogue. Loaded schemas append in a stable order and stay available in that conversation.
+- **Context size.** Skills load on demand. Oversized tool results go to content-addressed storage with paginated retrieval. Compaction preserves active requests and steering.
+- **Reasoning.** A gateway reply's streamed reasoning is stored as the merged fields replayed to the provider, not per-delta records (those were several times larger and triggered early compaction), and request estimates count only what is sent. A reply cut off at the output limit with no answer or tool call is retried like one with cut-off tool calls, and its reasoning is dropped.
+- **Usage.** Provider-reported cached input stays separate from total input and output. Matching prefixes enable reuse but don't guarantee provider cache hits.
+
+The local environment notice omits the shell's internal `PATH`, whose tool-shim directory is unique to each chat. Chats in the same repository can therefore send identical opening context while keeping separate scratch directories and execution environments. Chats without a repository still receive their actual command working directory.
+
+OpenRouter requests carry a stable `session_id` derived from the conversation and provider credential, retaining routing affinity through retries and subsequent turns without sharing state across chats or accounts. This does not pin a production upstream or change account privacy settings. Model-call events include bounded request hashes and the upstream provider when reported: system and tool hashes, the history hash, and its last 16 message boundaries. These diagnostics describe the request after gateway formatting without storing another copy of its text. Provider selection, cache eviction, and prefix changes can still produce misses.
+
+The ChatGPT/Codex transport also sends conversation-scoped `session-id`/`thread-id` headers and replays the server's first successful `x-codex-turn-state` header through a run. Each run builds fresh model clients, so routing state ends with the turn and is never persisted in conversation history. Each transport retains at most one account/session-owned token; per-request headers avoid changing shared client defaults. Normal OpenAI API requests retain their existing cache-key behavior. The opt-in live coding check measures actual reuse across tools and a subsequent turn, alongside deterministic streaming/retry/isolation regressions.
+
+## Frontend and desktop boundaries
+
+`coding/` owns chat navigation, composer, streams, workbench, and current settings navigation. `store/settings.ts` holds shared provider, connector, grant, and skill settings. Focused settings components live under `views/`. `lib/transport.ts` owns request authentication and cancellation; `lib/api.ts` contains the shared settings/tool-service API.
+
+Settings Analytics reads aggregate usage from the built-in coding agent's persisted runs through `/api/coding/analytics`. It groups by each run's captured provider/model, includes helper work, excludes copied fork history, and returns fourteen UTC daily buckets without loading transcripts. Missing measurements remain unknown; cached input is a subset of input, and exact uncached input is shown only when model-call coverage agrees with the persisted totals.
+
+Opening an uncached chat shows a message/composer skeleton until its latest message page and any required executing/paused owner arrive. The in-memory history cache keeps five recently viewed idle chats plus chats with active work. Switching reuses cached history immediately; changed workspace metadata triggers a refresh, and explicit Retry still reloads. Eviction leaves drafts and saved history intact. A failed initial history load exposes Retry without mounting an empty-chat composer. Chat reads reuse their metadata and load only checkpoint labels and availability, leaving model/code checkpoint payloads for fork or rewind. Earlier pages use conversation-scoped cursors. Stream replay and page merges preserve arriving events and captured ownership. Drafts and file drafts persist locally. The sidebar, composer, theme, workbench, and native window alignment retain the current Wavefunction layout.
+
+`src-tauri/src/lib.rs` supervises the sidecar and native window; and `quit.rs` checks active coding work before exit. `scripts/build-sidecar.mjs` and `backend/wavefunction-backend.spec` freeze supported tools, skills, libraries, computer resources, and ripgrep into a directory distribution. Tauri bundles that directory in `Contents/Resources/backend` and launches its executable directly, preserving `_MEIPASS` resource lookup and the `--python` helper interpreter without extraction at each app launch. Tauri copies the sidecar's symbolic links as whole files; `scripts/backend-links.mjs` puts them back before `scripts/package-desktop.mjs` and `scripts/release-desktop.mjs` sign the app. `scripts/package-desktop.mjs` then produces its ZIP/checksum.
+
+See [development](DEVELOPMENT.md), [test policy](TESTING.md), and the [rebuild skill](../.agents/skills/rebuild-wavefunction/SKILL.md) for verification. Storage changes require populated synthetic success/rejection checks; native sandbox and frozen packaging paths require their actual execution environments.

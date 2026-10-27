@@ -1,0 +1,203 @@
+.coding-analytics-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.coding-analytics-card {
+  min-width: 0;
+  padding: 18px;
+  border-radius: var(--radius-xl);
+  background: var(--card);
+}
+.coding-analytics-card dt {
+  margin-bottom: 10px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.coding-analytics-card dd {
+  font-size: clamp(20px, 2vw, 27px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+.coding-analytics-card p,
+.coding-analytics-card small {
+  margin-top: 7px;
+  font-size: 11px;
+  line-height: 1.5;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--muted-foreground);
+}
+.coding-analytics-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.coding-analytics-updated {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.coding-analytics-chart-card,
+.coding-analytics-models {
+  border-radius: var(--radius-xl);
+  background: var(--card);
+}
+.coding-analytics-chart-card {
+  padding: 20px 18px 12px;
+}
+.coding-analytics-chart {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+.coding-analytics-chart li {
+  min-width: 0;
+  text-align: center;
+}
+.coding-analytics-bar-count,
+.coding-analytics-date {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.coding-analytics-bar-track {
+  display: flex;
+  align-items: flex-end;
+  height: 132px;
+  margin: 8px 4px;
+}
+.coding-analytics-bar-track span {
+  display: block;
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: #3b82f6;
+}
+.coding-analytics-daily-details {
+  margin-top: 18px;
+  padding-top: 10px;
+}
+.coding-analytics-daily-details summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.coding-analytics-daily-details[open] summary {
+  margin-bottom: 12px;
+}
+.coding-analytics-table-scroll {
+  overflow-x: auto;
+}
+.coding-analytics-table-scroll:focus-visible,
+.coding-analytics-daily-details summary:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.coding-analytics-table-scroll table {
+  width: 100%;
+  text-align: right;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.coding-analytics-table-scroll th,
+.coding-analytics-table-scroll td {
+  padding: 14px 12px;
+  vertical-align: top;
+}
+.coding-analytics-table-scroll thead th {
+  font-weight: 500;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  font-size: 11px;
+}
+.coding-analytics-table-scroll th:first-child {
+  text-align: left;
+}
+.coding-analytics-table-scroll tbody th {
+  min-width: 160px;
+  max-width: 240px;
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+.coding-analytics-table-scroll small {
+  display: block;
+  min-width: 66px;
+  margin-top: 3px;
+  color: var(--muted-foreground);
+  font-weight: 400;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.coding-analytics-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  font-size: 12px;
+}
+.coding-analytics-error p {
+  margin-top: 5px;
+  color: var(--muted-foreground);
+}
+.coding-analytics-loading {
+  margin-bottom: 18px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+.coding-analytics-empty {
+  padding: 56px 24px;
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  text-align: center;
+}
+.coding-analytics-empty svg {
+  width: 28px;
+  height: 28px;
+  margin: 0 auto 16px;
+  color: var(--muted-foreground);
+}
+.coding-analytics-empty h3 {
+  font-size: 15px;
+  font-weight: 500;
+}
+.coding-analytics-empty p {
+  max-width: 320px;
+  margin: 8px auto 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.7;
+}
+@media (max-width: 1100px) {
+  .coding-analytics-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 700px) {
+  .coding-analytics-chart-card {
+    padding: 16px 10px 10px;
+  }
+  .coding-analytics-chart {
+    gap: 3px;
+  }
+  .coding-analytics-bar-track {
+    margin-inline: 1px;
+  }
+  .coding-analytics-chart li:nth-child(even) .coding-analytics-date {
+    visibility: hidden;
+  }
+  .coding-analytics-bar-count {
+    font-size: 8px;
+  }
+}

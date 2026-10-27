@@ -1,0 +1,432 @@
+{
+  "airtable": {
+    "file": "airtable.png",
+    "monochrome": false,
+    "source": "https://www.airtable.com/favicon.ico"
+  },
+  "algolia": {
+    "file": "algolia.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/algolia.svg",
+    "color": "#003DFF"
+  },
+  "alltrails": {
+    "file": "alltrails.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/alltrails.svg",
+    "color": "#142800"
+  },
+  "asana": {
+    "file": "asana.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/asana.svg",
+    "color": "#F06A6A"
+  },
+  "atlassian": {
+    "file": "atlassian.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/atlassian.svg",
+    "color": "#0052CC"
+  },
+  "betterstack": {
+    "file": "betterstack.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/betterstack.svg",
+    "color": "#000000"
+  },
+  "buildkite": {
+    "file": "buildkite.png",
+    "monochrome": false,
+    "source": "https://buildkite.com/_site/favicon.png"
+  },
+  "circleci": {
+    "file": "circleci.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/circleci.svg",
+    "color": "#343434"
+  },
+  "clickup": {
+    "file": "clickup.svg",
+    "monochrome": false,
+    "source": "https://clickup.com/assets/brand/v4/Logomark-gradient.svg"
+  },
+  "cloudflare": {
+    "file": "cloudflare.png",
+    "monochrome": false,
+    "source": "https://www.cloudflare.com/favicon.ico"
+  },
+  "cloudinary": {
+    "file": "cloudinary.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/cloudinary.svg",
+    "color": "#3448C5"
+  },
+  "datadog": {
+    "file": "datadog.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/datadog.svg",
+    "color": "#632CA6"
+  },
+  "dropbox": {
+    "file": "dropbox.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/dropbox.svg",
+    "color": "#0061FF"
+  },
+  "github": {
+    "file": "github.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/github.svg",
+    "color": "#181717"
+  },
+  "gitlab": {
+    "file": "gitlab.png",
+    "monochrome": false,
+    "source": "https://about.gitlab.com/images/ico/favicon-192x192.png"
+  },
+  "grafana": {
+    "file": "grafana.svg",
+    "monochrome": false,
+    "source": "https://raw.githubusercontent.com/grafana/grafana/main/public/img/grafana_icon.svg"
+  },
+  "hugging_face": {
+    "file": "hugging_face.svg",
+    "monochrome": false,
+    "source": "https://huggingface.co/front/assets/huggingface_logo-noborder.svg"
+  },
+  "intercom": {
+    "file": "intercom.png",
+    "monochrome": false,
+    "source": "https://www.intercom.com/intercom-marketing-site/favicons/favicon-32x32.png"
+  },
+  "linear": {
+    "file": "linear.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/linear.svg",
+    "color": "#5E6AD2"
+  },
+  "miro": {
+    "file": "miro.png",
+    "monochrome": false,
+    "source": "https://framerusercontent.com/images/6FBG66PBxjV2QFaDfIdUi5mi9A.png"
+  },
+  "mixpanel": {
+    "file": "mixpanel.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/mixpanel.svg",
+    "color": "#7856FF"
+  },
+  "n8n": {
+    "file": "n8n.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/n8n.svg",
+    "color": "#EA4B71"
+  },
+  "neon": {
+    "file": "neon.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/neon.svg",
+    "color": "#34D59A"
+  },
+  "netlify": {
+    "file": "netlify.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/netlify.svg",
+    "color": "#00C7B7"
+  },
+  "notion": {
+    "file": "notion.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/notion.svg",
+    "color": "#000000"
+  },
+  "paypal": {
+    "file": "paypal.png",
+    "monochrome": false,
+    "source": "https://www.paypalobjects.com/marketing/web/icons/monogram/pp258.png"
+  },
+  "postman": {
+    "file": "postman.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/postman.svg",
+    "color": "#FF6C37"
+  },
+  "prisma-postgres": {
+    "file": "prisma-postgres.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/prisma.svg",
+    "color": "#2D3748"
+  },
+  "railway": {
+    "file": "railway.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/railway.svg",
+    "color": "#0B0D0E"
+  },
+  "robinhood": {
+    "file": "robinhood.png",
+    "monochrome": false,
+    "source": "https://robinhood.com/us/en/rh_favicon_152.png?v=2024"
+  },
+  "sentry": {
+    "file": "sentry.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/sentry.svg",
+    "color": "#362D59"
+  },
+  "square": {
+    "file": "square.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/square.svg",
+    "color": "#3E4348"
+  },
+  "stripe": {
+    "file": "stripe.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/stripe.svg",
+    "color": "#635BFF"
+  },
+  "supabase": {
+    "file": "supabase.png",
+    "monochrome": false,
+    "source": "https://supabase.com/favicon/favicon-180x180.png"
+  },
+  "todoist": {
+    "file": "todoist.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/todoist.svg",
+    "color": "#E44332"
+  },
+  "trivago": {
+    "file": "trivago.png",
+    "monochrome": false,
+    "source": "https://www.trivago.com/_static/images/apple-touch-icon_08112023.png"
+  },
+  "unreal-engine": {
+    "file": "unreal-engine.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/unrealengine.svg",
+    "color": "#0E1128"
+  },
+  "vercel": {
+    "file": "vercel.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/vercel.svg",
+    "color": "#000000"
+  },
+  "webflow": {
+    "file": "webflow.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/webflow.svg",
+    "color": "#146EF5"
+  },
+  "wolfram": {
+    "file": "wolfram.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/wolfram.svg",
+    "color": "#DD1100"
+  },
+  "wordpress-com": {
+    "file": "wordpress-com.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/wordpress.svg",
+    "color": "#21759B"
+  },
+  "figma-desktop": {
+    "file": "figma.svg",
+    "monochrome": false,
+    "source": "https://static.figma.com/app/icon/2/favicon.svg"
+  },
+  "google-workspace": {
+    "file": "google-color.png",
+    "monochrome": false,
+    "source": "https://www.gstatic.com/images/branding/googleg/1x/googleg_standard_color_128dp.png"
+  },
+  "amplitude": {
+    "file": "amplitude.png",
+    "monochrome": false,
+    "source": "https://amplitude.com/nextjs-public/favicon/favicon-32x32.png"
+  },
+  "attio": {
+    "file": "attio.ico",
+    "monochrome": false,
+    "source": "https://attio.com/favicon.ico?favicon.0t61hvyp-jaev.ico"
+  },
+  "aws-knowledge": {
+    "file": "aws-knowledge.ico",
+    "monochrome": false,
+    "source": "https://a0.awsstatic.com/libra-css/images/site/fav/favicon.ico"
+  },
+  "canva": {
+    "file": "canva.ico",
+    "monochrome": false,
+    "source": "https://canva.com/favicon.ico"
+  },
+  "close": {
+    "file": "close.png",
+    "monochrome": false,
+    "source": "https://cdn.prod.website-files.com/61717799a852418a278cfa9b/69e787e66659174d6c555923_favicon.png"
+  },
+  "comfy-cloud": {
+    "file": "comfy-cloud.png",
+    "monochrome": false,
+    "source": "https://comfy.org/favicon-96x96.png"
+  },
+  "context7": {
+    "file": "context7.png",
+    "monochrome": false,
+    "source": "https://context7.com/favicon.ico"
+  },
+  "craft": {
+    "file": "craft.ico",
+    "monochrome": false,
+    "source": "https://www.craft.do/favicons/light/favicon-light.ico"
+  },
+  "deepwiki": {
+    "file": "deepwiki.ico",
+    "monochrome": false,
+    "source": "https://deepwiki.com/favicon.ico"
+  },
+  "fireflies": {
+    "file": "fireflies.ico",
+    "monochrome": false,
+    "source": "https://fireflies.ai/favicon.ico?22cbfa51f42d5e95"
+  },
+  "globalping": {
+    "file": "globalping.ico",
+    "monochrome": false,
+    "source": "https://globalping.io/icons/favicon.ico"
+  },
+  "kiwi": {
+    "file": "kiwi.png",
+    "monochrome": false,
+    "source": "https://images.kiwi.com/favicons/icons/kiwicom/apple-icon-180x180.png"
+  },
+  "klaviyo": {
+    "file": "klaviyo.png",
+    "monochrome": false,
+    "source": "https://www.klaviyo.com/icons/icon-32x32.png"
+  },
+  "microsoft-learn": {
+    "file": "microsoft-learn.ico",
+    "monochrome": false,
+    "source": "https://learn.microsoft.com/favicon.ico"
+  },
+  "monday": {
+    "file": "monday.png",
+    "monochrome": false,
+    "source": "https://cdn.prod.website-files.com/656da6fea306219773d04208/65af6bd29fc8bb3d3d4ea39a_6464d702c3ac5c56000c2438_favicon-monday5-32.png"
+  },
+  "motherduck": {
+    "file": "motherduck.ico",
+    "monochrome": false,
+    "source": "https://motherduck.com/favicon.ico"
+  },
+  "plaid": {
+    "file": "plaid.png",
+    "monochrome": false,
+    "source": "https://plaid.com/assets/img/favicons/apple-touch-icon.png"
+  },
+  "semgrep": {
+    "file": "semgrep.png",
+    "monochrome": false,
+    "source": "https://semgrep.dev/build/assets/favicon-32x32-CLzO_3Uq.png"
+  },
+  "twelve-data": {
+    "file": "twelve-data.ico",
+    "monochrome": false,
+    "source": "https://twelvedata.com/build/favicons/favicon.ico"
+  },
+  "twilio-docs": {
+    "file": "twilio-docs.png",
+    "monochrome": false,
+    "source": "https://www.twilio.com/content/dam/twilio-com/core-assets/social/apple-touch-icon.png"
+  },
+  "gamma": {
+    "file": "gamma.png",
+    "monochrome": false,
+    "source": "https://static.gamma.app/favicons/apple-touch-icon.png"
+  },
+  "agentcouch": {
+    "file": "agentcouch.png",
+    "monochrome": false,
+    "source": "https://agentcouch.dev/icon.png?d0ceadbf0244ead6"
+  },
+  "render": {
+    "file": "render.svg",
+    "monochrome": true,
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/16.30.0/icons/render.svg",
+    "color": "#000000"
+  },
+  "resend": {
+    "file": "resend.svg",
+    "monochrome": true,
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/16.30.0/icons/resend.svg",
+    "color": "#000000"
+  },
+  "snowflake": {
+    "file": "snowflake.svg",
+    "monochrome": true,
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/16.30.0/icons/snowflake.svg",
+    "color": "#29B5E8"
+  },
+  "hex": {
+    "file": "hex.png",
+    "monochrome": false,
+    "source": "https://learn.hex.tech/img/favicon.png"
+  },
+  "hubspot": {
+    "file": "hubspot.svg",
+    "monochrome": true,
+    "source": "https://raw.githubusercontent.com/simple-icons/simple-icons/16.30.0/icons/hubspot.svg",
+    "color": "#FF7A59"
+  },
+  "slack": {
+    "file": "slack.ico",
+    "monochrome": false,
+    "source": "https://docs.slack.dev/img/logos/favicon.ico"
+  },
+  "salesforce": {
+    "file": "salesforce.svg",
+    "monochrome": false,
+    "source": "https://a.sfdcstatic.com/shared/images/c360-nav/salesforce-with-type-logo.svg"
+  },
+  "gmail": {
+    "file": "gmail.svg",
+    "source": "https://www.gstatic.com/images/branding/productlogos/gmail_2026/v2/web/192px.svg",
+    "monochrome": false
+  },
+  "outlook": {
+    "file": "outlook.svg",
+    "source": "https://www.microsoft.com/content/dam/microsoft/bade/images/icons/en-us/m365-app-icons-fy26/Outlook-Icon-FY26.svg",
+    "monochrome": false
+  },
+  "expo": {
+    "file": "expo.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/expo.svg",
+    "color": "#1C2024"
+  },
+  "granola": {
+    "file": "granola.png",
+    "monochrome": false,
+    "source": "https://www.granola.ai/favicon/favicon-96x96.png"
+  },
+  "heroku": {
+    "file": "heroku.png",
+    "monochrome": false,
+    "source": "https://www.heroku.com/wp-content/uploads/2025/01/apple-touch-icon-180x180-1.png?w=180"
+  },
+  "posthog": {
+    "file": "posthog.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/posthog.svg",
+    "color": "#000000"
+  },
+  "socket": {
+    "file": "socket.svg",
+    "monochrome": true,
+    "source": "https://github.com/simple-icons/simple-icons/blob/16.30.0/icons/socket.svg",
+    "color": "#C93CD7"
+  }
+}

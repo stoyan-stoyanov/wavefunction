@@ -1,0 +1,85 @@
+/* The chat's desktop on top of the composer: live while the agent drives it, a chip after. */
+.composer-wrap.desktop-dock-wrap {
+  padding-bottom: 8px;
+}
+.desktop-dock {
+  display: flex;
+  /* Bottom-aligned in both sizes, so what sits beside the picture stays put while it shrinks. */
+  align-items: flex-end;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  pointer-events: auto;
+}
+.desktop-thumb {
+  flex: none;
+  width: 64px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: pointer;
+  user-select: none;
+  transition: width 320ms cubic-bezier(0.2, 0, 0, 1);
+}
+div.desktop-thumb {
+  cursor: default;
+}
+.desktop-dock.working .desktop-thumb {
+  width: 240px;
+}
+.desktop-thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1280 / 800;
+}
+/* Replaced when the dock changes size, and faded in: the words change as the picture shrinks. */
+.desktop-dock-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  /* Beside the small picture, its 32px of text sits 4px above the bottom: centred. */
+  padding-bottom: 4px;
+  animation: desktop-dock-text-in 240ms ease-out;
+}
+/* And its 28px button 6px above. */
+.desktop-dock-takeover {
+  margin-bottom: 6px;
+  transition: margin-bottom 320ms cubic-bezier(0.2, 0, 0, 1);
+}
+/* While working, what the agent is doing and Take control sit at the picture's bottom right. */
+.desktop-dock.working .desktop-dock-text {
+  align-items: flex-end;
+  padding-bottom: 8px;
+}
+.desktop-dock.working .desktop-dock-takeover {
+  margin-bottom: 0;
+}
+/* Its 24px X 8px above, centred too. */
+.desktop-dock-remove {
+  margin-bottom: 8px;
+  color: var(--muted-foreground);
+}
+@keyframes desktop-dock-text-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .desktop-thumb,
+  .desktop-dock-text,
+  .desktop-dock-takeover {
+    transition: none;
+    animation: none;
+  }
+}
+.live-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: #ef4444;
+}

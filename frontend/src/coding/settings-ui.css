@@ -1,0 +1,68 @@
+.coding-settings-sidebar .coding-settings-back {
+  padding: 6px 12px 10px;
+}
+.coding-settings-back button,
+.coding-settings-sidebar .coding-settings-nav button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border-radius: var(--radius-md);
+  padding: 10px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.coding-settings-back button:hover,
+.coding-settings-sidebar .coding-settings-nav button:hover,
+.coding-settings-sidebar .coding-settings-nav button.selected {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.coding-settings-sidebar .coding-settings-nav {
+  flex: 1;
+  min-height: 0;
+  width: auto;
+  overflow-y: auto;
+  padding: 6px 12px 20px;
+  border-right: 0;
+  background: transparent;
+}
+.coding-settings-sidebar .coding-settings-nav button:first-child {
+  font-size: 13px;
+  margin-bottom: 0;
+}
+.coding-settings-main {
+  min-height: 0;
+}
+.coding-settings-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+.coding-settings-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px;
+  color: var(--muted-foreground);
+}
+.coding-general-settings > div:first-child,
+.coding-general-settings > div:first-child > [data-slot="scroll-area"],
+.coding-general-settings > div:first-child [data-slot="scroll-area-viewport"] {
+  height: auto;
+}
+.coding-workbench-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 16px;
+  border-radius: var(--radius-xl);
+  background: var(--card);
+}
+.coding-workbench-setting > div {
+  min-width: 0;
+}

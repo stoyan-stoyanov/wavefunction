@@ -1,0 +1,4 @@
+/* Keep shared catalog/forms unchanged outside this page; focus rings stay visible. */
+.connectors-page .border {
+  border-width: 0;
+}

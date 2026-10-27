@@ -1,0 +1,226 @@
+.coding-sidebar .sidebar-new-project {
+  padding: 4px 12px 0;
+}
+.coding-sidebar .new-project {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 9px;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 8px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+}
+.coding-sidebar .new-project:hover,
+.coding-sidebar .new-project[aria-current="page"] {
+  background: var(--accent);
+}
+.coding-sidebar .sidebar-scroll {
+  position: relative;
+  padding: 16px 12px;
+}
+.coding-sidebar .sidebar-projects-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 9px;
+}
+/* Kept in place while hidden, so showing it never moves the list. Hidden by opacity alone, so
+   the keyboard still reaches it: nothing else in the heading can take focus to reveal it. */
+.coding-sidebar .sidebar-projects-heading > button {
+  margin: -4px 0;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.coding-sidebar .sidebar-projects-heading:hover > button,
+.coding-sidebar .sidebar-projects-heading > button:focus-visible {
+  opacity: 1;
+}
+.coding-sidebar .sidebar-projects-heading h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+}
+.coding-sidebar .sidebar-project {
+  margin-bottom: 8px;
+}
+.coding-sidebar .project-group > button:first-child {
+  gap: 8px;
+  padding: 10px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+/* Project actions appear on hover, and stay while they are in use: reached by keyboard or with
+   their menu open. They keep their space, so showing them never moves the row. */
+.coding-sidebar .project-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 120ms ease,
+    visibility 120ms;
+}
+.coding-sidebar .project-group:hover .project-actions,
+.coding-sidebar .project-group:has(:focus-visible) .project-actions,
+.coding-sidebar .project-actions:has([data-state="open"]) {
+  opacity: 1;
+  visibility: visible;
+}
+.coding-sidebar .thread-more[data-state="open"] {
+  opacity: 1;
+}
+/* The helpers toggle takes room only while it shows, so every chat's title is cut at the same
+   place: hidden but in place, it shortened only the titles of chats that had helpers. */
+.coding-sidebar .thread-helpers {
+  display: none;
+  flex-shrink: 0;
+}
+/* Keyboard focus, not the focus a click leaves behind, so a selected chat keeps its status. */
+.coding-sidebar .coding-thread-row:hover .thread-helpers,
+.coding-sidebar .coding-thread-row:has(:focus-visible) .thread-helpers {
+  display: inline-flex;
+}
+.coding-sidebar .coding-thread-row:has(:focus-visible) .thread-more {
+  opacity: 1;
+}
+.coding-sidebar .reordering,
+.coding-sidebar .reordering * {
+  cursor: grabbing;
+  user-select: none;
+}
+.coding-sidebar .reordering .project-group:hover .project-actions {
+  opacity: 0;
+  visibility: hidden;
+}
+.coding-sidebar .sidebar-project.dragging {
+  opacity: 0.45;
+}
+.coding-sidebar .project-drop-indicator {
+  position: absolute;
+  top: 0;
+  right: 12px;
+  left: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--primary);
+  pointer-events: none;
+  visibility: hidden;
+}
+.coding-sidebar .project-drop-indicator[data-visible] {
+  visibility: visible;
+}
+/* Renaming a chat, in the sidebar or the toolbar, keeps the title's size and place. */
+.title-editor {
+  min-width: 0;
+  margin: -2px -4px;
+  border: 1px solid var(--ring);
+  border-radius: var(--radius-sm);
+  padding: 1px 3px;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  outline: none;
+}
+.coding-sidebar .project-chevron {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.coding-sidebar .project-icon {
+  width: 21px;
+  height: 21px;
+  flex-shrink: 0;
+}
+.coding-sidebar .thread-select > svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.coding-sidebar .thread-select > .thread-branch {
+  width: 12px;
+  height: 12px;
+  opacity: 0.4;
+}
+.coding-sidebar .thread-title {
+  flex: 1;
+  min-width: 0;
+}
+.coding-sidebar .sidebar-project-chats {
+  margin-left: 0;
+}
+.coding-sidebar .thread-select {
+  gap: 8px;
+  padding: 7px 8px 7px 28px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.coding-sidebar .empty-project {
+  padding-left: 34px;
+}
+.coding-sidebar .sidebar-bottom {
+  border-top: 0;
+  padding: 4px 12px 10px;
+}
+.coding-sidebar .sidebar-bottom > button {
+  gap: 9px;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+.coding-sidebar .sidebar-bottom > button > svg {
+  width: 20px;
+  height: 20px;
+}
+/* A chat's status sits where its menu button appears, so it lines up across chats and helpers
+   whatever buttons a row has, and gives way to the row's actions while they show. */
+.coding-sidebar .coding-thread-row {
+  position: relative;
+}
+.coding-sidebar .thread-status {
+  position: absolute;
+  top: 0;
+  right: 3px;
+  bottom: 0;
+  display: flex;
+  width: 24px;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.coding-sidebar .thread-status > svg {
+  width: 16px;
+  height: 16px;
+}
+.coding-sidebar
+  .coding-thread-row:is(:hover, :has(:focus-visible), :has([data-state="open"]))
+  .thread-status {
+  visibility: hidden;
+}
+.coding-sidebar .thread-needs-input {
+  color: var(--warning);
+}
+
+.coding-sidebar .unread-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--foreground);
+  margin: 0 5px;
+}
+
+:root:not(.dark) .coding-sidebar :is(.coding-thread-row:hover, .new-project:hover) {
+  /* Darken whatever is behind rather than paint a fixed gray, so the row stays visible on any
+     wallpaper the sidebar vibrancy picks up. Over the opaque browser sidebar this is about 0.90. */
+  background: oklch(0.232 0.004 286 / 7%);
+}
+:root:not(.dark) .coding-sidebar :is(.coding-thread-row.selected, .new-project[aria-current="page"]) {
+  background: oklch(0.232 0.004 286 / 11%);
+}

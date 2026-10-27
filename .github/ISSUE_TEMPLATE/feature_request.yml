@@ -1,0 +1,39 @@
+name: Feature proposal
+description: Propose a new feature or a change to how something works, before building it
+labels: [proposal]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Wavefunction is kept small on purpose. Read [what fits Wavefunction](https://github.com/stoyan-stoyanov/wavefunction/blob/main/CONTRIBUTING.md#what-fits) first. Please don't start building until a maintainer labels this proposal `accepted`: pull requests for features without an accepted proposal are closed.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you're trying to do, what gets in the way today, and how often it comes up.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: The smallest change that solves it
+      description: What the user would see or be able to do. Leave out anything the problem doesn't need.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Why it belongs in Wavefunction
+      description: Why this can't be a skill (`SKILL.md`), an MCP connector, a line in `AGENTS.md` or a setting that exists today, and what it costs people who don't need it.
+    validations:
+      required: true
+  - type: dropdown
+    id: building
+    attributes:
+      label: Would you build it?
+      options:
+        - Yes, once it's accepted
+        - I'd like to, with some help
+        - No, I'm only proposing it
+    validations:
+      required: true

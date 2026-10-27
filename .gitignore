@@ -1,0 +1,54 @@
+# macOS and editors
+.DS_Store
+.idea/
+.vscode/
+
+# JavaScript
+node_modules/
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# Python
+backend/.venv/
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/**/__pycache__/
+backend/**/*.py[cod]
+backend/build/
+backend/dist/
+
+# Rust / Tauri
+target/
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# Local application data and secrets
+.env
+.env.*
+.wavefunction.env
+!.env.example
+# Credentials and data from checkouts that predate the rename
+*.db
+*.db-shm
+*.db-wal
+
+# Generated desktop sidecars
+src-tauri/binaries/
+
+# Local signing credentials
+*.p12
+*.pfx
+*.mobileprovision
+
+# Desktop ZIP/checksum and release notices
+/dist/
+
+.wavefunction-data/
+.verification/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

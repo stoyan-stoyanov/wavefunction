@@ -1,0 +1,38 @@
+.coding-welcome.coding-welcome-simple {
+  min-height: 100%;
+  padding: 32px 24px calc(var(--composer-height, 0px) + 32px);
+}
+
+.coding-welcome.coding-welcome-simple > h1 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 1.2vw, 14px);
+  max-width: 100%;
+  margin: 0;
+  font-size: clamp(22px, 2.8vw, 30px);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.9px;
+}
+
+.coding-welcome.coding-welcome-simple > h1 > svg {
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  stroke-width: 1.8;
+}
+
+/* The new session's project: its name and the arrow, with no box around them. */
+.coding-welcome.coding-welcome-simple > .welcome-project {
+  max-width: min(100%, 360px);
+  margin-top: 14px;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+.coding-welcome.coding-welcome-simple > .welcome-project:hover,
+.coding-welcome.coding-welcome-simple > .welcome-project[data-state="open"] {
+  color: var(--foreground);
+}

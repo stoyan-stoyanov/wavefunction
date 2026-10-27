@@ -1,0 +1,85 @@
+[project]
+name = "wavefunction-backend"
+version = "0.1.0"
+description = "Local-first desktop coding agent backend"
+license = "MIT"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+  "aiosqlite>=0.20.0",
+  "fastapi>=0.115.0",
+  "httpx>=0.28.0",
+  "langchain>=1.0.0",
+  "langchain-openai>=1.0.0",
+  "langgraph>=1.0.0",
+  "langgraph-checkpoint-sqlite>=3.0.0",
+  # Document tools use these libraries in both source and packaged execution.
+  "openpyxl>=3.1.0",
+  "python-pptx>=1.0.0",
+  "python-docx>=1.1.0",
+  # Images read by the file tools and attached to model requests.
+  "pillow>=12.0.0",
+  "pydantic>=2.11.0",
+  "pydantic-settings>=2.10.0",
+  "pypdf>=6.0.0",
+  "python-multipart>=0.0.20",
+  "sse-starlette>=3.0.0",
+  "uvicorn[standard]>=0.34.0",
+  "langchain-mcp-adapters>=0.3.2",
+  "langchain-ollama>=1.0.0",
+  "ripgrep==14.1.0",
+  "langchain-anthropic>=1.6.1,<1.7",
+  "langchain-google-genai>=4.4.0,<4.5",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pyinstaller>=6.16.0",
+  "pyright>=1.1.400",
+  "pytest>=8.4.0",
+  "pytest-asyncio>=1.1.0",
+  "pytest-xdist>=3.8.0",
+  "ruff>=0.12.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wavefunction"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-m 'not live and not destructive'"
+markers = [
+    "live: optional checks against external services; run explicitly with -m live",
+    "sandbox: runs commands through the macOS sandbox; skipped where it does not exist",
+    "destructive: runs real deletion commands in temporary repositories; CI runs these on macOS, never run them locally",
+]
+
+[tool.pyright]
+# A ratchet: `npm run typecheck:backend` checks the files a change touches, not the whole tree.
+typeCheckingMode = "basic"
+pythonVersion = "3.12"
+include = ["src", "tests", "../scripts"]
+venvPath = "."
+venv = ".venv"
+# Test helpers (conftest, prompt_surface) for the scripts that use them.
+extraPaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 110
+
+[tool.ruff.format]
+# Keep short calls on one line even when they end with a comma.
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+# The same for import lists, as the formatter requires.
+split-on-trailing-comma = false

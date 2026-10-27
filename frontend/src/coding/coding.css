@@ -1,0 +1,1367 @@
+.coding-shell {
+  display: flex;
+  height: calc(100dvh / var(--css-zoom, 1));
+  overflow: hidden;
+  background: var(--sidebar);
+  color: var(--foreground);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+}
+.coding-sidebar-frame {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  min-height: 0;
+  width: min(var(--sidebar-preferred-width, 250px), max(200px, calc(100% - 360px)));
+}
+.coding-sidebar-resize {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -3px;
+  width: 6px;
+  z-index: 20;
+  cursor: col-resize;
+  touch-action: none;
+  outline: none;
+}
+.coding-sidebar-resize::after {
+  content: "";
+  display: block;
+  width: 2px;
+  height: 100%;
+  margin: auto;
+}
+.coding-sidebar-resize:hover::after,
+.coding-sidebar-resize:focus-visible::after {
+  background: var(--ring);
+}
+.coding-sidebar {
+  width: 100%;
+  flex-shrink: 0;
+  background: var(--sidebar-tint);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 18px 10px;
+}
+.sidebar-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--muted-foreground);
+  padding: 0 9px 9px;
+}
+.sidebar-section button {
+  padding: 3px;
+  border-radius: var(--radius-sm);
+}
+.coding-thread-row {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  border-radius: var(--radius-md);
+  gap: 3px;
+  margin: 2px 0;
+}
+.coding-thread-row:hover,
+.coding-thread-row.selected {
+  background: var(--accent);
+}
+.thread-select {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  text-align: left;
+  padding: 8px 9px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.thread-select .thread-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.coding-thread-row.selected .thread-select {
+  color: var(--foreground);
+}
+.thread-more {
+  opacity: 0;
+  margin-right: 3px;
+}
+.coding-thread-row:hover .thread-more,
+.thread-more:focus-visible {
+  opacity: 1;
+}
+.project-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--muted-foreground);
+}
+.project-group > button:first-child {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 4px;
+  font-size: 11px;
+}
+.empty-project {
+  padding: 7px 20px;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.empty-project:hover {
+  color: var(--foreground);
+}
+p.empty-project:hover {
+  color: var(--muted-foreground);
+}
+/* Marks a project listing its archived chats instead of its active ones. */
+.project-view {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 5px;
+  font-size: 10px;
+  line-height: 16px;
+}
+.sidebar-bottom {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px 14px;
+}
+.sidebar-bottom > button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 9px;
+  width: 100%;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.sidebar-bottom > button:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.coding-main {
+  container: coding-main / inline-size;
+  background: var(--background);
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+.shell-titlebar {
+  position: relative;
+  z-index: 2;
+  height: 46px;
+  flex-shrink: 0;
+  border-bottom: 0;
+  /* Paint the divider inside the opaque toolbar, clear of the scrolling layer. */
+  box-shadow: inset 0 -1px 0 color-mix(in oklch, var(--foreground) 18%, var(--background));
+  background: var(--background);
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 0 14px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.shell-titlebar::after {
+  content: "";
+  position: absolute;
+  inset: 100% 0 auto;
+  height: 14px;
+  background: linear-gradient(to bottom, var(--background), transparent);
+  pointer-events: none;
+}
+/* A floating toolbar owns its small fade below. */
+.floating-titlebar::after {
+  display: none;
+}
+/* On a chat, Connectors and Settings, the toolbar floats over the page (never the workbench, which
+   sits outside it), out of sight until the pointer or keyboard focus comes to it: then it fades in,
+   solid. A window drag it starts keeps it in sight (data-held): while the window moves, the page's
+   idea of the pointer, and so its hover, is unreliable. Invisible, it is still the window's drag
+   region, double-click included. */
+.coding-main > .floating-titlebar {
+  position: absolute;
+  /* Short of the right edge, so the page's scrollbar stays grabbable beside it; its ::before
+     paints that strip, which pseudo-elements leave to the scrollbar. */
+  inset: 0 14px auto 0;
+  padding-right: 0;
+  z-index: 3;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+.coding-main > .floating-titlebar > * {
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.coding-main > .floating-titlebar:is(:hover, :has(:focus-visible), [data-held]) {
+  background: var(--background);
+  box-shadow: inset 0 -1px 0 color-mix(in oklch, var(--foreground) 12%, transparent);
+}
+.coding-main > .floating-titlebar:is(:hover, :has(:focus-visible), [data-held]) > * {
+  opacity: 1;
+}
+.coding-main > .floating-titlebar::before {
+  content: "";
+  position: absolute;
+  inset: 0 -14px 0 100%;
+  pointer-events: none;
+  background: inherit;
+  box-shadow: inherit;
+}
+/* Its small shadow below, as before, fading in with it. */
+.coding-main > .floating-titlebar::after {
+  display: block;
+  right: -14px;
+  opacity: 0;
+  background: linear-gradient(to bottom, var(--background), transparent);
+  transition: opacity 160ms ease;
+}
+.coding-main > .floating-titlebar:is(:hover, :has(:focus-visible), [data-held])::after {
+  opacity: 1;
+}
+/* Under it, a page scrolls to the top edge but starts below the toolbar, and an error stays below
+   the toolbar's height. The offset goes on what scrolls: the page's own scroll area (Connectors, and
+   Settings pages), or on Settings' General, which scrolls the page around it. */
+.floating-titlebar + .coding-error {
+  margin-top: 46px;
+}
+.floating-titlebar ~ .titlebar-page > [data-slot="scroll-area"] > [data-slot="scroll-area-viewport"],
+.floating-titlebar ~ .coding-settings-content:has(> .coding-general-settings),
+.floating-titlebar
+  ~ .coding-settings-content
+  > .native-view
+  > [data-slot="scroll-area"]
+  > [data-slot="scroll-area-viewport"] {
+  padding-top: 46px;
+}
+/* A Settings error sits above the page's scroll area: then the page around both starts below the
+   toolbar instead. */
+.floating-titlebar ~ .coding-settings-content:has(> [role="alert"]) {
+  padding-top: 46px;
+}
+.floating-titlebar
+  ~ .coding-settings-content:has(> [role="alert"])
+  > .native-view
+  > [data-slot="scroll-area"]
+  > [data-slot="scroll-area-viewport"] {
+  padding-top: 0;
+}
+.floating-titlebar
+  + .coding-error
+  ~ .titlebar-page
+  > [data-slot="scroll-area"]
+  > [data-slot="scroll-area-viewport"] {
+  padding-top: 0;
+}
+/* The conversation starts where it did, and a file preview below the toolbar. */
+.chat-titlebar ~ .coding-chat-layout .conversation-content {
+  padding-top: calc(46px + 36px);
+}
+/* An error banner already puts the conversation below the toolbar. */
+.chat-titlebar + .coding-error ~ .coding-chat-layout .conversation-content {
+  padding-top: 36px;
+}
+.chat-titlebar + .coding-error ~ .coding-chat-layout .file-preview-backdrop {
+  padding-top: 16px;
+}
+.chat-titlebar ~ .coding-chat-layout .file-preview-backdrop {
+  padding-top: calc(46px + 8px);
+}
+/* While the chat loads, its placeholder starts below the toolbar as the transcript does. */
+.chat-titlebar ~ .chat-skeleton {
+  padding-top: 46px;
+}
+.chat-titlebar + .coding-error ~ .chat-skeleton {
+  padding-top: 0;
+}
+/* The chat's title is a rename button that reads as text, with a text cursor, and does not drag.
+   At most 60% of its row, so a long title leaves the toolbar room to drag by. */
+.chat-title-rename {
+  min-width: 0;
+  max-width: 60%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: text;
+}
+.chat-title {
+  color: var(--foreground);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.coding-chat-layout {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.coding-conversation {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  position: relative;
+}
+/* Overlap the opaque toolbar so fractional zoom cannot expose the scroll layer's edge. */
+.coding-conversation::before {
+  content: "";
+  position: absolute;
+  inset: -1px 0 auto;
+  height: 21px;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(to bottom, var(--background) 1px, transparent);
+}
+.conversation-scroll {
+  flex: 1;
+  min-height: 0;
+  contain: paint;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scroll-padding-bottom: calc(var(--composer-height, 0px) + 24px);
+}
+.conversation-content {
+  max-width: 780px;
+  margin: auto;
+  padding: 36px 38px calc(var(--composer-height, 0px) + 36px);
+}
+.coding-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 40px 35px 32px;
+  text-align: center;
+}
+.coding-welcome h1 {
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -1.2px;
+}
+.composer-wrap {
+  width: 100%;
+  max-width: 850px;
+  margin: 0 auto;
+  flex-shrink: 0;
+  padding: 0 30px 17px;
+}
+.composer-dock {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  background: var(--background);
+  pointer-events: none;
+}
+.composer-dock::before {
+  content: "";
+  position: absolute;
+  inset: auto 0 100%;
+  height: 20px;
+  background: linear-gradient(to top, var(--background), transparent);
+  pointer-events: none;
+}
+.composer-dock :is(.coding-composer, .composer-footer, .archive-banner, .scroll-bottom) {
+  pointer-events: auto;
+}
+.coding-composer {
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow:
+    0 1px 4px rgb(0 0 0 / 0.04),
+    0 0 1px rgb(0 0 0 / 0.03);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+.dark .coding-composer {
+  box-shadow:
+    0 1px 4px rgb(0 0 0 / 0.18),
+    0 0 1px rgb(0 0 0 / 0.1);
+}
+.coding-composer > textarea {
+  overflow-x: hidden;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  resize: none;
+  width: 100%;
+  max-height: 220px;
+  min-height: 40px;
+  display: block;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  /* With no row above it, the text sets the composer's top spacing itself. */
+  padding: 14px 18px 6px;
+  outline: 0;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.coding-composer > textarea::placeholder {
+  color: var(--muted-foreground);
+}
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 10px;
+}
+.model-selector {
+  flex-shrink: 1 !important;
+  min-width: 0;
+  max-width: 220px;
+  font-size: 10px !important;
+  height: 27px !important;
+  font-weight: 400 !important;
+}
+.send-button {
+  display: grid;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border-radius: var(--radius-lg);
+  background: var(--foreground);
+  color: var(--background);
+  margin-left: 3px;
+}
+.send-button:disabled {
+  opacity: 0.25;
+}
+.composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 3px 0;
+  font-size: 9px;
+  color: var(--muted-foreground);
+}
+.composer-footer > button {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.composer-footer > button:hover {
+  color: var(--foreground);
+}
+.composer-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 15px 0;
+  list-style: none;
+}
+/* Sent attachments sit above their message, aligned with it. */
+.message-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0 0 6px;
+  padding: 0;
+  list-style: none;
+}
+.composer-attachment {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  max-width: 240px;
+  padding: 0 28px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+.composer-attachment.image {
+  width: 56px;
+  padding: 0;
+  overflow: hidden;
+}
+.composer-attachment img,
+.composer-attachment-placeholder {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: var(--muted);
+}
+.composer-attachment-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.composer-attachment-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+.composer-attachment-name {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.composer-attachment-meta {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.composer-attachment-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--background) 80%, transparent);
+  color: var(--foreground);
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.composer-attachment:hover .composer-attachment-remove,
+.composer-attachment-remove:focus-visible {
+  opacity: 1;
+}
+.scroll-bottom {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  border-color: var(--border);
+}
+.archive-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  padding: 10px;
+}
+.coding-exchange {
+  padding-bottom: 38px;
+}
+/* Where a Compact now run summarised the conversation: a rule across the chat. */
+.context-compacted {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 38px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.context-compacted::before,
+.context-compacted::after {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  content: "";
+}
+.user-message {
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-bottom: 26px;
+}
+.user-message > .message-actions {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  display: flex;
+  align-items: center;
+  color: var(--muted-foreground);
+  font-size: 9px;
+  opacity: 0;
+}
+.user-message:hover > .message-actions,
+.message-actions:focus-within {
+  opacity: 1;
+}
+/* A routine's report: the routine's, not the user's, so it sits at the reply's width with a
+   header that names it, and its answer renders as markdown. */
+.routine-report {
+  position: relative;
+  margin-bottom: 26px;
+}
+.routine-report-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 12px 16px;
+}
+.routine-report-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.routine-report-link {
+  color: var(--foreground);
+  font-weight: 500;
+}
+.routine-report-link:hover {
+  text-decoration: underline;
+}
+.routine-report > .message-actions {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  display: flex;
+  align-items: center;
+  color: var(--muted-foreground);
+  font-size: 9px;
+  opacity: 0;
+}
+.routine-report:hover > .message-actions {
+  opacity: 1;
+}
+.user-message-bubble {
+  min-width: 0;
+  max-width: min(85%, 640px);
+  border-radius: var(--radius-xl);
+  background: var(--accent);
+  padding: 12px 16px;
+  overflow-wrap: anywhere;
+}
+.agent-message {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.coding-exchange > .agent-message:not(:last-child) {
+  margin-bottom: 20px;
+}
+.coding-exchange > .agent-progress:not(:last-child) {
+  margin-bottom: 12px;
+}
+.coding-answer {
+  font-size: 15px;
+  line-height: 1.8;
+  padding-top: 2px;
+}
+.coding-answer pre {
+  font-size: 12px;
+}
+.coding-answer p {
+  line-height: 1.8;
+}
+.run-error,
+.approval-card {
+  border: 1px solid var(--border);
+  background: var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 15px;
+  font-size: 12px;
+}
+.run-error {
+  color: var(--destructive);
+}
+.approval-card pre {
+  overflow: auto;
+  font-size: 10px;
+  max-height: 200px;
+  margin: 12px 0;
+}
+/* A helper's card in its main chat: the helper's name above the card it shows in its own chat. */
+.helper-request {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+/* A helper the task started: what it was asked, and a way to its chat. */
+.helper-started {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px 10px 14px;
+  background: var(--card);
+}
+.helper-started > div {
+  flex: 1;
+}
+.coding-exchange > .helper-started:not(:last-child) {
+  margin-bottom: 16px;
+}
+.helper-started-title {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.helper-started-task {
+  display: -webkit-box;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 18px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.run-details {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  color: var(--muted-foreground);
+  font-size: 9px;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.run-details.pinned,
+.agent-message:hover > .run-details,
+.run-details:focus-within {
+  opacity: 1;
+}
+.run-details-info {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+/* Copy, fork and rewind sit evenly together, like the message's own actions. */
+.run-details-actions {
+  display: flex;
+  align-items: center;
+}
+.run-time {
+  margin-right: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.trace-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.trace-toggle > span {
+  margin-left: 7px;
+}
+.coding-trace {
+  border: 1px solid var(--border);
+  padding: 8px;
+  border-radius: var(--radius-lg);
+  max-height: 420px;
+  overflow: auto;
+}
+.coding-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--destructive);
+  color: white;
+  padding: 6px 18px;
+  font-size: 11px;
+}
+.loading-screen {
+  display: flex;
+  flex: 1;
+  gap: 12px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.coding-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+}
+.coding-field > span {
+  font-size: 11px;
+  font-weight: 500;
+}
+.coding-field input,
+.coding-field select,
+.coding-field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--background);
+  padding: 9px 11px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  outline: none;
+}
+.coding-field input:focus,
+.coding-field textarea:focus {
+  border-color: var(--ring);
+}
+/* A routine's schedule reads as one line, its fields sized to what they hold. */
+.coding-field .routine-timing input,
+.coding-field .routine-timing select {
+  width: auto;
+  padding: 6px 9px;
+}
+.coding-field .routine-timing input[type="checkbox"] {
+  padding: 0;
+}
+.coding-folder-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  align-items: stretch;
+  gap: 8px;
+}
+.coding-folder-field > button {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+}
+.coding-field small {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.search-result {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+}
+.search-result:hover {
+  background: var(--accent);
+}
+.coding-workbench {
+  display: flex;
+  flex-direction: column;
+  width: 390px;
+  min-width: 300px;
+  max-width: 45vw;
+  border-left: 1px solid var(--border);
+  background: var(--card);
+  flex-shrink: 0;
+  min-height: 0;
+}
+.workbench-tab {
+  padding: 7px 10px;
+  text-transform: capitalize;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  border-radius: var(--radius-sm);
+}
+.workbench-tab.selected {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.workbench-file {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  width: 100%;
+  text-align: left;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.workbench-file:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.code-editor {
+  background: var(--background);
+  padding: 15px;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  outline: none;
+  font-family: monospace;
+  font-size: 11px;
+  line-height: 1.75;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+.tauri .coding-shell {
+  background: transparent;
+}
+.tauri .sidebar-hidden .shell-titlebar {
+  padding-left: calc(92px / var(--app-zoom, 1.15));
+}
+.tauri .coding-sidebar :is(button, input, select, textarea, a) {
+  -webkit-app-region: no-drag;
+  user-select: auto;
+}
+@media (max-width: 1100px) {
+  .coding-workbench {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 90%;
+    max-width: 400px;
+    z-index: 10;
+    box-shadow: -10px 0 30px #00000014;
+  }
+  .conversation-content {
+    padding: 25px 25px calc(var(--composer-height, 0px) + 25px);
+  }
+  .chat-titlebar ~ .coding-chat-layout .conversation-content {
+    padding-top: calc(46px + 25px);
+  }
+  .chat-titlebar + .coding-error ~ .coding-chat-layout .conversation-content {
+    padding-top: 25px;
+  }
+  .composer-wrap {
+    padding: 0 20px 16px;
+  }
+}
+@media (max-width: 760px) {
+  .coding-welcome {
+    padding: 30px 20px;
+  }
+  .coding-welcome h1 {
+    font-size: 25px;
+  }
+  .coding-workbench {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 90%;
+    max-width: 90%;
+    z-index: 10;
+  }
+  .shell-titlebar {
+    padding: 0 12px;
+  }
+  .composer-footer > span {
+    display: none;
+  }
+}
+
+.coding-settings-nav {
+  width: 185px;
+  flex-shrink: 0;
+  padding: 20px 10px;
+  border-right: 1px solid var(--border);
+  background: var(--sidebar);
+}
+.coding-settings-nav button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.coding-settings-nav button:first-child {
+  font-size: 10px;
+  margin-bottom: 20px;
+}
+.coding-settings-nav button.selected,
+.coding-settings-nav button:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+/* Use the available content width, including sidebar resizing and zoom. */
+@container coding-main (max-width: 750px) {
+  .coding-workbench {
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 90%;
+    max-width: 400px;
+    z-index: 10;
+    box-shadow: -10px 0 30px #00000014;
+  }
+}
+@container coding-main (max-width: 500px) {
+  .model-selector {
+    max-width: calc(100% - 160px);
+  }
+  .composer-footer > span {
+    display: none;
+  }
+}
+.terminal-workbench {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.terminal-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.terminal-tab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.terminal-tab.active {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.terminal-tab button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.terminal-tab i {
+  width: 5px;
+  height: 5px;
+  background: #55b286;
+  border-radius: 50%;
+}
+.terminal-actions,
+.terminal-rename {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  flex-shrink: 0;
+}
+.terminal-actions code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+.terminal-display {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.terminal-search {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 10px;
+  flex-shrink: 0;
+}
+.terminal-search input {
+  min-width: 50px;
+  height: 28px;
+}
+.terminal-search span {
+  font-size: 10px;
+  color: var(--muted-foreground);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.terminal-surface {
+  flex: 1;
+  min-height: 100px;
+  padding: 8px 4px 8px 10px;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+}
+.terminal-surface .xterm {
+  height: 100%;
+}
+.workbench-error {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--destructive);
+  overflow-wrap: anywhere;
+}
+.review-note {
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+  padding: 8px 12px;
+  overflow-wrap: anywhere;
+}
+.review-diff {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.8;
+  overflow: auto;
+  border-bottom: 1px solid var(--border);
+}
+.diff-row {
+  display: flex;
+  align-items: stretch;
+  min-width: max-content;
+  min-height: 20px;
+}
+.diff-number {
+  min-width: 30px;
+  padding: 0 5px;
+  text-align: right;
+  color: var(--muted-foreground);
+  user-select: none;
+  background: transparent;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+button.diff-number:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.diff-sign {
+  width: 14px;
+  flex-shrink: 0;
+  user-select: none;
+}
+.diff-row code,
+.diff-half code {
+  white-space: pre;
+  padding-right: 8px;
+}
+.diff-row.add,
+.diff-half.add {
+  background: #4d9d6d19;
+}
+.diff-row.delete,
+.diff-half.delete {
+  background: #c5666619;
+}
+.diff-row.hunk {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.diff-row.meta {
+  color: var(--muted-foreground);
+}
+.split-labels {
+  display: flex;
+  font-size: 10px;
+  background: var(--muted);
+}
+.split-labels span {
+  width: 50%;
+  padding: 4px 12px;
+}
+.split-row {
+  display: grid;
+  grid-template-columns: minmax(50%, 1fr) minmax(50%, 1fr);
+}
+.diff-half {
+  display: flex;
+  overflow-x: auto;
+  min-width: 0;
+}
+.diff-half:first-child {
+  border-right: 1px solid var(--border);
+}
+.split-diff > .diff-row {
+  padding: 0 10px;
+}
+.context-picker-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.context-preview {
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow: auto;
+  max-height: 200px;
+  background: var(--muted);
+  padding: 10px;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+.context-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.context-chips > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 7px;
+  font-size: 11px;
+}
+.context-picker {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 6px 0 10px;
+  background: var(--popover);
+}
+.context-picker-title {
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.context-options {
+  display: flex;
+  flex-direction: column;
+  max-height: 190px;
+  overflow: auto;
+}
+.context-options button {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  font-size: 12px;
+  border-radius: 8px;
+  padding: 7px;
+}
+.context-options button:hover {
+  background: var(--muted);
+}
+.context-options small {
+  color: var(--muted-foreground);
+}
+.context-range {
+  display: flex;
+  gap: 8px;
+  align-items: end;
+  margin-top: 10px;
+}
+.context-range label {
+  flex: 1;
+  font-size: 11px;
+}
+.question-card {
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: 16px;
+  margin-top: 14px;
+  background: var(--muted);
+}
+.question-card fieldset {
+  margin-bottom: 16px;
+  min-width: 0;
+}
+.question-card legend {
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+/* A question's choices, one per line like a multiple-choice list, with the user's own answer as
+   the last row: same width, padding and height (two lines when the choices have descriptions,
+   or when there are no choices). */
+.question-options {
+  display: grid;
+  gap: 8px;
+}
+.question-options button,
+.question-card .question-own {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  background: var(--background);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.question-options button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  text-align: left;
+}
+.question-card .question-own {
+  min-height: 40px;
+  resize: none;
+}
+.question-card .question-own.question-own-tall {
+  min-height: 58px;
+}
+.question-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.question-radio {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--muted-foreground);
+  border-radius: 50%;
+}
+.question-options button[aria-pressed="true"] .question-radio {
+  border-color: var(--primary);
+  background: radial-gradient(circle, var(--primary) 0 3px, transparent 3.5px);
+}
+.question-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.question-options button[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--accent);
+}
+.question-options small {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--muted-foreground);
+}
+/* Shown while files are dragged over the chat window; the drop attaches them to its draft. */
+.chat-drop-overlay {
+  position: absolute;
+  inset: 12px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: color-mix(in oklab, var(--background) 82%, transparent);
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 500;
+  pointer-events: none;
+  backdrop-filter: blur(2px);
+}
+/* A newer release is ready: shown above Settings until it is installed. */
+.sidebar-bottom > button.sidebar-update {
+  margin-bottom: 4px;
+  color: var(--foreground);
+  font-weight: 500;
+}

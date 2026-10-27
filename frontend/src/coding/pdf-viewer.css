@@ -1,0 +1,65 @@
+/* pdf.js pages with a thumbnail rail; scrolls inside the preview card. */
+.pdf-viewer {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+.pdf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.pdf-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.pdf-thumbnails {
+  display: flex;
+  flex: 0 0 132px;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 12px 8px;
+  border-right: 1px solid var(--border);
+  background: var(--card);
+}
+.pdf-thumbnails button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  color: var(--muted-foreground);
+  font-size: 11px;
+}
+.pdf-thumbnails button[aria-current="page"] {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.pdf-pages {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  overflow: auto;
+  padding: 16px;
+  background: var(--muted);
+}
+.pdf-page {
+  flex: none;
+  background: white;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.25);
+}
+.pdf-page canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

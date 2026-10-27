@@ -1,0 +1,82 @@
+.repository-changes {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+.repository-changes-toolbar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+.repository-changes-toolbar > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.repository-changes-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.repository-change-files {
+  flex: 1;
+  overflow: auto;
+  padding: 5px 7px;
+}
+.repository-change-files button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 7px;
+  border-radius: var(--radius-md);
+  text-align: left;
+  font-size: 11px;
+}
+.repository-change-files button:hover {
+  background: var(--accent);
+}
+.repository-change-files button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.repository-change-files button > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.repository-change-files small {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 10px;
+}
+.repository-change-files svg {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+.repository-change-preview {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+  overflow: auto;
+}
+.repository-change-preview > .review-diff {
+  flex: 1;
+  min-height: 0;
+  border-bottom: 0;
+}

@@ -1,0 +1,83 @@
+name: Release
+# A version tag (v0.2.0) builds the signed, notarized app and opens a draft GitHub Release with
+# the DMG, ZIP, updater archive and latest.json. Publishing the draft is what ships it: the
+# website's download link and installed apps' update checks both read the latest release.
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+jobs:
+  macos:
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      TAG: ${{ github.ref_name }}
+    # No dependency caches: this job holds the signing keys, so it installs from the lockfiles on a
+    # clean runner rather than restoring files another run wrote.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          # setup-node v5+ caches npm by default once package.json names npm as its packageManager.
+          package-manager-cache: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          # setup-uv caches by default on GitHub-hosted runners.
+          enable-cache: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - name: Tag matches the app version
+        run: |
+          version=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          [ "$TAG" = "v$version" ] || { echo "Tag $TAG does not match version $version"; exit 1; }
+      - run: uv sync --locked --project backend --python 3.12 --extra dev
+      - run: npm --prefix frontend ci --no-audit --no-fund
+      - name: Import the Developer ID certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/release.keychain-db"
+          password=$(uuidgen)
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/certificate.p12"
+          identity=$(security find-identity -v -p codesigning "$keychain" | grep -o '"Developer ID Application: [^"]*"' | head -1 | tr -d '"')
+          [ -n "$identity" ] || { echo "No Developer ID Application identity in APPLE_CERTIFICATE"; exit 1; }
+          echo "APPLE_SIGNING_IDENTITY=$identity" >> "$GITHUB_ENV"
+      - name: Write the notarization key
+        env:
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          printf '%s' "$APPLE_API_KEY" > "$RUNNER_TEMP/notarization.p8"
+          echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/notarization.p8" >> "$GITHUB_ENV"
+      - run: npm run sidecar:build
+      - run: ./frontend/node_modules/.bin/tauri build --ci --bundles app --config src-tauri/tauri.conf.json
+      - name: Collect third-party notices and sources
+        run: |
+          cargo fetch --locked --manifest-path src-tauri/Cargo.toml --target aarch64-apple-darwin
+          backend/.venv/bin/python scripts/release-notices.py
+      - name: Sign, notarize and package
+        env:
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: node scripts/release-desktop.mjs
+      - name: Draft the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" --draft --title "Wavefunction ${TAG#v}" --generate-notes --verify-tag dist/release/*
+      - name: Remove the signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/release.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/notarization.p8"
