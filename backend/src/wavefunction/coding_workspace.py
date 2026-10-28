@@ -664,7 +664,7 @@ class CodingWorkspace:
             "fetch_page",
             "calculator",
         }
-        folder = self.effective_folder(thread)
+        folder = self.effective_folder(thread, resolve=False)
         # By default a message goes to the chat's current task: steering while it runs, a reply
         # while it waits on the user. Otherwise it is a follow-up queued behind it.
         pending = (
@@ -692,7 +692,10 @@ class CodingWorkspace:
             if unanswered:
                 await asyncio.gather(*(connectors.refresh(server) for server in unanswered))
         names = set(TOOL_REGISTRY) | set(connectors.tools())
+        # Checked as stored, so a managed worktree replaced by a link is refused, then recorded
+        # resolved, so code history still matches once the folder moves behind a symlink.
         self.checkout_access(folder)
+        folder = folder and str(Path(folder).resolve())
         inventory = await asyncio.to_thread(
             discover, folder, self.services.skills, grants=self.services.grants()
         )
@@ -909,8 +912,9 @@ class CodingWorkspace:
 
     def worktree_grants(self, folder, grants):
         """Add a managed worktree's shared Git metadata once its registration is verified."""
-        source = self.worktree_source(folder) if folder is not None else None
-        return linked_worktree_grants(Path(folder), grants, Path(source)) if source else grants
+        if folder is None or not (source := self.worktree_source(folder)):
+            return grants
+        return linked_worktree_grants(Path(folder), grants, Path(source))
 
     def runner(self, folder=None):
         grants, owner = self.checkout_access(folder)

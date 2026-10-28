@@ -242,6 +242,20 @@ async def test_new_worktree_chat_under_a_folder_name_stored_decomposed(coding, t
 
 
 @pytest.mark.sandbox
+async def test_a_message_to_a_worktree_replaced_by_a_link_is_refused(coding, tmp_path):
+    client, ws, _ = coding
+    folder = repository(tmp_path)
+    response = await client.post("/api/coding/threads", json={"folder": str(folder), "worktree": True})
+    thread = response.json()
+    # The checkout moved aside and a link left where it was registered (a rename, no removal).
+    checkout = Path(ws.delivery.worktree(thread["id"])["folder"])
+    checkout.rename(tmp_path / "elsewhere")
+    checkout.symlink_to(tmp_path / "elsewhere", target_is_directory=True)
+    with pytest.raises(ValueError, match="replaced by a link"):
+        await ws.send(thread["id"], "Continue")
+
+
+@pytest.mark.sandbox
 async def test_a_git_file_in_a_writable_folder_reaches_no_other_repository(coding, tmp_path):
     _, ws, services = coding
     main = repository(tmp_path)
