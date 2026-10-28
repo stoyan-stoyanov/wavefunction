@@ -14,10 +14,12 @@ import { cpSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readS
   readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { restoreBackendLinks } from "./backend-links.mjs";
+import { releaseNotes } from "./changelog.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const config = JSON.parse(readFileSync(join(root, "src-tauri/tauri.conf.json"), "utf8"));
 const { productName: name, version } = config;
+const notes = releaseNotes(version);
 const app = join(root, `src-tauri/target/release/bundle/macos/${name}.app`);
 const out = join(root, "dist/release");
 const arch = process.arch === "arm64" ? "arm64" : "x64";
@@ -128,7 +130,7 @@ if (env.TAURI_SIGNING_PRIVATE_KEY || env.TAURI_SIGNING_PRIVATE_KEY_PATH) {
   const platform = arch === "arm64" ? "darwin-aarch64" : "darwin-x86_64";
   writeFileSync(join(out, "latest.json"), JSON.stringify({
     version,
-    notes: env.RELEASE_NOTES ?? "",
+    notes,
     pub_date: new Date().toISOString(),
     platforms: {
       [platform]: {

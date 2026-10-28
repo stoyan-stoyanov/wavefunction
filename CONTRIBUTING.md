@@ -96,6 +96,8 @@ Keep each pull request to one change. Unrelated cleanup, refactors and dependenc
 
 Fill in the [pull request template](.github/pull_request_template.md). What it asks for depends on the kind of change.
 
+If your change is one users will notice, add a line for it under `Unreleased` in [CHANGELOG.md](CHANGELOG.md), written for them. [Releasing](docs/RELEASING.md#the-changelog) says how.
+
 ### Bug fixes
 
 - **The bug.** What goes wrong, and who it affects.

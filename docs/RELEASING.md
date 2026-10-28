@@ -4,11 +4,13 @@ A version tag builds a signed, notarized app on GitHub Actions and opens a **dra
 
 ## Release
 
-1. Set the version everywhere it is recorded, then commit and merge it:
+1. Choose the version (see [the changelog](#the-changelog)), set it everywhere it is recorded, then commit and merge it:
 
    ```sh
    node scripts/version.mjs 0.2.0
    ```
+
+   It also dates the `Unreleased` section of [CHANGELOG.md](../CHANGELOG.md) as `0.2.0` and starts a fresh one, and refuses when `Unreleased` is empty. Read the section over in this pull request: it is what users will see.
 
 2. Tag the merged commit on `main` and push the tag:
 
@@ -16,17 +18,26 @@ A version tag builds a signed, notarized app on GitHub Actions and opens a **dra
    git tag v0.2.0 && git push origin v0.2.0
    ```
 
-3. The [Release workflow](../.github/workflows/release.yml) checks that the tag matches the app version, then builds the backend and app. It signs every binary with Developer ID under the hardened runtime, notarizes and staples, and drafts a release containing:
+3. The [Release workflow](../.github/workflows/release.yml) checks that the tag matches the app version and that the changelog has notes for it, then builds the backend and app. It signs every binary with Developer ID under the hardened runtime, notarizes and staples, and drafts a release containing:
    - `Wavefunction-<version>-macos-arm64.dmg` and `.zip`, to download
    - `Wavefunction-<version>-macos-arm64.app.tar.gz` and its `.sig`, which installed apps update from
-   - `latest.json`, the update manifest
+   - `latest.json`, the update manifest, with the release's changelog section as its notes
    - `Wavefunction-<version>-macos-arm64-notices-and-sources.zip`: the third-party notices, also inside the app under `Contents/Resources/legal`, and the source archives of the bundled Python and Rust dependencies
    - `SHA256SUMS`
+   The draft's description is the same changelog section.
 4. Review the draft, optionally install the DMG, and publish it.
+
+## The changelog
+
+[CHANGELOG.md](../CHANGELOG.md) is written for people who use the app, not for reviewers. A pull request that changes what users see or can do adds one line under `## Unreleased`, in the group that fits (`Added`, `Changed`, `Fixed`, `Removed` or `Security`), ending with a link to the pull request. Say what changed for the user, not what changed in the code. Tests, refactors, CI, docs, dependency updates and website changes get no line.
+
+A release's section becomes its GitHub release notes and the notes **Settings › About** shows next to **Install and restart**.
+
+Before 1.0, a release that adds or changes behaviour raises the minor version (0.2.0); one with only fixes raises the patch (0.1.2).
 
 ## Updates
 
-The app checks `https://github.com/stoyan-stoyanov/wavefunction/releases/latest/download/latest.json` shortly after launch and every six hours, but only in the packaged app, not in development builds. When a newer version is published, **Update to x.y.z** appears above Settings, and **Settings › About** offers **Install and restart**.
+The app checks `https://github.com/stoyan-stoyanov/wavefunction/releases/latest/download/latest.json` shortly after launch and every six hours, but only in the packaged app, not in development builds. When a newer version is published, **Update to x.y.z** appears above Settings, and **Settings › About** offers **Install and restart** with the release's notes.
 
 The download is verified against the updater public key in `src-tauri/tauri.conf.json`, then replaces the app. The restart goes through the same check as quitting: it asks first when tasks are running, and stops the engine before the new version starts. Declining applies the update on the next launch.
 

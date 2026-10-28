@@ -1,6 +1,8 @@
-// Set the app's version everywhere it is recorded: `node scripts/version.mjs 0.2.0`.
+// Set the app's version everywhere it is recorded, and date CHANGELOG.md's Unreleased section as
+// that version's: `node scripts/version.mjs 0.2.0`.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { closeUnreleased } from "./changelog.mjs";
 
 const version = process.argv[2];
 if (!/^\d+\.\d+\.\d+$/.test(version ?? "")) {
@@ -8,6 +10,7 @@ if (!/^\d+\.\d+\.\d+$/.test(version ?? "")) {
   process.exit(1);
 }
 const root = resolve(import.meta.dirname, "..");
+closeUnreleased(version);
 const files = [
   ["package.json", /("version":\s*")[^"]+(")/],
   ["frontend/package.json", /("version":\s*")[^"]+(")/],
