@@ -22,21 +22,27 @@ function launch(ui, api) {
   const done = new Promise(resolve => child.once("exit", code => resolve(code)));
   return { child, done, output: () => output, ui, api };
 }
-async function until(operation, detail) {
+// Every request stops when the test does (`stop`), so a stalled one can't keep the sessions running
+// past the test's timeout. Each poll also gives up after 2 s and tries again. A single request
+// otherwise waits for its answer: the first message after startup waits for the provider SDK the
+// server only starts importing once the workspace has loaded, which can take seconds on a busy machine.
+async function until(operation, detail, stop) {
   const deadline = Date.now() + 45000;
   while (Date.now() < deadline) {
-    try { const value = await operation(); if (value) return value; } catch { /* server is starting */ }
+    stop.throwIfAborted();
+    try { const value = await operation(AbortSignal.any([stop, AbortSignal.timeout(2000)])); if (value) return value; } catch { /* server is starting */ }
     await delay(100);
   }
   assert.fail(`Timed out: ${detail()}`);
 }
 async function json(port, route, options) {
-  const response = await fetch(`http://127.0.0.1:${port}${route}`, { ...options, signal: AbortSignal.timeout(2000) });
+  const response = await fetch(`http://127.0.0.1:${port}${route}`, options);
   assert.ok(response.ok, `${route}: ${response.status}`);
   return response.json();
 }
 
-test("two development sessions keep requests/data separate and clean up on stop; occupied ports fail safely", { timeout: 120000 }, async () => {
+test("two development sessions keep requests/data separate and clean up on stop; occupied ports fail safely", { timeout: 120000 }, async t => {
+  const stop = t.signal;
   const ports = new Set();
   while (ports.size < 4) ports.add(await freePort());
   const [uiA, apiA, uiB, apiB] = [...ports];
@@ -44,29 +50,29 @@ test("two development sessions keep requests/data separate and clean up on stop;
   try {
     const a = launch(uiA, apiA); sessions.push(a);
     const b = launch(uiB, apiB); sessions.push(b);
-    await Promise.all(sessions.map(s => until(() => json(s.ui, "/health"), s.output)));
-    const workspaceA = await json(uiA, "/api/coding/workspace");
-    const workspaceB = await json(uiB, "/api/coding/workspace");
+    await Promise.all(sessions.map(s => until(signal => json(s.ui, "/health", { signal }), s.output, stop)));
+    const workspaceA = await json(uiA, "/api/coding/workspace", { signal: stop });
+    const workspaceB = await json(uiB, "/api/coding/workspace", { signal: stop });
     assert.equal(workspaceA.threads.length, 2);
     assert.equal(workspaceB.threads.length, 2);
     assert.notEqual(workspaceA.agent_id, workspaceB.agent_id);
     assert.notDeepEqual(workspaceA.threads.map(t => t.id), workspaceB.threads.map(t => t.id));
     // The fixture opens past setup: a project, and a connected model its chat runs on.
-    const connections = await json(uiA, "/api/connections");
+    const connections = await json(uiA, "/api/connections", { signal: stop });
     assert.equal(workspaceA.projects.length, 2);
     assert.ok(connections.enabled_models.some(key => !key.startsWith("demo::")), JSON.stringify(connections.enabled_models));
     assert.equal(connections.model.provider, "openai-compatible");
     assert.equal(workspaceA.threads[0].model.model, "fixture-model");
     const run = await json(uiA, `/api/coding/threads/${workspaceA.threads[0].id}/messages`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: "Reply for fixture verification" }),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: "Reply for fixture verification" }), signal: stop,
     });
-    const completed = await until(async () => {
-      const current = await json(uiA, `/api/runs/${run.id}`);
+    const completed = await until(async signal => {
+      const current = await json(uiA, `/api/runs/${run.id}`, { signal });
       return ["completed", "failed", "cancelled"].includes(current.status) && current;
-    }, a.output);
+    }, a.output, stop);
     assert.equal(completed.status, "completed");
     assert.match(JSON.stringify(completed), /Synthetic reply/);
-    assert.equal((await fetch(`http://127.0.0.1:${uiB}/api/runs/${run.id}`)).status, 404);
+    assert.equal((await fetch(`http://127.0.0.1:${uiB}/api/runs/${run.id}`, { signal: stop })).status, 404);
     const collision = launch(uiA, apiB); sessions.push(collision);
     assert.equal(await collision.done, 1);
     assert.match(collision.output(), /occupied/);
@@ -80,10 +86,10 @@ test("two development sessions keep requests/data separate and clean up on stop;
     } finally {
       await new Promise(resolve => wildcard.close(resolve));
     }
-    assert.equal((await json(uiA, "/health")).status, "healthy");
+    assert.equal((await json(uiA, "/health", { signal: stop })).status, "healthy");
     b.child.kill("SIGHUP");
     assert.equal(await b.done, 0, b.output());
-    assert.equal((await json(uiA, "/health")).status, "healthy");
+    assert.equal((await json(uiA, "/health", { signal: stop })).status, "healthy");
   } finally {
     for (const s of sessions) if (s.child.exitCode === null) s.child.kill("SIGTERM");
     await Promise.all(sessions.map(s => s.done));

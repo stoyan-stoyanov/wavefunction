@@ -7,7 +7,7 @@
 | Backend (Python, plus native Rust and launcher tests) | 240 | 30 s | 240 s |
 | Frontend (Vitest) | 230 | 5 s (Vitest's timeout) | 90 s |
 
-- **Enforcement.** `backend/tests/conftest.py` and the reporter in `frontend/vite.config.ts` enforce these.
+- **Enforcement.** `backend/tests/conftest.py` and the reporter in `frontend/vite.config.ts` enforce these. The case counts fail every run. The time limits fail a local run, which is what `npm run check` does, and CI only reports them: shared runners vary by a third between runs of the same code (the macOS job has summed 145 s to 258 s for one suite), so a time failure there says more about the runner than the change.
 - **What counts.** Count collected cases, including parameterizations and skipped or opt-in ones. The backend count also covers `#[test]` functions in `src-tauri/src` and `test(...)` calls in `scripts/*.test.mjs`.
 - **Time.** "All tests together" is the sum of test durations across workers, so a subset can only exceed it if the whole suite would.
 - **Output.** A whole-suite run prints its count and test time; for the backend, `cd backend && uv run --no-sync pytest --collect-only -q` prints the count.
@@ -62,7 +62,7 @@ The backend tests drive the HTTP API with `ScriptedModel` and real tools on synt
 
 ## Flaky tests
 
-A flaky test is a bug. Don't retry it, lengthen a timeout, or add a sleep. Fix it in the change that found it; if that isn't possible, skip it with `@pytest.mark.skip(reason="flaky: <issue link>")` and open an issue. A skipped flaky test is fixed or deleted within two weeks.
+A flaky test is a bug. Don't retry it, lengthen a timeout, or add a sleep. A test may wait for an event, but shouldn't cap how long the app takes to answer unless the test is about speed. Fix it in the change that found it; if that isn't possible, skip it with `@pytest.mark.skip(reason="flaky: <issue link>")` and open an issue. A skipped flaky test is fixed or deleted within two weeks.
 
 ## What the suites cover
 
