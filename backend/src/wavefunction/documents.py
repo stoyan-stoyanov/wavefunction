@@ -134,7 +134,9 @@ def docx_to_markdown(path: Path, *, include_title: bool = False) -> str:
         for child in parent.iterchildren():
             if child.tag == qn("w:sdt"):
                 content = child.find(qn("w:sdtContent"))
-                if content is not None:
+                # An empty one shows Word's prompt, such as "Click or tap here to enter text".
+                empty = child.find(f"{qn('w:sdtPr')}/{qn('w:showingPlcHdr')}") is not None
+                if content is not None and not empty:
                     yield from blocks(content)
             else:
                 yield child

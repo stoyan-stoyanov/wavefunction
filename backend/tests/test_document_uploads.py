@@ -137,16 +137,21 @@ async def test_uploaded_slides_and_word_files_keep_text_in_tables_groups_charts_
     chart.chart_title.text_frame.text = "CHART-TITLE"
     slides = BytesIO()
     deck.save(slides)
-    # A form's fields are content controls around ordinary paragraphs.
+    # A form's fields are content controls around ordinary paragraphs. An empty one shows Word's
+    # prompt, which is not the document's text.
     document = Document()
     document.add_paragraph("Before the control")
-    document.element.body.insert(
-        1,
-        parse_xml(
-            '<w:sdt xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:sdtPr/>'
-            "<w:sdtContent><w:p><w:r><w:t>CONTROL-TEXT</w:t></w:r></w:p></w:sdtContent></w:sdt>"
-        ),
-    )
+    for index, (properties, text) in enumerate(
+        [("", "CONTROL-TEXT"), ("<w:showingPlcHdr/>", "Click or tap here to enter text.")], 1
+    ):
+        document.element.body.insert(
+            index,
+            parse_xml(
+                '<w:sdt xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                f"<w:sdtPr>{properties}</w:sdtPr><w:sdtContent><w:p><w:r><w:t>{text}</w:t></w:r></w:p>"
+                "</w:sdtContent></w:sdt>"
+            ),
+        )
     word = BytesIO()
     document.save(word)
 
