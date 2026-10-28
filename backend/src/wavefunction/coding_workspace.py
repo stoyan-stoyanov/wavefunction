@@ -45,7 +45,7 @@ from .skills import FRONTMATTER, normalise_name, validate_skill, write_skill_mar
 from .spec_common import ModelSpec
 from .spec_v2 import AgentSpecV2, ToolBinding, ToolPolicy, load_spec
 from .terminals import TerminalManager
-from .toolkit import TOOL_REGISTRY
+from .toolkit import TOOL_REGISTRY, find_folded
 
 ACTIVE = {"queued", "running", "waiting_approval", "waiting_connector", "waiting_computer"}
 CODING_PROMPT = """You are Wavefunction, one coding agent with independent chats. Complete the agreed
@@ -1325,7 +1325,7 @@ def register_coding_workspace(app, get_services, auth):
                     + (run.get("output") or {}).get("text", "")
                 )
                 content += "".join("\n" + text for text in steered.get(run["id"], ()))
-            at = content.casefold().find(needle)
+            at = find_folded(content, needle)
             if at >= 0:
                 matches.append({**thread, "excerpt": content[max(0, at - 40) : at + 160]})
         return matches[:100]

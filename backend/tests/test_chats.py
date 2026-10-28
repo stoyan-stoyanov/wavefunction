@@ -1,4 +1,4 @@
-"""Chats: isolation, rejected folders, forks, attachments and history pages."""
+"""Chats: isolation, rejected folders, search, forks, attachments and history pages."""
 
 import asyncio
 from pathlib import Path
@@ -94,6 +94,17 @@ async def test_private_data_and_relative_folders_rejected(coding):
     ]:
         response = await client.post("/api/coding/threads", json={"folder": folder})
         assert response.status_code == 422, response.text
+
+
+async def test_search_excerpt_shows_the_match_after_text_that_folds_longer(coding):
+    client, _, _ = coding
+    # Each ß matches as "ss", one character longer, before the match.
+    instructions = "Die Straße ist groß. " * 30 + "Bitte prüfe NEEDLE-42 danach."
+    chat = await create(client, title="Notizen", instructions=instructions)
+    found = (await client.get("/api/coding/search", params={"query": "needle-42"})).json()
+    assert [(row["id"], row["excerpt"]) for row in found] == [
+        (chat["id"], " groß. Die Straße ist groß. Bitte prüfe NEEDLE-42 danach.")
+    ]
 
 
 @pytest.mark.sandbox

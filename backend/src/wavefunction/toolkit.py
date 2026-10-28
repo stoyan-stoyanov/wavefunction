@@ -212,6 +212,22 @@ def _chunks(text: str, size: int = 1200) -> list[str]:
     return pieces
 
 
+def find_folded(text: str, needle: str) -> int:
+    """Where a casefolded `needle` first occurs in `text` ignoring case, as a position in `text`
+    itself, or -1. Characters like ß fold to more than one, which moves later positions."""
+    folded = text.casefold()
+    at = folded.find(needle)
+    if at <= 0 or len(folded) == len(text):
+        return at
+    # The match starts in the first character whose folded form reaches past `at`.
+    reached = 0
+    for index, character in enumerate(text):
+        reached += len(character.casefold())
+        if reached > at:
+            return index
+    return at
+
+
 def search_document_chunks(
     records: list[dict[str, Any]], query: str, max_results: int
 ) -> list[tuple[str, int, str]]:
