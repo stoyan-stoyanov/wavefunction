@@ -42,9 +42,9 @@ FILE_TYPES = {
 ALLOWED_MEDIA_TYPES = set(FILE_TYPES.values()) | {"application/csv", "text/yaml", "text/xml"}
 
 
-def readable_documents(repository: Repository, agent_id: str) -> list[dict[str, Any]]:
-    """Uploaded reference text; each task filters this inventory to its captured file IDs."""
-    return repository.get_project_file_texts(agent_id)
+def readable_documents(repository: Repository, agent_id: str, file_ids: list[str]) -> list[dict[str, Any]]:
+    """Uploaded reference text of the file IDs a task captured."""
+    return repository.get_project_file_texts(agent_id, file_ids)
 
 
 def safe_filename(value: str) -> str:

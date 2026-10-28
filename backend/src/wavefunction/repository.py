@@ -307,11 +307,14 @@ class Repository:
                 )
             )
 
-    def get_project_file_texts(self, project_id: str) -> list[dict[str, Any]]:
+    def get_project_file_texts(self, project_id: str, file_ids: list[str]) -> list[dict[str, Any]]:
+        """These uploads' text, oldest first; other uploads' text is never read."""
         with self._history(project_id) as connection:
             return as_dicts(
                 connection.execute(
-                    "SELECT id, name, media_type, extracted_text FROM project_files ORDER BY created_at"
+                    "SELECT id, name, media_type, extracted_text FROM project_files "
+                    "WHERE id IN (SELECT value FROM json_each(?)) ORDER BY created_at",
+                    (json.dumps(file_ids),),
                 )
             )
 

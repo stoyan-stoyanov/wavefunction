@@ -66,7 +66,7 @@ async def test_uploaded_image_reaches_the_model_in_real_agent_loops(stack):
     )
     assert row["media_type"].startswith("image/")
     assert (stack.files.project_dir(agent["id"]) / row["relative_path"]).read_bytes() == data
-    assert "16 × 12" in stack.repository.get_project_file_texts(agent["id"])[0]["extracted_text"]
+    assert "16 × 12" in stack.repository.get_project_file_texts(agent["id"], [row["id"]])[0]["extracted_text"]
     spec = agent_spec(ToolBinding(name="read_documents"))
     model = CapturingModel(
         script=[
@@ -88,8 +88,8 @@ async def test_uploaded_image_reaches_the_model_in_real_agent_loops(stack):
     Image.new("RGB", (64, 48), "red").save(
         camera, format="MPO", save_all=True, append_images=[Image.new("RGB", (16, 12), "blue")]
     )
-    row = await upload(stack, agent["id"], "camera.jpg", camera.getvalue())
-    assert row["media_type"] == "image/jpeg"
+    jpeg = await upload(stack, agent["id"], "camera.jpg", camera.getvalue())
+    assert jpeg["media_type"] == "image/jpeg"
     # A phone photo larger than the preview limit still gets a thumbnail: JPEG decodes small.
     from wavefunction.document_images import PREVIEW_PIXELS, preview_png
 
@@ -105,8 +105,8 @@ async def test_uploaded_image_reaches_the_model_in_real_agent_loops(stack):
     # Names that are not ASCII stay distinct for the user and the model.
     names = [(await upload(stack, agent["id"], name, b"text"))["name"] for name in ("報告.txt", "請求書.txt")]
     assert names == ["報告.txt", "請求書.txt"]
-    assert any(
-        "64 × 48" in text["extracted_text"] for text in stack.repository.get_project_file_texts(agent["id"])
+    assert (
+        "64 × 48" in stack.repository.get_project_file_texts(agent["id"], [jpeg["id"]])[0]["extracted_text"]
     )
 
 

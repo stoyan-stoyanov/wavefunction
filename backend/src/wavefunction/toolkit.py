@@ -116,12 +116,8 @@ class ToolDefinition:
 
 def _readable_documents(context: ToolContext) -> list[dict[str, Any]]:
     """Uploaded documents captured for this task, checked against their durable records."""
-    allowed = {record["id"] for record in context.reference_files or []}
-    return [
-        record
-        for record in readable_documents(context.repository, context.agent_id)
-        if record["id"] in allowed
-    ]
+    allowed = [record["id"] for record in context.reference_files or []]
+    return readable_documents(context.repository, context.agent_id, allowed)
 
 
 def _build_list_documents(context: ToolContext) -> BaseTool:
