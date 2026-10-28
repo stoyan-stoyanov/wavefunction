@@ -23,6 +23,7 @@ import { api } from "@/lib/api";
 import { beginWindowDrag } from "@/lib/titlebar";
 import { checkForUpdate, installUpdate, restartToUpdate, useAppUpdate } from "@/lib/app-update";
 import { codingApi, type CodingSnapshot } from "./api";
+import { CodingMarkdown } from "./markdown";
 import { useCoding } from "./store";
 import { NavigationHeader, SidebarToggle } from "./navigation-header";
 import { ResizableSidebar } from "./sidebar-resize";
@@ -232,7 +233,7 @@ function AccessSettings() {
     </NativeView>
   );
 }
-/** Settings › About: whether a newer release is out, and installing it. */
+/** Settings › About: whether a newer release is out, what it changes, and installing it. */
 function Updates() {
   const update = useAppUpdate();
   if (!("__TAURI_INTERNALS__" in window) || import.meta.env.DEV) return null;
@@ -280,6 +281,11 @@ function Updates() {
             </Button>
           }
         />
+        {update.status === "available" && update.notes && (
+          <div className="max-h-80 overflow-y-auto border-t border-hairline px-4 py-3 text-sm">
+            <CodingMarkdown>{update.notes}</CodingMarkdown>
+          </div>
+        )}
       </div>
     </NativeSection>
   );
