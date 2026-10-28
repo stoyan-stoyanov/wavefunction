@@ -33,8 +33,6 @@ TEMPORARY = tuple(dict.fromkeys(Path(p).resolve() for p in ("/tmp", tempfile.get
 # Separators and redirections; a backtick or $( starts a command too.
 OPERATORS = "();<>|&\n`"
 REDIRECTIONS = {"<", ">", "<<", ">>", "<<<", "<>", ">&", "<&", ">|", "&>", "&>>"}
-# A here-document's `<<` and its closing word, bare, quoted or escaped; not a `<<<` string.
-HEREDOC = re.compile(r"""(?<!<)<<(?!<)(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()`'"]+))""")
 SHELLS = {"sh", "bash", "zsh", "dash", "ksh", "fish"}
 # Words that run the command after them, and the options of theirs that take a value.
 WRAPPERS = {
@@ -334,15 +332,15 @@ def irreversible(
     recoverable or harmless; relative paths resolve against `cwd`."""
     if depth > 3:
         return NESTED
-    text, bodies = _heredocs(command)
+    command = _heredoc_data(command) or command
     try:
-        lexed = _lex(text)
+        lexed = _lex(command)
     except ValueError:
         # Unbalanced quotes: what can still be seen of a forced or recursive delete asks.
         return DELETES if re.search(r"(^|[\s;&|(`])(sudo\s+)?rm\s+-\w*[rRf]", command) else None
     tokens = [token for token, _ in lexed]
     roots = {root.resolve(): files for root, files in undoable.items()} | dict.fromkeys(TEMPORARY)
-    words, read, commands = [], [], []
+    words, commands = [], []
     redirection_target = False
     for index, (token, operator) in enumerate(lexed):
         if operator:
@@ -350,29 +348,24 @@ def irreversible(
             if ">" in token and index + 1 < len(tokens) and DEVICE.match(tokens[index + 1]):
                 return MAC
             if token in REDIRECTIONS:
-                if token == "<<" and bodies and (body := bodies.pop(0)) is not None:
-                    read.append(body)
                 redirection_target = True
                 continue
-            commands.append((words, token, "\n".join(read)))
-            words, read = [], []
+            commands.append((words, token))
+            words = []
         elif redirection_target:
             redirection_target = False
         else:
             words.append(token)
-    commands.append((words, "", "\n".join(read)))
+    commands.append((words, ""))
     # Track cd within its successful && chain. A later sequential list may run even
     # if that cd failed; subshells, pipelines and background jobs need their own scope.
     sequential = {";", "\n"}
     shared_shell = all(
         token == "&&" or token in sequential or token in REDIRECTIONS for token, operator in lexed if operator
     )
-    database, here, queries = False, cwd, []
-    previous, cwd_changed, carried = "", False, ""
-    for words, separator, body in commands:
-        # A pipeline passes what its first command reads on: `cat <<EOF | psql`.
-        body = "\n".join(filter(None, (carried, body)))
-        carried = body if separator in {"|", "|&"} else ""
+    database, here = False, cwd
+    previous, cwd_changed = "", False
+    for words, separator in commands:
         if previous in sequential and cwd_changed:
             here = None
         previous = separator
@@ -394,61 +387,57 @@ def irreversible(
                 else Path(here, target)
             )
             continue
-        # A here-document is input to its command: commands to a shell, queries to a database client.
-        readers = {Path(word).name for word in words} if body else set()
-        if readers & DB_CLIENTS:
-            database, queries = True, [*queries, body]
         database = database or name in DB_CLIENTS or name.lower() in SQL_START
         if name in SHELLS or name == "eval":
-            found, scripts = None, [" ".join(args) if name == "eval" else _shell_payload(args)]
-        else:
-            found, scripts = _check(name, args, piped, here, roots), []
-        for script in filter(None, [*scripts, body if readers & SHELLS else ""]):
-            found = found or irreversible(
-                script,
+            payload = " ".join(args) if name == "eval" else _shell_payload(args)
+            found = payload and irreversible(
+                payload,
                 cwd=here or Path("/"),
                 undoable=undoable if here else {},
                 depth=depth + 1,
                 proxy_protects_remote_delete=proxy_protects_remote_delete,
             )
+        else:
+            found = _check(name, args, piped, here, roots)
         if found == REMOTE_DELETE and proxy_protects_remote_delete:
             continue
         if found:
             return found
-    return DATABASE if database and any(SQL.search(part) for part in (text, *tokens, *queries)) else None
+    return DATABASE if database and any(SQL.search(text) for text in (command, *tokens)) else None
 
 
-def _heredocs(command: str) -> tuple[str, list[str | None]]:
-    """The command without its here-documents' lines, and the body of each unquoted `<<` in
-    order. A body is input to the command with the `<<`, not commands of its own. One whose
-    closing line never comes is None, and its lines stay commands."""
-    lines, kept, bodies, quote, index = command.split("\n"), [], [], "", 0
-    while index < len(lines):
-        line, index, opened, at = lines[index], index + 1, [], 0
-        kept.append(line)
-        while at < len(line):
-            char = line[at]
-            if quote:
-                quote = "" if char == quote else quote
-                at += 2 if char == "\\" and quote == '"' else 1
-            elif char == "<" and (match := HEREDOC.match(line, at)):
-                opened.append((match.group(1), next(g for g in match.groups()[1:] if g is not None)))
-                at = match.end()
-            else:
-                quote = char if char in "'\"" else ""
-                at += 2 if char == "\\" else 1
-        for strip, delimiter in opened:
-            end = next(
-                (
-                    i
-                    for i in range(index, len(lines))
-                    if (lines[i].lstrip("\t") if strip else lines[i]) == delimiter
-                ),
-                None,
-            )
-            bodies.append(None if end is None else "\n".join(lines[index:end]))
-            index = index if end is None else end + 1
-    return "\n".join(kept), bodies
+# A here-document is data, not commands, when the whole command only writes it to a file with cat
+# or tee, or gives it to git as a commit or tag message: with its word quoted, the shell expands
+# nothing in it. Any other shape, or anything before or after it, is read as commands.
+HEREDOC = re.compile(
+    r"""(?P<before>[^\n]*?)<<(?P<strip>-?)[ \t]*(?P<quote>['"])(?P<word>[^'"\s]+)(?P=quote)(?P<after>.*)"""
+)
+GIT_MESSAGE = r"\s*git\s+(?:commit|tag)\s[^|&;<>()`$#\n]*?"
+HEREDOC_READERS = re.compile(
+    rf"""\s*(?:cat\s*>>?\s*[^\s|&;<>()`$'"#]+|tee(?:\s+-a)?\s+[^\s|&;<>()`$'"#]+|{GIT_MESSAGE}(?:-F\s*-|--file[=\s]-)[^|&;<>()`$#\n]*)\s*"""
+)
+
+
+def _heredoc_data(command: str) -> str | None:
+    """The command without its here-document when the whole of it is one of those shapes."""
+    first, *lines = command.strip("\n").split("\n")
+    opener = HEREDOC.fullmatch(first)
+    if not opener or not lines:
+        return None
+    before, after = opener["before"], opener["after"]
+    # `git commit -m "$(cat <<'EOF' ... EOF\n)"`
+    message = re.fullmatch(rf"({GIT_MESSAGE}-m\s*)\"\$\(cat\s*", before)
+    if message and not after.strip() and lines[-1].strip() == ')"':
+        before, lines = message[1] + "message", lines[:-1]
+    elif not HEREDOC_READERS.fullmatch(before + after):
+        return None
+    ends = [
+        i
+        for i, line in enumerate(lines)
+        if (line.lstrip("\t") if opener["strip"] else line) == opener["word"]
+    ]
+    # The first line that is the word ends it, and any line after that is a command.
+    return before + after if ends and ends[0] == len(lines) - 1 else None
 
 
 def _lex(command: str) -> list[tuple[str, bool]]:
@@ -495,9 +484,10 @@ def _unwrap(words: list[str]) -> tuple[str, list[str], bool]:
         if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", word):
             index += 1
             continue
-        name = Path(word).name
-        if manager and name in UNINSTALLS:
+        # Only the bare word: `pnpm /bin/rm` runs that program.
+        if manager and word in UNINSTALLS:
             return manager, words[index:], piped
+        name = Path(word).name
         if name not in WRAPPERS:
             return word, words[index + 1 :], piped
         piped = piped or name == "xargs"
