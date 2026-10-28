@@ -55,4 +55,5 @@ Accepted proposal: #
 - [ ] `npm run check` passes (its summary is above)
 - [ ] Tests guard a real failure and stay within the [test limit](https://github.com/stoyan-stoyanov/wavefunction/blob/main/CONTRIBUTING.md#tests)
 - [ ] Tests, examples and screenshots use synthetic data only
+- [ ] A change users will notice has its line under `Unreleased` in `CHANGELOG.md`
 - [ ] Anything I couldn't verify is listed above
