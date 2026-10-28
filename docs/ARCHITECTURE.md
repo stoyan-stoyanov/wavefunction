@@ -80,7 +80,7 @@ Rewind stops and settles owned execution, rejects another writer in the checkout
   - `wait_agents` returns `needs_user` at once;
   - the finished turn stays open, without model calls or an idle limit, until that helper changes or the user writes, so the helper's result still reaches its live parent.
 
-  The sidebar marks a chat waiting on the user, and its parent, with a needs-input icon instead of the spinner; a helper's question is its parent's to answer and keeps the spinner.
+  The sidebar marks a chat waiting on the user, and its parent, with a needs-input icon instead of the spinner; a helper's question is its parent's to answer and keeps the spinner. A `wait_agents` call on paused helpers, one with a question the parent already received, returns `needs_answer` at once.
 - **Results.** An isolated helper's edits stay in its own worktree; the parent receives their baseline, an immutable result commit or ref, and the diff, then integrates with the usual Git and file tools.
 - **Git while helpers run.** The parent's own Git operations, such as the snapshot for an isolated helper, still proceed; other chats' Git operations in that checkout wait.
 - **Worktree lifetime.** Removing a clean worktree uses Git's ordinary removal and keeps its branch. A helper's own worktree goes 24 hours after its last use, never while its main task runs, even with build output in it, but only when the rest is exactly its last saved snapshot and no private files are in it.
