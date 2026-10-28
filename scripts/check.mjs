@@ -34,8 +34,10 @@ const changed = all ? [] : changedFiles();
 const touched = (prefix) => all || changed.some((file) => file.startsWith(prefix));
 const frontendSources = changed.filter((file) => /^frontend\/src\/.*\.(ts|tsx)$/.test(file) && existsSync(path.join(root, file)));
 const frontendConfig = changed.some((file) => file.startsWith("frontend/") && !file.startsWith("frontend/src/"));
-const backendSources = changed.some((file) => file.startsWith("backend/") && !file.startsWith("backend/tests/"));
-const backendTests = changed.filter((file) => /^backend\/tests\/test_[^/]+\.py$/.test(file) && existsSync(path.join(root, file)));
+// conftest.py, support.py and fixtures are shared by every test, so they count as sources.
+const backendTest = (file) => /^backend\/tests\/test_[^/]+\.py$/.test(file);
+const backendSources = changed.some((file) => file.startsWith("backend/") && !backendTest(file));
+const backendTests = changed.filter((file) => backendTest(file) && existsSync(path.join(root, file)));
 
 const steps = [];
 if (touched("frontend/")) {
@@ -72,6 +74,9 @@ if (all || changed.some((file) => /^(backend|frontend)\/src\//.test(file))) {
 if (all || changed.some((file) => /^scripts\/.+\.py$/.test(file))) {
   steps.push(["Script lint and formatting", "sh", ["-c",
     "uv run --no-sync --project backend ruff check --config backend/pyproject.toml scripts && uv run --no-sync --project backend ruff format --check --config backend/pyproject.toml scripts"]]);
+}
+if (all || changed.some((file) => /^scripts\/.+\.mjs$/.test(file))) {
+  steps.push(["Script syntax", "sh", ["-ec", 'for script in scripts/*.mjs; do node --check "$script"; done']]);
 }
 if (all || changed.some((file) => file.endsWith(".md"))) {
   steps.push(["Docs links and agent file sizes", "node", ["scripts/check-docs.mjs"]]);
