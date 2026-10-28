@@ -28,6 +28,7 @@ The tests drive the HTTP API, so find a behavior's tests by its route or name, n
 - Run pytest from this folder: `uv run --no-sync pytest tests/test_x.py -k name`. The whole suite: `npm run test:backend` from the repository root.
 - `tests/conftest.py` gives each run a temporary data folder and signs `gh` out. Its `coding` fixture serves the API over isolated services; `ScriptedModel`, `tool_call_message` and `script_gateway` drive real tool loops without a model. The plain helpers `create`, `git` and `repository` are in `tests/support.py`. No test module imports another.
 - Markers: `sandbox` (needs macOS Seatbelt; skipped elsewhere), `destructive` (runs real deletions; CI only, never locally), `live` (real external services; opt-in with `-m live`).
+- The irreversible-command classifier's table test is in `test_sandbox.py`, which is `destructive` as a whole, so it runs only in CI: try new cases locally by passing their text to `command_danger`.
 - The budget (count and time) is in [docs/TESTING.md](../docs/TESTING.md) and enforced by `conftest.py`.
 
 ## Rules here

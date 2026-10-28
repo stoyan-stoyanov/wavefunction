@@ -110,6 +110,13 @@ def test_commands_that_cannot_be_undone_are_caught_and_routine_ones_are_not(tmp_
         "find build -name '*.tmp' -exec env LC_ALL=C rm -f {} +",
         "find build \\( -name '*.tmp' -o -name '*.log' \\) -delete",
         'echo ";"',
+        "npm rm lodash",
+        "pnpm rm lodash",
+        "bun rm lodash",
+        # A here-document is input to the command that reads it, not commands of its own.
+        "cat > migrations/002.sql <<'EOF'\nDROP TABLE legacy;\nEOF",
+        "cat > scripts/clean.sh <<'EOF'\nrm -rf out\nEOF",
+        "git commit -F - <<'EOF'\nDrop table legacy\nEOF",
     ]
     worst = [
         "rm -rf ~",
@@ -136,6 +143,11 @@ def test_commands_that_cannot_be_undone_are_caught_and_routine_ones_are_not(tmp_
         'psql -c "DROP TABLE users"',
         'echo "TRUNCATE users;" | psql',
         "psql <<EOF\nDROP DATABASE app;\nEOF",
+        "cat <<EOF | psql\nDROP DATABASE app;\nEOF",
+        "docker exec -i db psql <<EOF\nDROP TABLE users;\nEOF",
+        "bash <<'EOF'\nrm -rf ~/old\nEOF",
+        "cat <<'EOF' | sh\nrm -rf ~/old\nEOF",
+        "npm exec rm -rf ~/old",
         "npx supabase db reset",
         "pnpm prisma migrate reset --force",
         "redis-cli FLUSHALL",
