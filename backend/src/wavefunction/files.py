@@ -62,7 +62,7 @@ def extract_text(path: Path, media_type: str, filename: str) -> str:
             with Image.open(path) as image:
                 # A camera JPEG with a large embedded preview opens as MPO; it is still a JPEG,
                 # and its first frame is the photo.
-                if Image.MIME.get(image.format) != media_type and not (
+                if Image.MIME.get(image.format or "") != media_type and not (
                     image.format == "MPO" and media_type == "image/jpeg"
                 ):
                     raise ValueError("image type does not match the file")

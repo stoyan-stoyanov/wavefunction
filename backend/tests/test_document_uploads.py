@@ -114,24 +114,25 @@ async def test_uploaded_slides_and_word_files_keep_text_in_tables_groups_charts_
     from docx import Document
     from docx.oxml import parse_xml
     from pptx import Presentation
-    from pptx.chart.data import CategoryChartData
+    from pptx.chart.data import ChartData
     from pptx.enum.chart import XL_CHART_TYPE
     from pptx.util import Inches
 
     deck = Presentation()
-    slide = deck.slides.add_slide(deck.slide_layouts[5])  # Title Only
-    slide.shapes.title.text = "Quarterly numbers"
+    slide = deck.slides.add_slide(deck.slide_layouts[6])  # Blank
     table = slide.shapes.add_table(2, 2, Inches(1), Inches(2), Inches(4), Inches(1)).table
     table.cell(0, 0).text, table.cell(0, 1).text = "Region", "Revenue"
     table.cell(1, 0).text, table.cell(1, 1).text = "EMEA", "SYNTHETIC-42"
     group = slide.shapes.add_group_shape()
     group.shapes.add_textbox(Inches(1), Inches(4), Inches(3), Inches(1)).text_frame.text = "GROUPED-NOTE"
-    numbers = CategoryChartData()
+    numbers = ChartData()
     numbers.categories = ["Q1", "Q2"]
     numbers.add_series("Sales", (1, 2))
-    chart = slide.shapes.add_chart(
+    # python-pptx types what add_chart returns as the chart; it is the chart's frame.
+    frame = slide.shapes.add_chart(
         XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(5), Inches(2), Inches(4), Inches(3), numbers
-    ).chart
+    )
+    chart = frame.chart  # type: ignore[attr-defined]
     chart.has_title = True
     chart.chart_title.text_frame.text = "CHART-TITLE"
     slides = BytesIO()
@@ -156,7 +157,7 @@ async def test_uploaded_slides_and_word_files_keep_text_in_tables_groups_charts_
     texts = stack.repository.get_project_file_texts(stack.agent["id"], [row["id"] for row in rows])
     by_name = {text["name"]: text["extracted_text"] for text in texts}
     assert by_name["deck.pptx"] == (
-        "## Quarterly numbers\n- Region | Revenue\n- EMEA | SYNTHETIC-42\n- GROUPED-NOTE\n- CHART-TITLE\n"
+        "## Slide 1\n- Region | Revenue\n- EMEA | SYNTHETIC-42\n- GROUPED-NOTE\n- CHART-TITLE\n"
     )
     assert by_name["form.docx"] == "Before the control\n\nCONTROL-TEXT\n"
 

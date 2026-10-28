@@ -336,9 +336,8 @@ def build_routine_tools(context):
         except (ValidationError, ValueError) as error:
             reason = error.errors()[0]["msg"] if isinstance(error, ValidationError) else str(error)
             return f"Nothing was set. {reason}"
-        if isinstance(timing, Once) and next_due(
-            timing, created_at=now_iso(), last_run_at=None
-        ) <= datetime.now(UTC):
+        due = next_due(timing, created_at=now_iso(), last_run_at=None) if isinstance(timing, Once) else None
+        if due is not None and due <= datetime.now(UTC):
             return "Nothing was set: that time has already passed. Check today's date and try again."
         thread = ws.routines.create(
             origin,
