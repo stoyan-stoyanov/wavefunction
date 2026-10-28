@@ -1008,6 +1008,9 @@ def save_screenshot(files: Any, agent_id: str, conversation_id: str, png: bytes)
 
 
 def _bounded(png: bytes) -> bytes:
+    """A busy screen (a map, a photo grid) cut to 256 colours, not scaled down: the model reads
+    click coordinates off the image, which must stay the 1280x800 it is told. At one byte a
+    pixel even pure noise at that size is under 1 MB."""
     if len(png) <= MAX_SCREENSHOT_BYTES:
         return png
     try:
@@ -1016,9 +1019,9 @@ def _bounded(png: bytes) -> bytes:
         from PIL import Image
 
         with Image.open(io.BytesIO(png)) as image:
-            scaled = image.reduce(2)
+            reduced = image.quantize(256, method=Image.Quantize.FASTOCTREE)
             buffer = io.BytesIO()
-            scaled.save(buffer, format="PNG")
+            reduced.save(buffer, format="PNG")
             return buffer.getvalue()
     except Exception:  # noqa: BLE001 - an oversized screenshot beats no screenshot
         return png

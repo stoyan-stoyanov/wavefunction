@@ -343,6 +343,41 @@ class FakeFiles:
         return self.root / agent_id
 
 
+async def test_a_busy_screen_is_stored_at_the_size_clicks_are_read_in(tmp_path) -> None:
+    """Fine detail (a map, a photo grid) makes a PNG over the size limit. It used to be halved to
+    640x400 while the tool still said 1280x800, so clicks read off it landed at half the
+    intended coordinates."""
+    import io
+    import random
+
+    from PIL import Image
+
+    noise = Image.frombytes("RGB", (1280, 800), random.Random(7).randbytes(1280 * 800 * 3))
+    captured = io.BytesIO()
+    noise.save(captured, format="PNG")
+    assert len(captured.getvalue()) > computer_module.MAX_SCREENSHOT_BYTES
+    client = httpx.AsyncClient(
+        transport=httpx.MockTransport(lambda _: httpx.Response(200, content=captured.getvalue())),
+        base_url="http://desktop",
+    )
+
+    class Desktop:
+        async def session(self, conversation_id: str, copy: str | None = None):
+            return SimpleNamespace(conversation_id=conversation_id, client=client)
+
+    context = ToolContext(
+        "agent-1", None, FakeFiles(tmp_path), None, computer=Desktop(), coding_workspace=None
+    )
+    tools = {tool.name: tool for tool in build_tools(list(COMPUTER_TOOL_NAMES), context)}
+    async with client:
+        said = await tools["computer_screenshot"].coroutine()
+
+    assert said.startswith("Screenshot captured (1280x800).")
+    stored = (tmp_path / "agent-1" / "outputs" / "screenshots" / find_sentinel(said)).read_bytes()
+    assert len(stored) <= computer_module.MAX_SCREENSHOT_BYTES
+    assert Image.open(io.BytesIO(stored)).size == (1280, 800)
+
+
 # ---- the API --------------------------------------------------------------------------------
 
 
