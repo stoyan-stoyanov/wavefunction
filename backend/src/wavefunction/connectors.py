@@ -254,7 +254,8 @@ def describe_failure(error: BaseException) -> str:
 
 
 def resolve(values: dict[str, str], secrets: Any) -> dict[str, str]:
-    """Values as they are, except `$NAME`, which is read from the secret store.
+    """Values as they are, except `$NAME`, which is read from the secret store, and `$$NAME`,
+    which is a literal `$NAME`.
 
     Used for both an http connector's headers and a stdio connector's environment, so a token
     can be kept out of settings whichever way a server wants to be given it.
@@ -264,13 +265,19 @@ def resolve(values: dict[str, str], secrets: Any) -> dict[str, str]:
         # Substituted wherever it appears, not only when it is the whole value: the common shape
         # is `Bearer $TOKEN`, and a header that had to be all-or-nothing would force the word
         # "Bearer" into the stored secret.
-        resolved[key] = SECRET_REFERENCE.sub(lambda match: secret_value(secrets, match.group(1)) or "", value)
+        resolved[key] = SECRET_REFERENCE.sub(
+            lambda match: (
+                match.group(0)[1:] if match.group(1) else secret_value(secrets, match.group(2)) or ""
+            ),
+            value,
+        )
     return resolved
 
 
 # `$NAME` in a header or an environment value. Upper-case and underscores only, so a `$TOKEN`
-# followed by ordinary prose does not swallow the prose.
-SECRET_REFERENCE = re.compile(r"\$([A-Z][A-Z0-9_]*)")
+# followed by ordinary prose does not swallow the prose. `$$NAME` escapes it, for a password
+# or URL that has a `$` before a capital.
+SECRET_REFERENCE = re.compile(r"\$(\$?)([A-Z][A-Z0-9_]*)")
 
 
 def secret_key(name: str) -> str:
@@ -298,8 +305,8 @@ def secret_names(server: McpServer) -> list[str]:
     """Every `$NAME` this connector's settings refer to, in the order they appear."""
     names: list[str] = []
     for value in (*server.headers.values(), *server.env.values()):
-        for name in SECRET_REFERENCE.findall(value):
-            if name not in names:
+        for escaped, name in SECRET_REFERENCE.findall(value):
+            if not escaped and name not in names:
                 names.append(name)
     return names
 
