@@ -4,6 +4,10 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+### Added
+
+- Settings › About shows what a new version changes before you install it. ([#8](https://github.com/stoyan-stoyanov/wavefunction/pull/8))
+
 ### Fixed
 
 - Worktree chats start for repositories under folders with accented names, such as `Développement`. ([#7](https://github.com/stoyan-stoyanov/wavefunction/pull/7))
