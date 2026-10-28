@@ -219,9 +219,12 @@ def find_folded(text: str, needle: str) -> int:
     at = folded.find(needle)
     if at <= 0 or len(folded) == len(text):
         return at
-    # The match starts in the first character whose folded form reaches past `at`.
-    reached = 0
-    for index, character in enumerate(text):
+    # The match starts in the first character whose folded form reaches past `at`. Folding is per
+    # character, so whole blocks before it are measured at once and only the last one by hand.
+    start, reached = 0, 0
+    while reached + len(block := text[start : start + 4096].casefold()) <= at:
+        start, reached = start + 4096, reached + len(block)
+    for index, character in enumerate(text[start : start + 4096], start):
         reached += len(character.casefold())
         if reached > at:
             return index
