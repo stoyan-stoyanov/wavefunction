@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 import shutil
 import sys
@@ -124,10 +125,14 @@ def pytest_collection_modifyitems(config, items):
 
 
 # The test budget (docs/TESTING.md): how many cases, and how long one test and all of them may take
-# (summed across workers; a subset can only exceed the total if the whole suite would).
+# (summed across workers; a subset can only exceed the total if the whole suite would). Times depend
+# on the machine, and a shared CI runner's vary by a third between runs of the same code, so CI
+# reports the time limits and a local run fails on them. The case count fails everywhere.
 CASES = 240
 TEST_SECONDS = 30
 SUITE_SECONDS = 240
+ENFORCE_TIME = not os.environ.get("CI")
+TIME_NOTE = "" if ENFORCE_TIME else " CI reports this; a local run fails on it."
 _durations: dict[str, float] = {}
 _budget_report: list[tuple[str, bool]] = []
 
@@ -145,16 +150,16 @@ def pytest_sessionfinish(session, exitstatus):
         _budget_report.append(
             (
                 f"{nodeid} took {seconds:.1f} s, over the {TEST_SECONDS} s budget for one test. "
-                "Speed it up or split it.",
-                True,
+                f"Speed it up or split it.{TIME_NOTE}",
+                ENFORCE_TIME,
             )
         )
     if total > SUITE_SECONDS:
         _budget_report.append(
             (
                 f"The tests took {total:.0f} s together, over the {SUITE_SECONDS} s budget. "
-                "Speed up the slowest (--durations=15) before adding more.",
-                True,
+                f"Speed up the slowest (--durations=15) before adding more.{TIME_NOTE}",
+                ENFORCE_TIME,
             )
         )
     if any(failed for _, failed in _budget_report) and session.exitstatus == pytest.ExitCode.OK:

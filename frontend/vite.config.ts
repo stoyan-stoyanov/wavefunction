@@ -6,7 +6,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 // Time budget (docs/TESTING.md): Vitest's 5 s timeout limits one test; this limits all of them
-// together. A subset can only exceed it if the whole suite would.
+// together. A subset can only exceed it if the whole suite would. A shared CI runner's times vary
+// by a third between runs of the same code, so CI reports the total and a local run fails on it.
 const CASES = 230;
 const SUITE_SECONDS = 90;
 // The case count is shown for a run of the whole suite, not of chosen files.
@@ -28,9 +29,9 @@ function testBudgetReporter(): Reporter {
       console.log(`${whole}Test time: ${Math.round(seconds)} s of the ${SUITE_SECONDS} s budget.`);
       if (seconds > SUITE_SECONDS) {
         console.error(
-          `The tests took ${Math.round(seconds)} s together, over the ${SUITE_SECONDS} s budget. Speed up the slowest files before adding more.`,
+          `The tests took ${Math.round(seconds)} s together, over the ${SUITE_SECONDS} s budget. Speed up the slowest files before adding more.${process.env.CI ? " CI reports this; a local run fails on it." : ""}`,
         );
-        process.exitCode = 1;
+        if (!process.env.CI) process.exitCode = 1;
       }
     },
     onTestModuleCollected(module) {

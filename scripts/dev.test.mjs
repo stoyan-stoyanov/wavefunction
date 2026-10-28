@@ -22,16 +22,19 @@ function launch(ui, api) {
   const done = new Promise(resolve => child.once("exit", code => resolve(code)));
   return { child, done, output: () => output, ui, api };
 }
+// Each poll gives up after 2 s and tries again. A single request instead waits for its answer: the
+// first message after startup waits for the provider SDK the server only starts importing once the
+// workspace has loaded, which can take seconds on a busy machine.
 async function until(operation, detail) {
   const deadline = Date.now() + 45000;
   while (Date.now() < deadline) {
-    try { const value = await operation(); if (value) return value; } catch { /* server is starting */ }
+    try { const value = await operation(AbortSignal.timeout(2000)); if (value) return value; } catch { /* server is starting */ }
     await delay(100);
   }
   assert.fail(`Timed out: ${detail()}`);
 }
 async function json(port, route, options) {
-  const response = await fetch(`http://127.0.0.1:${port}${route}`, { ...options, signal: AbortSignal.timeout(2000) });
+  const response = await fetch(`http://127.0.0.1:${port}${route}`, options);
   assert.ok(response.ok, `${route}: ${response.status}`);
   return response.json();
 }
@@ -44,7 +47,7 @@ test("two development sessions keep requests/data separate and clean up on stop;
   try {
     const a = launch(uiA, apiA); sessions.push(a);
     const b = launch(uiB, apiB); sessions.push(b);
-    await Promise.all(sessions.map(s => until(() => json(s.ui, "/health"), s.output)));
+    await Promise.all(sessions.map(s => until(signal => json(s.ui, "/health", { signal }), s.output)));
     const workspaceA = await json(uiA, "/api/coding/workspace");
     const workspaceB = await json(uiB, "/api/coding/workspace");
     assert.equal(workspaceA.threads.length, 2);
@@ -60,8 +63,8 @@ test("two development sessions keep requests/data separate and clean up on stop;
     const run = await json(uiA, `/api/coding/threads/${workspaceA.threads[0].id}/messages`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content: "Reply for fixture verification" }),
     });
-    const completed = await until(async () => {
-      const current = await json(uiA, `/api/runs/${run.id}`);
+    const completed = await until(async signal => {
+      const current = await json(uiA, `/api/runs/${run.id}`, { signal });
       return ["completed", "failed", "cancelled"].includes(current.status) && current;
     }, a.output);
     assert.equal(completed.status, "completed");
