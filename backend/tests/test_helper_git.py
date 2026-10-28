@@ -1,11 +1,15 @@
-"""Linked helpers can commit while keeping checkout permissions conversation-owned."""
+"""Linked helpers can commit while keeping checkout permissions conversation-owned, and a checkout
+stopped during its setup still expires."""
 
+import asyncio
 import shlex
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 from support import create, git, repository
 
+from wavefunction import coding_cleanup
 from wavefunction.coding_workspace import ThreadInput
 from wavefunction.toolkit import TOOL_REGISTRY, ToolContext
 
@@ -167,3 +171,44 @@ async def test_owned_worktree_gitfile_cannot_redirect_backend_or_captured_access
     finally:
         gitfile.write_bytes(original)
     assert captured.local_grants() and ws.root(child["id"]) == root
+
+
+@pytest.mark.sandbox
+async def test_helper_stopped_while_its_checkout_is_prepared_still_expires(coding, tmp_path, monkeypatch):
+    client, ws, _ = coding
+    source = repository(tmp_path)
+    parent = await create(client, folder=str(source))
+    child = ws.create_thread(
+        ThreadInput(folder=str(source)), parent_thread_id=parent["id"], parent_run_id="synthetic-parent"
+    )
+    preparing = asyncio.Event()
+
+    async def slow_copy(*_args, **_kwargs):
+        # Copying the parent's uncommitted work into the new checkout: slow in a large repository.
+        preparing.set()
+        await asyncio.Event().wait()
+
+    monkeypatch.setattr(ws.recovery, "apply", slow_copy)
+    setup = asyncio.create_task(ws.checkpoints.branch(parent["id"], child["id"], live=True))
+    await asyncio.wait_for(preparing.wait(), 15)
+    setup.cancel()  # Stop lands here: the helper never runs.
+    with pytest.raises(asyncio.CancelledError):
+        await setup
+    with ws.db() as db:
+        db.execute(
+            "UPDATE coding_worktrees SET last_used_at = ? WHERE thread_id = ?",
+            ((datetime.now(UTC) - timedelta(days=2)).isoformat(), child["id"]),
+        )
+    removals = []
+    check = coding_cleanup.file_operation
+
+    async def without_removal(runner, request, **kwargs):
+        if request["action"] != "worktree_cleanup_remove":
+            return await check(runner, request, **kwargs)
+        removals.append(request)
+        raise RuntimeError("Removal runs only in the destructive tests")
+
+    monkeypatch.setattr(coding_cleanup, "file_operation", without_removal)
+    await ws.cleanup.sweep()
+    # Its checkout goes once it is still exactly what it was prepared from.
+    assert [request["tree"] for request in removals] == [ws.delivery.worktree(child["id"])["base_tree"]]

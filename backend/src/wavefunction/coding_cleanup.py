@@ -255,6 +255,16 @@ class WorktreeCleanup:
     def helper_snapshot(self, owned):
         """The helper's last saved code, which its checkout must still match to be removed."""
         code = self.helper_code(owned["thread_id"])
+        if (
+            code is None
+            and owned["base_tree"]
+            and not self.ws.services.repository.list_conversation_runs(
+                self.ws.agent_id, self.ws.thread(owned["thread_id"])["conversation_id"]
+            )
+        ):
+            # Stopped while its checkout was prepared, it never ran: the checkout must still be what
+            # it was prepared from. One whose copy was interrupted isn't, so it is kept.
+            code = {"tree": owned["base_tree"]}
         if code is None:
             raise ValueError("This helper has no saved final state; its checkout is retained.")
         return {"tree": code["tree"], "owner": owned["thread_id"]}
