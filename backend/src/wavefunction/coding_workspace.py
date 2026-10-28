@@ -331,13 +331,13 @@ class CodingWorkspace:
                 VALUES (:id, :name, :folder, :created_at, :icon, :icon_color, :position)""",
                 record,
             )
-            # A project made again for a folder takes back the chats a removed one left there,
-            # including those in worktrees made from it.
+            # A project made again for a folder takes back the chats a removed one left there, which
+            # follow its folder again, and those in worktrees made from it.
             if folder:
                 db.execute(
-                    """UPDATE coding_threads SET project_id = ? WHERE project_id IS NULL AND
-                    (folder = ? OR folder IN (SELECT folder FROM coding_worktrees WHERE source = ?))""",
-                    (record["id"], folder, folder),
+                    """UPDATE coding_threads SET project_id = ?, folder = NULLIF(folder, ?) WHERE project_id IS NULL
+                    AND (folder = ? OR folder IN (SELECT folder FROM coding_worktrees WHERE source = ?))""",
+                    (record["id"], folder, folder, folder),
                 )
                 # With the slash commands the removed project left them.
                 db.execute(
