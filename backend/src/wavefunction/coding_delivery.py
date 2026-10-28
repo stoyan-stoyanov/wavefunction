@@ -65,7 +65,8 @@ class Delivery:
         for run in runs.values():
             if run["input"].get("local_read_only"):
                 continue
-            if (run.get("spec") or {}).get("working_directory") == str(root):
+            folder = (run.get("spec") or {}).get("working_directory")
+            if folder and Path(folder).resolve() == root:
                 raise ValueError(
                     "Finish or stop active tasks in this checkout before changing Git state. A worktree keeps work independent."
                 )

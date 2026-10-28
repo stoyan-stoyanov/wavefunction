@@ -664,7 +664,7 @@ class CodingWorkspace:
             "fetch_page",
             "calculator",
         }
-        folder = self.effective_folder(thread, resolve=False)
+        folder = self.effective_folder(thread)
         # By default a message goes to the chat's current task: steering while it runs, a reply
         # while it waits on the user. Otherwise it is a follow-up queued behind it.
         pending = (
@@ -829,7 +829,7 @@ class CodingWorkspace:
                 # A fork or rewind copies tasks without their specs; the tasks they came from keep
                 # theirs. Followed back, through forks of forks, to the newest one still saved.
                 last = next(filter(None, map(self._original_with_spec, runs)), None)
-                update["working_directory"] = self.effective_folder(thread, resolve=False)
+                update["working_directory"] = self.effective_folder(thread)
             if last is None:
                 raise ValueError("There is nothing to compact yet.")
             await self.cleanup.restore(thread_id)

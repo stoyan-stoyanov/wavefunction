@@ -217,6 +217,40 @@ async def test_fork_restores_selected_history_code_and_attachments_then_diverges
     assert len(ws.runs(branch["id"])) == 1
 
 
+@pytest.mark.sandbox
+async def test_code_history_survives_the_folder_moving_behind_a_symlink(coding, tmp_path):
+    from support import repository
+
+    client, ws, services = coding
+    home = tmp_path / "code"
+    home.mkdir()
+    thread = await create(client, folder=str(repository(home)))
+    script_gateway(
+        services.models,
+        [
+            tool_call_message("read_file", {"path": "a.txt"}, "read"),
+            tool_call_message(
+                "edit_file", {"path": "a.txt", "old_text": "before", "new_text": "after"}, "edit"
+            ),
+            AIMessage(content="Edited"),
+        ],
+    )
+    run = await ws.send(thread["id"], "Change before to after")
+    assert (await services.runtime.wait(run["id"]))["status"] == "completed"
+    points = {point["kind"]: point["id"] for point in ws.runs(thread["id"])[0]["checkpoints"]}
+    # The user moves the folder to another volume and leaves a symlink at the old path.
+    moved = tmp_path / "volume"
+    home.rename(moved)
+    home.symlink_to(moved, target_is_directory=True)
+    base = f"/api/coding/threads/{thread['id']}"
+    fork = await client.post(base + "/fork", json={"checkpoint_id": points["after_assistant"]})
+    assert fork.status_code == 201, fork.text
+    assert (Path(fork.json()["folder"]) / "a.txt").read_text() == "after\n"
+    rewind = await client.post(base + "/rewind", json={"checkpoint_id": points["before_user"]})
+    assert rewind.status_code == 200, rewind.text
+    assert (moved / "repo" / "a.txt").read_text() == "before\n"
+
+
 async def test_accepted_attachment_survives_removal_restart_and_fork_until_history_deleted(
     coding, monkeypatch
 ):
