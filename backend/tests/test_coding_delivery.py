@@ -169,6 +169,11 @@ async def test_changes_tab_diffs_staged_unstaged_renamed_and_copied_files(coding
     for filename in ("a.txt", "renamed.txt"):
         recreated = (await client.get(endpoint, params={"path": filename, "combined": True})).json()
         assert recreated["warning"] and not recreated["diff"]
+    # A case-only rename recreates nothing, though a case-insensitive volume finds the old name.
+    git(folder, "mv", "other.txt", "Other.txt")
+    cased = (await client.get(endpoint, params={"path": "Other.txt", "combined": True})).json()
+    assert not cased["warning"] and "rename from other.txt" in cased["diff"]
+    git(folder, "mv", "Other.txt", "other.txt")
     assert (await client.get(endpoint, params={"path": "../outside", "combined": True})).status_code == 422
     assert (await client.get(endpoint, params={"path": ".git/config", "combined": True})).status_code == 422
     # A copied destination must not include its source's independent edits.
