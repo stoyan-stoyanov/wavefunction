@@ -16,6 +16,7 @@ from functools import partial
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import httpx
 import pytest
@@ -48,6 +49,7 @@ def server(monkeypatch):
     monkeypatch.setattr(toolkit, "_acted", partial(toolkit._acted, settle=0))
     monkeypatch.setenv("ACTION_TOKEN", "secret-token")
     spec = importlib.util.spec_from_file_location("desktop_server_under_test", SERVER_PATH)
+    assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
@@ -179,7 +181,8 @@ async def test_docker_recovery_waits_for_readiness_and_prevents_overlapping_oper
     monkeypatch.setattr(computer.tempfile, "TemporaryDirectory", staging)
     monkeypatch.setattr(computer, "image_context_dir", lambda: tmp_path)
     monkeypatch.setattr(manager, "docker", lambda: "docker")
-    manager._run, release = slow_list, asyncio.Event()
+    release = asyncio.Event()
+    manager._run = slow_list
     listing.clear()
     manager._stream_build = lambda docker, context: asyncio.sleep(0)
     assert manager.start_build()
@@ -273,7 +276,7 @@ class FakeClient:
 async def test_shutdown_drops_own_sessions_and_preserves_unknown_owners() -> None:
     runner = fake_runner({"ps": CommandResult(0, "orphan1\n", "")})
     manager = DesktopManager(docker_path="/usr/local/bin/docker", run_command=runner)
-    manager._sessions = {"one": DesktopSession("one", "ccc", 3, "t", FakeClient())}
+    manager._sessions = {"one": DesktopSession("one", "ccc", 3, "t", FakeClient())}  # type: ignore[arg-type]
 
     await manager.shutdown()
 
@@ -301,15 +304,7 @@ async def test_every_action_returns_the_screen_afterwards(server, tmp_path) -> N
     screenshot call — one model turn to act, another to see, and a timeline whose last
     picture was as stale as the model's last decision to look. The action now carries the
     screen as it looks afterwards."""
-    context = ToolContext(
-        "agent-1",
-        None,
-        FakeFiles(tmp_path),
-        None,
-        computer=FakeDesktop(server.base),
-        coding_workspace=None,  # The desktop tools never touch the chats.
-    )
-    tools = {tool.name: tool for tool in build_tools(list(COMPUTER_TOOL_NAMES), context)}
+    tools = desktop_tools(tmp_path, FakeDesktop(server.base))
 
     said = await tools["computer_click"].coroutine(x=10, y=20)
     assert said.startswith("Clicked at (10, 20) with the left button.")
@@ -343,6 +338,12 @@ class FakeFiles:
         return self.root / agent_id
 
 
+def desktop_tools(tmp_path: Path, desktop: Any) -> dict[str, Any]:
+    """The desktop tools as a task gets them. They never touch the chats, the repository or keys."""
+    context = ToolContext("agent-1", None, FakeFiles(tmp_path), None, computer=desktop, coding_workspace=None)  # type: ignore[arg-type]
+    return {tool.name: tool for tool in build_tools(list(COMPUTER_TOOL_NAMES), context)}
+
+
 async def test_a_busy_screen_is_stored_at_the_size_clicks_are_read_in(tmp_path) -> None:
     """Fine detail (a map, a photo grid) makes a PNG over the size limit. It used to be halved to
     640x400 while the tool still said 1280x800, so clicks read off it landed at half the
@@ -365,10 +366,7 @@ async def test_a_busy_screen_is_stored_at_the_size_clicks_are_read_in(tmp_path) 
         async def session(self, conversation_id: str, copy: str | None = None):
             return SimpleNamespace(conversation_id=conversation_id, client=client)
 
-    context = ToolContext(
-        "agent-1", None, FakeFiles(tmp_path), None, computer=Desktop(), coding_workspace=None
-    )
-    tools = {tool.name: tool for tool in build_tools(list(COMPUTER_TOOL_NAMES), context)}
+    tools = desktop_tools(tmp_path, Desktop())
     async with client:
         said = await tools["computer_screenshot"].coroutine()
 

@@ -444,7 +444,7 @@ class ConnectorRegistry:
             config = connection_config(server, self.secrets)
             if server.auth == "oauth":
                 config["auth"] = self.stored_oauth(server)
-            client = MultiServerMCPClient({server.name: config})
+            client = MultiServerMCPClient({server.name: config})  # type: ignore[arg-type]
             tools = await asyncio.wait_for(client.get_tools(server_name=server.name), timeout=30)
         except asyncio.CancelledError:
             raise
@@ -463,7 +463,7 @@ class ConnectorRegistry:
 
             def signatures(entry: ConnectorTools) -> list[tuple]:
                 return [
-                    (tool.name, tool.description, tool.get_input_schema().model_json_schema(), tool.metadata)
+                    (tool.name, tool.description, tool.get_input_schema().model_json_schema(), tool.metadata)  # type: ignore[attr-defined]
                     for tool in entry.tools
                 ]
 
@@ -554,7 +554,7 @@ class ConnectorRegistry:
             callback = CallbackServer(
                 preferred,
                 required=bool(setup),
-                hostname=urlparse(setup["redirect_uri"]).hostname if setup else "127.0.0.1",
+                hostname=urlparse(setup["redirect_uri"]).hostname if setup else "127.0.0.1",  # type: ignore[arg-type]
             )
         except ValueError as error:
             return ConnectorTools(server=server.name, error=str(error))
@@ -573,14 +573,15 @@ class ConnectorRegistry:
             await asyncio.to_thread(login_path)  # Asks the login shell once; not on the event loop.
             config = connection_config(server, self.secrets)
             config["auth"] = oauth_provider(server.url, server.name, self.secrets, callback)
-            client = MultiServerMCPClient({server.name: config})
+            client = MultiServerMCPClient({server.name: config})  # type: ignore[arg-type]
             await asyncio.wait_for(client.get_tools(server_name=server.name), timeout=CALLBACK_TIMEOUT + 30)
             # Tools call the server with the provider they were made with. Made with this
             # sign-in's, a token that later cannot be refreshed would open a browser from an
             # agent's tool call; with the stored tokens it asks the user to sign in again.
             config["auth"] = self.stored_oauth(server)
             tools = await asyncio.wait_for(
-                MultiServerMCPClient({server.name: config}).get_tools(server_name=server.name), timeout=30
+                MultiServerMCPClient({server.name: config}).get_tools(server_name=server.name),  # type: ignore[arg-type]
+                timeout=30,
             )
         except asyncio.CancelledError:
             raise
@@ -787,7 +788,7 @@ async def probe_server(url: str) -> dict[str, Any]:
                         client.stream(
                             "POST" if transport == "http" else "GET",
                             candidate,
-                            **(
+                            **(  # type: ignore[arg-type]
                                 {"json": INITIALIZE, "headers": PROBE_HEADERS}
                                 if transport == "http"
                                 else {"headers": {"Accept": "text/event-stream"}}

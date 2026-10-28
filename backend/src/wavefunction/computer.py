@@ -700,6 +700,7 @@ class DesktopManager:
             stderr=asyncio.subprocess.PIPE,
             env={**os.environ, "PATH": os.environ.get("PATH", "") or "/usr/bin:/bin"},
         )
+        assert process.stdout is not None and process.stderr is not None  # Both piped above.
 
         async def feed() -> None:
             if data is not None and process.stdin is not None:
@@ -1044,7 +1045,7 @@ def for_model(image: HumanMessage, request: ModelRequest) -> HumanMessage:
     and moved to such a model would otherwise fail every task, desktop or not."""
     if (getattr(request.model, "profile", None) or {}).get("image_inputs") is not False:
         return image
-    caption = image.content[0]["text"].removesuffix(SCREENSHOT_CAPTION).strip()
+    caption = image.content[0]["text"].removesuffix(SCREENSHOT_CAPTION).strip()  # type: ignore[index]
     return image.model_copy(update={"content": [{"type": "text", "text": f"{caption} {NOT_SHOWN}"}]})
 
 
@@ -1088,11 +1089,11 @@ class ComputerUseMiddleware(AgentMiddleware):
                 spliced.extend(images)
                 images = []
             spliced.append(message)
-            if index not in show:
+            if index not in show or not isinstance(message, ToolMessage):
                 continue
             image = self._load(find_sentinel(message.content))  # type: ignore[arg-type]
             if image is not None:
-                image.content[0]["text"] = (
+                image.content[0]["text"] = (  # type: ignore[index]
                     f"Screenshot from {message.name or 'tool'} (call {message.tool_call_id}). "
                     f"{SCREENSHOT_CAPTION}"
                 )
