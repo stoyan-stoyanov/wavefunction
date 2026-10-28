@@ -10,7 +10,7 @@ from contextlib import AbstractContextManager
 from datetime import UTC, datetime
 from functools import wraps
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from .database import database_connection
 from .packages import AgentPackage
@@ -235,7 +235,7 @@ class Repository:
             run = self.get_run(run_id)
             if run["status"] != "waiting_connector":
                 raise ValueError("This task is no longer waiting for account setup.")
-            spec = load_spec(run["spec"])
+            spec = load_spec(cast(dict[str, Any], run["spec"]))
             bindings = {binding.name: binding for binding in spec.tools}
             for name in tool_names:
                 bindings.setdefault(name, ToolBinding(name=name))
@@ -307,11 +307,14 @@ class Repository:
                 )
             )
 
-    def get_project_file_texts(self, project_id: str) -> list[dict[str, Any]]:
+    def get_project_file_texts(self, project_id: str, file_ids: list[str]) -> list[dict[str, Any]]:
+        """These uploads' text, oldest first; other uploads' text is never read."""
         with self._history(project_id) as connection:
             return as_dicts(
                 connection.execute(
-                    "SELECT id, name, media_type, extracted_text FROM project_files ORDER BY created_at"
+                    "SELECT id, name, media_type, extracted_text FROM project_files "
+                    "WHERE id IN (SELECT value FROM json_each(?)) ORDER BY created_at",
+                    (json.dumps(file_ids),),
                 )
             )
 
@@ -379,7 +382,7 @@ class Repository:
                     (conversation_id,),
                 )
             )
-        return hydrate_all("runs", self._owned(project_id, rows))
+        return cast(list[Run], hydrate_all("runs", self._owned(project_id, rows)))
 
     def conversation_reference_files(self, project_id: str, conversation_id: str) -> list[dict[str, Any]]:
         """Every file a run of this conversation accepted, oldest first, without loading transcripts."""
@@ -631,7 +634,7 @@ class Repository:
                 record,
             )
         self._remember_owner(record["id"], project_id)
-        return self.get_run(record["id"])
+        return cast(dict[str, Any], self.get_run(record["id"]))
 
     def get_run(self, run_id: str) -> Run:
         project_id = self._run_owner(run_id)
@@ -641,14 +644,14 @@ class Repository:
             ).fetchone()
         if row is None:
             raise KeyError("run not found")
-        return hydrate("runs", dict(row))
+        return cast(Run, hydrate("runs", dict(row)))
 
     def active_runs(self, project_id: str) -> list[Run]:
         with self._history(project_id) as connection:
             rows = connection.execute(
                 f"SELECT {RUN_FIELDS}, spec_json FROM runs WHERE status IN ('queued', 'running', 'waiting_approval', 'waiting_connector', 'waiting_computer')"
             ).fetchall()
-        return [hydrate("runs", dict(row)) for row in self._owned(project_id, rows)]
+        return [cast(Run, hydrate("runs", dict(row))) for row in self._owned(project_id, rows)]
 
     def run_analytics(self, project_id: str) -> dict:
         from .coding_analytics import run_analytics
@@ -702,7 +705,7 @@ class Repository:
             ).rowcount
         if expected_status is not None and not changed:
             raise ValueError(f"This run is no longer {expected_status.replace('_', ' ')}.")
-        return self.get_run(run_id)
+        return cast(dict[str, Any], self.get_run(run_id))
 
     def add_run_event(
         self,
@@ -791,7 +794,7 @@ class Repository:
                     (run_id, after, *(event_types or ()), -1 if limit is None else limit),
                 )
             )
-        return hydrate_all("run_events", list(reversed(rows)) if tail else rows)
+        return cast(list[RunEvent], hydrate_all("run_events", list(reversed(rows)) if tail else rows))
 
     def settle_stale_runs(self) -> int:
         """Mark runs a previous process could not finish as failed. Called once, at startup.

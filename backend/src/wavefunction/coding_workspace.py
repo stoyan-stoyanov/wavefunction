@@ -45,7 +45,7 @@ from .skills import FRONTMATTER, normalise_name, validate_skill, write_skill_mar
 from .spec_common import ModelSpec
 from .spec_v2 import AgentSpecV2, ToolBinding, ToolPolicy, load_spec
 from .terminals import TerminalManager
-from .toolkit import TOOL_REGISTRY
+from .toolkit import TOOL_REGISTRY, find_folded
 
 ACTIVE = {"queued", "running", "waiting_approval", "waiting_connector", "waiting_computer"}
 CODING_PROMPT = """You are Wavefunction, one coding agent with independent chats. Complete the agreed
@@ -331,13 +331,13 @@ class CodingWorkspace:
                 VALUES (:id, :name, :folder, :created_at, :icon, :icon_color, :position)""",
                 record,
             )
-            # A project made again for a folder takes back the chats a removed one left there,
-            # including those in worktrees made from it.
+            # A project made again for a folder takes back the chats a removed one left there, which
+            # follow its folder again, and those in worktrees made from it.
             if folder:
                 db.execute(
-                    """UPDATE coding_threads SET project_id = ? WHERE project_id IS NULL AND
-                    (folder = ? OR folder IN (SELECT folder FROM coding_worktrees WHERE source = ?))""",
-                    (record["id"], folder, folder),
+                    """UPDATE coding_threads SET project_id = ?, folder = NULLIF(folder, ?) WHERE project_id IS NULL
+                    AND (folder = ? OR folder IN (SELECT folder FROM coding_worktrees WHERE source = ?))""",
+                    (record["id"], folder, folder, folder),
                 )
                 # With the slash commands the removed project left them.
                 db.execute(
@@ -1325,7 +1325,7 @@ def register_coding_workspace(app, get_services, auth):
                     + (run.get("output") or {}).get("text", "")
                 )
                 content += "".join("\n" + text for text in steered.get(run["id"], ()))
-            at = content.casefold().find(needle)
+            at = find_folded(content, needle)
             if at >= 0:
                 matches.append({**thread, "excerpt": content[max(0, at - 40) : at + 160]})
         return matches[:100]

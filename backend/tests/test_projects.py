@@ -421,3 +421,18 @@ async def test_project_order_removal_and_return_persist_and_upgrade_old_database
     ]
     workflow = (await client.get(f"/api/coding/threads/{in_worktree['id']}/workflow")).json()
     assert (workflow["scope"], workflow["prompts"]) == ("project", [deploy])
+    # When the repository moves, the chats taken back follow the project, as its new ones do; a
+    # worktree chat keeps its worktree.
+    moved = tmp_path / "repo-moved"
+    moved.mkdir()
+    fresh = await create(client, project_id=again["id"])
+    edited = await client.patch(
+        f"/api/coding/projects/{again['id']}", json={"name": "Repo", "folder": str(moved)}
+    )
+    assert edited.status_code == 200, edited.text
+    folders = {t["id"]: t["folder"] for t in (await client.get("/api/coding/workspace")).json()["threads"]}
+    assert [folders[t["id"]] for t in (fresh, in_repo, in_worktree)] == [
+        str(moved.resolve()),
+        str(moved.resolve()),
+        in_worktree["folder"],
+    ]
