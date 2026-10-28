@@ -100,6 +100,13 @@ async def file_operation(runner: Sandbox, request: dict[str, Any], *, timeout: f
     raise (PermissionError if answer["error"] == "denied" else ValueError)(answer["message"])
 
 
+def existing_folder(folder: Path) -> Path:
+    """A command's working folder, refused before the command starts when it is not there."""
+    if not folder.is_dir():
+        raise ValueError(f"{folder} is not an existing folder, so the command did not run.")
+    return folder
+
+
 RUN_COMMAND = (
     "Run /bin/sh -c on macOS; returns exit code/output. No stdin: use noninteractive flags. "
     "Background children stop on return; start/use servers in one call. Long output returns "
@@ -179,7 +186,7 @@ def build_hands(
                     return await file_operation(runner, request)
             return await file_operation(runner, request)
         except PermissionError as error:
-            raise PermissionError(f"{error}. {denied}") from None
+            raise ToolCallRejected(f"{error}. {denied}") from None
         except ValueError as error:
             # Only a refusal because the file changed since this task read it is someone else's doing.
             if (
@@ -331,11 +338,11 @@ def build_hands(
         refuse("Local commands are disabled for this read-only run.")
         command_cwd = Path(resolved_path(workdir)) if workdir is not None else cwd
         if command_cwd is not None:
-            check_access(str(command_cwd), False)
+            check_access(str(existing_folder(command_cwd)), False)
         network = access_now() == "network"
         if timeout_seconds is not None and (not 0 < timeout_seconds < float("inf")):
             raise ValueError("timeout_seconds must be finite and positive")
-        limit = {"timeout": timeout_seconds} if timeout_seconds is not None else {}
+        limit: dict[str, Any] = {"timeout": timeout_seconds} if timeout_seconds is not None else {}
 
         def stream(stdout: str, stderr: str) -> None:
             emit_command_output(stdout, stderr)

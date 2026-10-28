@@ -123,3 +123,25 @@ describe("request destinations", () => {
     expect(unlisten).toHaveBeenCalledWith("abort", listen.mock.calls[0][1]);
   });
 });
+
+it("reads every event when a network read ends between a frame's closing CR and LF", async () => {
+  // The backend ends each line with "\r\n", and each frame with one more.
+  const frame = (sequence: number) => `id: ${sequence}\r\ndata: {"sequence":${sequence}}\r\n\r\n`;
+  const sent = frame(1) + frame(2);
+  const split = frame(1).length - 1;
+  const encoder = new TextEncoder();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response(
+      new ReadableStream({
+        start(stream) {
+          stream.enqueue(encoder.encode(sent.slice(0, split)));
+          stream.enqueue(encoder.encode(sent.slice(split)));
+          stream.close();
+        },
+      }),
+    ),
+  );
+  const events = vi.fn();
+  await streamRunEvents("r", 0, events);
+  expect(events.mock.calls.map(([event]) => event)).toEqual([{ sequence: 1 }, { sequence: 2 }]);
+});

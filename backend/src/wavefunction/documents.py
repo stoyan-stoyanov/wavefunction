@@ -45,6 +45,15 @@ def pptx_to_slides(path: Path) -> list[dict[str, Any]]:
     """Each slide as its title and body lines, with each line's indent level and whether the
     slide is a title slide, so the page can draw it the way the deck opens."""
     from pptx import Presentation
+    from pptx.shapes.group import GroupShape
+
+    def every_shape(shapes: Any) -> Any:
+        """The slide's shapes in order, with the shapes inside each group in its place."""
+        for shape in shapes:
+            if isinstance(shape, GroupShape):
+                yield from every_shape(shape.shapes)
+            else:
+                yield shape
 
     deck = Presentation(str(path))
     slides = []
@@ -53,7 +62,22 @@ def pptx_to_slides(path: Path) -> list[dict[str, Any]]:
         lines: list[str] = []
         levels: list[int] = []
         layout_name = (slide.slide_layout.name or "").lower()
-        for shape in slide.shapes:
+        for shape in every_shape(slide.shapes):
+            # A table reads as one line a row, and a chart as its title.
+            if shape.has_table:
+                for row in shape.table.rows:
+                    cells = [" ".join(cell.text.split()) for cell in row.cells]
+                    if any(cells):
+                        lines.append(" | ".join(cells))
+                        levels.append(0)
+                continue
+            if shape.has_chart:
+                chart = shape.chart
+                titled = chart.has_title and chart.chart_title.has_text_frame
+                if titled and (text := chart.chart_title.text_frame.text.strip()):
+                    lines.append(text)
+                    levels.append(0)
+                continue
             if not shape.has_text_frame:
                 continue
             if shape == slide.shapes.title:
@@ -105,7 +129,19 @@ def docx_to_markdown(path: Path, *, include_title: bool = False) -> str:
                 pieces.append(text)
         return ("".join(pieces) or paragraph.text).strip()
 
-    for child in document.element.body.iterchildren():
+    def blocks(parent: Any) -> Any:
+        """Paragraphs and tables in order, reading a content control's content in its place."""
+        for child in parent.iterchildren():
+            if child.tag == qn("w:sdt"):
+                content = child.find(qn("w:sdtContent"))
+                # An empty one shows Word's prompt, such as "Click or tap here to enter text".
+                empty = child.find(f"{qn('w:sdtPr')}/{qn('w:showingPlcHdr')}") is not None
+                if content is not None and not empty:
+                    yield from blocks(content)
+            else:
+                yield child
+
+    for child in blocks(document.element.body):
         if child.tag == qn("w:p"):
             paragraph = Paragraph(child, document)
             style = (paragraph.style.name if paragraph.style is not None else "") or ""

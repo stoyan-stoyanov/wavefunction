@@ -2,7 +2,7 @@
 
 The desktop shell keeps one request waiting for them (`wait`), answered as soon as a task ends or
 pauses, and shows each one as a macOS notification unless its chat is on screen. Helpers never
-notify: their main chat does when it finishes.
+notify: their main chat does, when it finishes or while a helper waits on the user's card.
 """
 
 from __future__ import annotations
@@ -21,6 +21,8 @@ NEEDS_INPUT = {
     "run_waiting_for_approval": "Needs your approval to continue.",
     "run_connector_setup_required": "Needs you to connect a service.",
     "run_computer_takeover": "Needs you on its desktop.",
+    # Written on the main task, held open until the user answers its helper's card.
+    "helper_waiting": "A helper needs you.",
 }
 # Read per request; a burst longer than this is picked up by the next ones.
 BATCH = 20

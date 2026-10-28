@@ -42,9 +42,9 @@ FILE_TYPES = {
 ALLOWED_MEDIA_TYPES = set(FILE_TYPES.values()) | {"application/csv", "text/yaml", "text/xml"}
 
 
-def readable_documents(repository: Repository, agent_id: str) -> list[dict[str, Any]]:
-    """Uploaded reference text; each task filters this inventory to its captured file IDs."""
-    return repository.get_project_file_texts(agent_id)
+def readable_documents(repository: Repository, agent_id: str, file_ids: list[str]) -> list[dict[str, Any]]:
+    """Uploaded reference text of the file IDs a task captured."""
+    return repository.get_project_file_texts(agent_id, file_ids)
 
 
 def safe_filename(value: str) -> str:
@@ -62,7 +62,7 @@ def extract_text(path: Path, media_type: str, filename: str) -> str:
             with Image.open(path) as image:
                 # A camera JPEG with a large embedded preview opens as MPO; it is still a JPEG,
                 # and its first frame is the photo.
-                if Image.MIME.get(image.format) != media_type and not (
+                if Image.MIME.get(image.format or "") != media_type and not (
                     image.format == "MPO" and media_type == "image/jpeg"
                 ):
                     raise ValueError("image type does not match the file")

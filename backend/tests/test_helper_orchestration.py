@@ -77,11 +77,13 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
                     assert "[exit code 0]" in message.content, message.content
                 if isinstance(message, ToolMessage) and message.tool_call_id == "fetch-alpha":
                     assert message.status == "success", message.content
-                    assert json.loads(message.content)["remote"] == "origin"
+                    assert json.loads(str(message.content))["remote"] == "origin"
             result = await super()._agenerate(messages, **kwargs)
-            for call in result.generations[0].message.tool_calls:
-                if call["id"].startswith("git-"):
-                    name = call["id"].removeprefix("git-")
+            reply = result.generations[0].message
+            assert isinstance(reply, AIMessage)
+            for call in reply.tool_calls:
+                if str(call["id"]).startswith("git-"):
+                    name = str(call["id"]).removeprefix("git-")
                     sibling = next(child for key, child in children.items() if key != name)
                     sibling_git = Path(git(sibling["folder"], "rev-parse", "--absolute-git-dir"))
                     for target in [sibling_git / "index", folder / ".git/HEAD", folder / "other.txt"]:
@@ -103,7 +105,7 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
                 if f"spawn-{name}" in tools:
                     spawned = tools[f"spawn-{name}"]
                     assert spawned.status == "success", spawned.content
-                    children[name] = json.loads(spawned.content)
+                    children[name] = json.loads(str(spawned.content))
             if self._cursor == 0:
                 message = tool_call_message("read_file", {"path": "other.txt"}, "read-parent")
             elif self._cursor == 1:
@@ -139,7 +141,7 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
                     "steer-alpha",
                 )
             elif self._cursor == 8:
-                assert json.loads(tools["steer-alpha"].content)["run_id"] == children["alpha"]["run_id"]
+                assert json.loads(str(tools["steer-alpha"].content))["run_id"] == children["alpha"]["run_id"]
                 message = AIMessage(content="Premature final answer while helpers still work")
             elif self._cursor == 9:
                 assert any("Helpers still need attention" in str(item.content) for item in messages)
@@ -154,7 +156,7 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
                     "wait-steering",
                 )
             elif self._cursor == 10:
-                assert json.loads(tools["wait-steering"].content)["reason"] == "steering"
+                assert json.loads(str(tools["wait-steering"].content))["reason"] == "steering"
                 user_messages = [str(item.content) for item in messages if isinstance(item, HumanMessage)]
                 assert any(
                     "Coordinate four helpers without losing the parent change" in text
@@ -176,7 +178,7 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
             elif self._cursor == 11:
                 observed = json.loads(
                     next(
-                        message.content
+                        str(message.content)
                         for message in reversed(messages)
                         if isinstance(message, ToolMessage) and message.name == "wait_agents"
                     )
@@ -205,7 +207,21 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
                     assert services.repository.conversation_summary(
                         ws.agent_id, ws.thread(question["agent_id"])["conversation_id"]
                     )["asks_questions"]
-                    if "permission-gamma" not in tools:
+                    if "question-gamma" not in tools:
+                        # Only the parent can answer a question it already received: waiting
+                        # for it again cannot change anything.
+                        message = tool_call_message(
+                            "wait_agents",
+                            {
+                                "agent_ids": [question["agent_id"]],
+                                "timeout_seconds": 5,
+                                "after": {question["agent_id"]: question["cursor"]},
+                            },
+                            "question-gamma",
+                        )
+                    elif "permission-gamma" not in tools:
+                        assert json.loads(str(tools["question-gamma"].content))["reason"] == "needs_answer"
+                        assert tools["question-gamma"].artifact == {"polled": False}
                         # Ordinary clarifications belong to the parent; an approval card
                         # does not. Model the latter pause without executing any command.
                         with pytest.raises(ValueError, match="running parent"):
@@ -262,7 +278,7 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
                         )
                     else:
                         observations.pop("pause_override").undo()
-                        assert json.loads(tools["needs-user-gamma"].content)["reason"] == "needs_user"
+                        assert json.loads(str(tools["needs-user-gamma"].content))["reason"] == "needs_user"
                         assert tools["needs-user-gamma"].artifact == {"polled": False}
                         assert not observations["user_wait"].done()
                         message = tool_call_message(
@@ -298,7 +314,7 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
             elif self._cursor == 12:
                 # Answering Gamma changed its status, which ended that wait.
                 await asyncio.wait_for(observations.pop("user_wait"), 5)
-                reread = json.loads(tools["reread-alpha"].content)
+                reread = json.loads(str(tools["reread-alpha"].content))
                 assert reread["diff"] == results[children["alpha"]["agent_id"]]["diff"]
                 assert reread["cursor"] == results[children["alpha"]["agent_id"]]["cursor"]
                 assert reread["result_commit"] == results[children["alpha"]["agent_id"]]["result_commit"]
@@ -316,7 +332,7 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
                     "unchanged",
                 )
             elif self._cursor == 13:
-                unchanged = json.loads(tools["unchanged"].content)
+                unchanged = json.loads(str(tools["unchanged"].content))
                 assert unchanged["reason"] == "settled"
                 assert all(
                     child["unchanged"] and not ({"output", "diff", "events"} & child.keys())
@@ -425,7 +441,7 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
                 messages = state.checkpoint["channel_values"]["messages"]
                 tool_answer = json.loads(
                     next(
-                        message.content
+                        str(message.content)
                         for message in messages
                         if isinstance(message, ToolMessage) and message.tool_call_id == "ask-gamma"
                     )

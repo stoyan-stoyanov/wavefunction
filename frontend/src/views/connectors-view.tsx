@@ -162,7 +162,7 @@ function ConnectorFields({ draft, setDraft }: { draft: Draft; setDraft: (draft: 
                 show up in `ps`, so servers read it from the environment instead. */}
           <PairEditor
             label="Environment"
-            hint="Most servers take their token here, e.g. GITHUB_PERSONAL_ACCESS_TOKEN."
+            hint="Most servers take their token here, e.g. GITHUB_PERSONAL_ACCESS_TOKEN. $NAME reads a saved key; write $$NAME for a literal $NAME."
             pairs={draft.env}
             onChange={(env) => setDraft({ ...draft, env })}
           />
@@ -207,7 +207,7 @@ function ConnectorFields({ draft, setDraft }: { draft: Draft; setDraft: (draft: 
           ) : (
             <PairEditor
               label="Headers"
-              hint="Write $NAME to read the value from a saved key instead of storing it here."
+              hint="Write $NAME to read the value from a saved key instead of storing it here, or $$NAME for a literal $NAME."
               pairs={draft.headers}
               onChange={(headers) => setDraft({ ...draft, headers })}
             />

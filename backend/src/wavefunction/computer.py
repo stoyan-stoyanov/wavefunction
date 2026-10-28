@@ -700,6 +700,7 @@ class DesktopManager:
             stderr=asyncio.subprocess.PIPE,
             env={**os.environ, "PATH": os.environ.get("PATH", "") or "/usr/bin:/bin"},
         )
+        assert process.stdout is not None and process.stderr is not None  # Both piped above.
 
         async def feed() -> None:
             if data is not None and process.stdin is not None:
@@ -1008,6 +1009,9 @@ def save_screenshot(files: Any, agent_id: str, conversation_id: str, png: bytes)
 
 
 def _bounded(png: bytes) -> bytes:
+    """A busy screen (a map, a photo grid) cut to 256 colours, not scaled down: the model reads
+    click coordinates off the image, which must stay the 1280x800 it is told. At one byte a
+    pixel even pure noise at that size is under 1 MB."""
     if len(png) <= MAX_SCREENSHOT_BYTES:
         return png
     try:
@@ -1016,9 +1020,9 @@ def _bounded(png: bytes) -> bytes:
         from PIL import Image
 
         with Image.open(io.BytesIO(png)) as image:
-            scaled = image.reduce(2)
+            reduced = image.quantize(256, method=Image.Quantize.FASTOCTREE)
             buffer = io.BytesIO()
-            scaled.save(buffer, format="PNG")
+            reduced.save(buffer, format="PNG")
             return buffer.getvalue()
     except Exception:  # noqa: BLE001 - an oversized screenshot beats no screenshot
         return png
@@ -1041,7 +1045,7 @@ def for_model(image: HumanMessage, request: ModelRequest) -> HumanMessage:
     and moved to such a model would otherwise fail every task, desktop or not."""
     if (getattr(request.model, "profile", None) or {}).get("image_inputs") is not False:
         return image
-    caption = image.content[0]["text"].removesuffix(SCREENSHOT_CAPTION).strip()
+    caption = image.content[0]["text"].removesuffix(SCREENSHOT_CAPTION).strip()  # type: ignore[index]
     return image.model_copy(update={"content": [{"type": "text", "text": f"{caption} {NOT_SHOWN}"}]})
 
 
@@ -1085,11 +1089,11 @@ class ComputerUseMiddleware(AgentMiddleware):
                 spliced.extend(images)
                 images = []
             spliced.append(message)
-            if index not in show:
+            if index not in show or not isinstance(message, ToolMessage):
                 continue
             image = self._load(find_sentinel(message.content))  # type: ignore[arg-type]
             if image is not None:
-                image.content[0]["text"] = (
+                image.content[0]["text"] = (  # type: ignore[index]
                     f"Screenshot from {message.name or 'tool'} (call {message.tool_call_id}). "
                     f"{SCREENSHOT_CAPTION}"
                 )

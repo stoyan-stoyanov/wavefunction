@@ -90,9 +90,14 @@ async def test_a_chat_starts_routines_that_run_on_their_own_and_report_back_only
     assert await ws.routines.tick(now + timedelta(minutes=5)) == []
     assert len(services.repository.list_conversation_runs(ws.agent_id, parent["conversation_id"])) == 2
 
+    # A new interval still counts from the last run, so changing it does not start a run now.
+    url = f"/api/coding/threads/{watch['id']}/routine"
+    slower = (await client.patch(url, json={"timing": {"kind": "interval", "every_seconds": 1800}})).json()
+    assert slower["next_run_at"] == (now + timedelta(minutes=30)).isoformat()
+    assert await ws.routines.tick(now + timedelta(minutes=10)) == []
+
     # Paused, it does not run; it reports only to another chat in its project; it keeps running,
     # without reports, once the chat that made it is deleted; stopped, its chat stays.
-    url = f"/api/coding/threads/{watch['id']}/routine"
     paused = (await client.patch(url, json={"enabled": False})).json()
     assert paused["enabled"] is False and paused["next_run_at"] is None
     assert await ws.routines.tick(now + timedelta(hours=1)) == []

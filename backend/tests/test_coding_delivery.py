@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import tempfile
+import unicodedata
 from pathlib import Path
 from unittest.mock import patch
 
@@ -168,6 +169,11 @@ async def test_changes_tab_diffs_staged_unstaged_renamed_and_copied_files(coding
     for filename in ("a.txt", "renamed.txt"):
         recreated = (await client.get(endpoint, params={"path": filename, "combined": True})).json()
         assert recreated["warning"] and not recreated["diff"]
+    # A case-only rename recreates nothing, though a case-insensitive volume finds the old name.
+    git(folder, "mv", "other.txt", "Other.txt")
+    cased = (await client.get(endpoint, params={"path": "Other.txt", "combined": True})).json()
+    assert not cased["warning"] and "rename from other.txt" in cased["diff"]
+    git(folder, "mv", "Other.txt", "other.txt")
     assert (await client.get(endpoint, params={"path": "../outside", "combined": True})).status_code == 422
     assert (await client.get(endpoint, params={"path": ".git/config", "combined": True})).status_code == 422
     # A copied destination must not include its source's independent edits.
@@ -215,6 +221,50 @@ def test_git_state_counts_unlisted_changes_and_flags_conflicts(tmp_path):
         current = coding_git_ops.state(folder.resolve())
     assert [file["path"] for file in current["files"]] == ["a.txt"] and current["total_files"] == 2
     assert current["conflicted"]
+
+
+@pytest.mark.sandbox
+async def test_new_worktree_chat_under_a_folder_name_stored_decomposed(coding, tmp_path):
+    # Finder stores an accented folder name decomposed (NFD); Git on macOS records it precomposed.
+    client, ws, _ = coding
+    parent = tmp_path / unicodedata.normalize("NFD", "Développement")
+    parent.mkdir()
+    folder = repository(parent)
+    response = await client.post("/api/coding/threads", json={"folder": str(folder), "worktree": True})
+    assert response.status_code == 201, response.text
+    thread = response.json()
+    branch = f"codex/chat-{thread['id'][:8]}"
+    assert (await state(client, thread))["branch"] == branch
+    assert (Path(thread["folder"]) / "a.txt").read_text() == "before\n"
+    # Removing the checkout first finds it among its repository's worktrees; only that check runs.
+    checked = await ws.cleanup.git(ws.delivery.worktree(thread["id"]), "worktree_cleanup_check")
+    assert (checked["head"], checked["branch"]) == (git(folder, "rev-parse", "HEAD"), branch)
+
+
+@pytest.mark.sandbox
+async def test_a_message_to_a_worktree_replaced_by_a_link_is_refused(coding, tmp_path):
+    client, ws, _ = coding
+    folder = repository(tmp_path)
+    response = await client.post("/api/coding/threads", json={"folder": str(folder), "worktree": True})
+    thread = response.json()
+    # The checkout moved aside and a link left where it was registered (a rename, no removal).
+    checkout = Path(ws.delivery.worktree(thread["id"])["folder"])
+    checkout.rename(tmp_path / "elsewhere")
+    checkout.symlink_to(tmp_path / "elsewhere", target_is_directory=True)
+    with pytest.raises(ValueError, match="replaced by a link"):
+        await ws.send(thread["id"], "Continue")
+
+
+@pytest.mark.sandbox
+async def test_a_git_file_in_a_writable_folder_reaches_no_other_repository(coding, tmp_path):
+    _, ws, services = coding
+    main = repository(tmp_path)
+    # A worktree made outside the app: its .git file is the agent's to rewrite, so it could name
+    # any registration Git keeps, such as one left by a folder deleted without `git worktree remove`.
+    feature = tmp_path / "feature"
+    git(main, "worktree", "add", "-b", "feature", str(feature))
+    ws.allow_folder(str(feature))
+    assert ws.checkout_access(feature)[0] == services.grants()
 
 
 async def recorded(ws, thread, folder, mutate):
@@ -514,7 +564,9 @@ class FakeGitHub:
         if request.url.path.endswith("/git-receive-pack"):
             if request.headers.get("content-encoding") == "gzip":
                 body = gzip.decompress(body)
-            updates, _ = ref_updates(body)
+            parsed = ref_updates(body)
+            assert parsed is not None
+            updates, _ = parsed
             self.refs.update({ref: new for _, new, ref in updates})
             report = (
                 b"".join(

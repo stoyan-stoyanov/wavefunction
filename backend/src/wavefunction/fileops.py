@@ -13,6 +13,7 @@ import base64
 import bisect
 import codecs
 import difflib
+import errno
 import fcntl
 import hashlib
 import json
@@ -344,6 +345,7 @@ def read(request: dict) -> dict:
             return {"text": page, "version": version}
         except UnicodeDecodeError:
             continue
+    raise AssertionError("Latin-1 decodes any bytes.")
 
 
 def _changed(path: str) -> Refused:
@@ -614,6 +616,7 @@ def search(request: dict) -> dict:
     args += ["--", path]
     with tempfile.TemporaryFile() as errors:
         process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=errors)
+        assert process.stdout is not None
         shown, used, more, exhausted = [], 0, False, False
         try:
             index = 0
@@ -886,6 +889,7 @@ def restore_files(request):
         ):
             return path, None, "absent", None
         info = _regular(str(path))
+        assert info is not None
         if info.st_size > max_bytes:
             raise Refused("changed", f"{relative} is too large to restore safely.")
         raw = path.read_bytes()
@@ -975,11 +979,16 @@ def run(request: dict) -> dict:
             "message": f"File not found: {error.filename or request.get('path')}",
         }
     except PermissionError as error:
-        return {
-            "ok": False,
-            "error": "denied",
-            "message": f"Permission denied: {error.filename or request.get('path')}",
-        }
+        path = error.filename or request.get("path")
+        if error.errno == errno.EACCES and request["op"] in {"write", "edit"}:
+            # The file's own permissions said no; the sandbox's refusal is EPERM.
+            return {
+                "ok": False,
+                "error": "read_only",
+                "message": f"{path} is read-only: its file permissions don't allow changes, "
+                "and granting folder access won't change that.",
+            }
+        return {"ok": False, "error": "denied", "message": f"Permission denied: {path}"}
     except OSError as error:
         return {
             "ok": False,

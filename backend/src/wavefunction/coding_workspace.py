@@ -45,7 +45,8 @@ from .skills import FRONTMATTER, normalise_name, validate_skill, write_skill_mar
 from .spec_common import ModelSpec
 from .spec_v2 import AgentSpecV2, ToolBinding, ToolPolicy, load_spec
 from .terminals import TerminalManager
-from .toolkit import TOOL_REGISTRY
+from .toolkit import TOOL_REGISTRY, find_folded
+from .worktree_access import linked_worktree_grants
 
 ACTIVE = {"queued", "running", "waiting_approval", "waiting_connector", "waiting_computer"}
 CODING_PROMPT = """You are Wavefunction, one coding agent with independent chats. Complete the agreed
@@ -331,13 +332,13 @@ class CodingWorkspace:
                 VALUES (:id, :name, :folder, :created_at, :icon, :icon_color, :position)""",
                 record,
             )
-            # A project made again for a folder takes back the chats a removed one left there,
-            # including those in worktrees made from it.
+            # A project made again for a folder takes back the chats a removed one left there, which
+            # follow its folder again, and those in worktrees made from it.
             if folder:
                 db.execute(
-                    """UPDATE coding_threads SET project_id = ? WHERE project_id IS NULL AND
-                    (folder = ? OR folder IN (SELECT folder FROM coding_worktrees WHERE source = ?))""",
-                    (record["id"], folder, folder),
+                    """UPDATE coding_threads SET project_id = ?, folder = NULLIF(folder, ?) WHERE project_id IS NULL
+                    AND (folder = ? OR folder IN (SELECT folder FROM coding_worktrees WHERE source = ?))""",
+                    (record["id"], folder, folder, folder),
                 )
                 # With the slash commands the removed project left them.
                 db.execute(
@@ -691,7 +692,7 @@ class CodingWorkspace:
             if unanswered:
                 await asyncio.gather(*(connectors.refresh(server) for server in unanswered))
         names = set(TOOL_REGISTRY) | set(connectors.tools())
-        self.checkout_access(folder)
+        folder = self.checked_folder(folder)
         inventory = await asyncio.to_thread(
             discover, folder, self.services.skills, grants=self.services.grants()
         )
@@ -828,7 +829,7 @@ class CodingWorkspace:
                 # A fork or rewind copies tasks without their specs; the tasks they came from keep
                 # theirs. Followed back, through forks of forks, to the newest one still saved.
                 last = next(filter(None, map(self._original_with_spec, runs)), None)
-                update["working_directory"] = self.effective_folder(thread, resolve=False)
+                update["working_directory"] = self.effective_folder(thread)
             if last is None:
                 raise ValueError("There is nothing to compact yet.")
             await self.cleanup.restore(thread_id)
@@ -906,83 +907,17 @@ class CodingWorkspace:
                 grants = [Grant(g.path, g.writable and g.path.is_relative_to(folder)) for g in grants]
         return self.worktree_grants(folder, grants), owner["thread_id"] if owner else None
 
+    def checked_folder(self, folder):
+        """A message's folder checked as stored, so a managed worktree replaced by a link is
+        refused, then resolved, so code history still matches once it moves behind a symlink."""
+        self.checkout_access(folder)
+        return folder and str(Path(folder).resolve())
+
     def worktree_grants(self, folder, grants):
-        """Grant registered worktree metadata only while its checkout is writable.
-
-        Worktrees share objects and refs, but keep their own HEAD/index. Anchor
-        discovery to the saved source and reciprocal Git registration, never just
-        the child-controlled .git file. No subprocess or persisted extra grant.
-        """
-        if folder is None:
+        """Add a managed worktree's shared Git metadata once its registration is verified."""
+        if folder is None or not (source := self.worktree_source(folder)):
             return grants
-        folder = Path(folder)
-        with self.db() as db:
-            owned = db.execute(
-                "SELECT source FROM coding_worktrees WHERE folder = ?", (str(folder),)
-            ).fetchone()
-        if not owned:
-            return grants
-        source = Path(owned["source"])
-        if folder.resolve() != folder or source.resolve() != source:
-            raise ValueError("The managed checkout was replaced by a link.")
-
-        def pointer(path, base, prefix=""):
-            if path.is_symlink():
-                raise ValueError("Linked Git metadata cannot be granted.")
-            value = path.read_text().strip()
-            if not value.startswith(prefix) or not value.removeprefix(prefix):
-                raise ValueError("Invalid worktree Git metadata.")
-            return (base / value.removeprefix(prefix)).resolve()
-
-        try:
-            original = source / ".git"
-            common = original if original.is_dir() else pointer(original, source, "gitdir: ")
-            if (common / "commondir").exists():
-                common = pointer(common / "commondir", common)
-            admin = pointer(folder / ".git", folder, "gitdir: ")
-            if (
-                common.resolve() != common
-                or admin.parent != common / "worktrees"
-                or pointer(admin / "commondir", admin) != common
-                or pointer(admin / "gitdir", admin) != folder / ".git"
-            ):
-                raise ValueError("The worktree's Git registration no longer matches its saved source.")
-            paths = [
-                admin,
-                *(
-                    common / name
-                    for name in (
-                        "objects",
-                        "refs",
-                        "logs/refs",
-                        "lfs",
-                        "packed-refs",
-                        "packed-refs.lock",
-                        "packed-refs.new",
-                        "shallow",
-                        "shallow.lock",
-                    )
-                ),
-            ]
-            if any(path.resolve() != path for path in paths):
-                raise ValueError("Linked Git metadata cannot be granted.")
-        except OSError as error:
-            raise ValueError("The managed worktree's Git registration is unavailable.") from error
-        if not any(g.writable and folder.is_relative_to(g.path) for g in grants):
-            return grants
-        # Avoid redundant paths in both the sandbox and the model's access context.
-        additions = [Grant(common), *(Grant(path, True) for path in paths)]
-        return [
-            *grants,
-            *(
-                g
-                for g in additions
-                if not any(
-                    g.path.is_relative_to(existing.path) and (not g.writable or existing.writable)
-                    for existing in grants
-                )
-            ),
-        ]
+        return linked_worktree_grants(Path(folder), grants, Path(source))
 
     def runner(self, folder=None):
         grants, owner = self.checkout_access(folder)
@@ -1325,7 +1260,7 @@ def register_coding_workspace(app, get_services, auth):
                     + (run.get("output") or {}).get("text", "")
                 )
                 content += "".join("\n" + text for text in steered.get(run["id"], ()))
-            at = content.casefold().find(needle)
+            at = find_folded(content, needle)
             if at >= 0:
                 matches.append({**thread, "excerpt": content[max(0, at - 40) : at + 160]})
         return matches[:100]

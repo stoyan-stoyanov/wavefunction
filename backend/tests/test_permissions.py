@@ -451,3 +451,31 @@ async def test_folder_access_approval_rejection_and_native_command_boundary(codi
         for m in saved.checkpoint["channel_values"]["messages"]
         if isinstance(m, ToolMessage) and m.tool_call_id == "approved"
     ] == [INTERRUPTED_CALL]
+
+
+@pytest.mark.sandbox
+async def test_a_toolchain_on_path_reads_its_install_folder_but_home_stays_closed(tmp_path, monkeypatch):
+    from wavefunction import sandbox
+
+    # Go's installer puts /usr/local/go/bin on PATH, and its tools read the sources beside it.
+    # In home a bin can sit beside credentials, as ~/.cargo/bin does.
+    install, home, project = tmp_path / "go", tmp_path / "home", tmp_path / "project"
+    (install / "src").mkdir(parents=True)
+    (install / "src/runtime.go").write_text("package runtime\n")
+    (home / ".cargo").mkdir(parents=True)
+    (home / ".cargo/credentials.toml").write_text("SYNTHETIC_TOKEN\n")
+    project.mkdir()
+    tools = {install / "bin/gotool": "src/runtime.go", home / ".cargo/bin/cargotool": "credentials.toml"}
+    for tool, read in tools.items():
+        tool.parent.mkdir()
+        tool.write_text(f'#!/bin/sh\ncat "$(dirname "$0")/../{read}"\n')
+        tool.chmod(0o755)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
+    monkeypatch.setattr(sandbox, "login_path", lambda: (str(install / "bin"), str(home / ".cargo/bin")))
+    # As a task runs its commands: reads limited to its folders and toolchain support.
+    box = sandbox.Sandbox(
+        [sandbox.Grant(project, writable=True)], scratch=tmp_path / "scratch", restrict_reads=True
+    )
+    result = await box.run("gotool; cargotool", cwd=project)
+    assert "package runtime" in result.stdout, result.stderr
+    assert "SYNTHETIC_TOKEN" not in result.stdout and "Operation not permitted" in result.stderr

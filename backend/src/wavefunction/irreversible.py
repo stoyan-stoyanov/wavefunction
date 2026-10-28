@@ -248,6 +248,9 @@ VALUE_OPTIONS = {
     "pipx": {"--spec", "--python", "--index-url", "--pip-args"},
 }
 VALUE_OPTIONS["pnpx"] = VALUE_OPTIONS["pnpm"] | {"--package", "-p"}
+# Package managers' own commands that uninstall a dependency (`npm rm lodash`), not file deletes.
+PACKAGE_MANAGERS = {"npm", "pnpm", "yarn", "bun"}
+UNINSTALLS = {"rm", "remove", "uninstall", "un", "unlink", "r"}
 # This deliberate cleanup exemption does not claim these folders are backed up.
 GENERATED = {"node_modules", ".venv", "venv", "__pycache__", "target", "dist", "build", ".next"}
 DELETERS = {"rm", "unlink", "shred", "srm"}
@@ -308,7 +311,7 @@ def command_danger(
     None marks a disposable root; a set contains the exact files with recovery bytes. Unknown
     directory/glob contents ask, rather than treating ignored or omitted files as backed up.
     """
-    undoable = {scratch: None}
+    undoable: dict[Path, set[Path] | None] = {scratch: None}
     if project is not None and (project / ".git").exists():
         root = project.resolve()
         undoable[root] = {
@@ -329,6 +332,7 @@ def irreversible(
     recoverable or harmless; relative paths resolve against `cwd`."""
     if depth > 3:
         return NESTED
+    command = _heredoc_data(command) or command
     try:
         lexed = _lex(command)
     except ValueError:
@@ -402,6 +406,40 @@ def irreversible(
     return DATABASE if database and any(SQL.search(text) for text in (command, *tokens)) else None
 
 
+# A here-document is data, not commands, when the whole command only writes it to a file with cat
+# or tee, or gives it to git as a commit or tag message: with its word quoted, the shell expands
+# nothing in it. Any other shape, or anything before or after it, is read as commands.
+HEREDOC = re.compile(
+    r"""(?P<before>[^\n]*?)<<(?P<strip>-?)[ \t]*(?P<quote>['"])(?P<word>[^'"\s]+)(?P=quote)(?P<after>.*)"""
+)
+GIT_MESSAGE = r"\s*git\s+(?:commit|tag)\s[^|&;<>()`$#\n]*?"
+HEREDOC_READERS = re.compile(
+    rf"""\s*(?:cat\s*>>?\s*[^\s|&;<>()`$'"#]+|tee(?:\s+-a)?\s+[^\s|&;<>()`$'"#]+|{GIT_MESSAGE}(?:-F\s*-|--file[=\s]-)[^|&;<>()`$#\n]*)\s*"""
+)
+
+
+def _heredoc_data(command: str) -> str | None:
+    """The command without its here-document when the whole of it is one of those shapes."""
+    first, *lines = command.strip("\n").split("\n")
+    opener = HEREDOC.fullmatch(first)
+    if not opener or not lines:
+        return None
+    before, after = opener["before"], opener["after"]
+    # `git commit -m "$(cat <<'EOF' ... EOF\n)"`
+    message = re.fullmatch(rf"({GIT_MESSAGE}-m\s*)\"\$\(cat\s*", before)
+    if message and not after.strip() and lines[-1].strip() == ')"':
+        before, lines = message[1] + "message", lines[:-1]
+    elif not HEREDOC_READERS.fullmatch(before + after):
+        return None
+    ends = [
+        i
+        for i, line in enumerate(lines)
+        if (line.lstrip("\t") if opener["strip"] else line) == opener["word"]
+    ]
+    # The first line that is the word ends it, and any line after that is a command.
+    return before + after if ends and ends[0] == len(lines) - 1 else None
+
+
 def _lex(command: str) -> list[tuple[str, bool]]:
     # shlex strips quotes/escapes before returning tokens. Preserve literal punctuation
     # so find's \( ... \) and -exec ... \; remain arguments, not shell boundaries.
@@ -440,16 +478,20 @@ def _lex(command: str) -> list[tuple[str, bool]]:
 def _unwrap(words: list[str]) -> tuple[str, list[str], bool]:
     """The program a command runs past variable assignments and wrappers such as sudo, its
     arguments, and whether xargs feeds it."""
-    index, piped, wrapper = 0, False, ""
+    index, piped, wrapper, manager = 0, False, "", ""
     while index < len(words):
         word = words[index]
         if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", word):
             index += 1
             continue
+        # Only the bare word: `pnpm /bin/rm` runs that program.
+        if manager and word in UNINSTALLS:
+            return manager, words[index:], piped
         name = Path(word).name
         if name not in WRAPPERS:
             return word, words[index + 1 :], piped
         piped = piped or name == "xargs"
+        manager = name if name in PACKAGE_MANAGERS else ""
         # Options after `uv run`, `npm exec`, etc. still belong to that launcher.
         if name not in {"run", "exec", "dlx"}:
             wrapper = name
@@ -506,7 +548,7 @@ def _within(target: str, cwd: Path | None, roots: dict[Path, set[Path] | None], 
     # Their unexpanded path cannot establish a disposable or captured target.
     if any(char in target for char in "{}$") or (cwd is None and not Path(target).is_absolute()):
         return False
-    path = Path(target) if Path(target).is_absolute() else cwd / target
+    path = Path(target) if cwd is None or Path(target).is_absolute() else cwd / target
     has_pattern = any(c in target for c in "*?[")
     if has_pattern and (".." in path.parts or target.endswith(("/", "/."))):
         return False

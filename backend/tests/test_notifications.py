@@ -9,7 +9,8 @@ from support import create
 
 async def test_notifications_report_a_chat_that_finished_or_needs_the_user_unless_it_is_in_view(coding):
     """The desktop shell waits for news with a cursor and the chat on screen. A chat's own task notifies
-    when it ends or pauses for the user; its helpers and a compaction do not."""
+    when it ends or pauses for the user, or a helper waits on the user's card; a helper's own task
+    and a compaction do not."""
     from wavefunction.coding_workspace import ThreadInput
 
     client, ws, services = coding
@@ -77,6 +78,18 @@ async def test_notifications_report_a_chat_that_finished_or_needs_the_user_unles
         (research["id"], "Has a question for you.")
     ]
     await services.runtime.wait(question["id"])
+    # A helper waiting on the user's card holds its main task open, with no idle limit: the
+    # main chat notifies for it, from the event the runtime copies onto that task.
+    deploy = await create(client)
+    held = services.repository.create_run(
+        ws.agent_id, {"text": "Deploy it"}, deploy["conversation_id"], spec=None
+    )
+    services.repository.update_run(held["id"], status="running")
+    services.repository.add_run_event(held["id"], "helper_waiting", {"title": "Deployer"})
+    helper_waits = await pending(after=asking["cursor"])
+    assert [(item["thread_id"], item["body"]) for item in helper_waits["items"]] == [
+        (deploy["id"], "A helper needs you.")
+    ]
 
     async def configure(**change):
         current = (await client.get("/api/notifications/settings")).json()
@@ -91,6 +104,7 @@ async def test_notifications_report_a_chat_that_finished_or_needs_the_user_unles
     assert private["sound"] is False
     assert [(item["title"], item["body"]) for item in private["items"]] == [
         ("Wavefunction", "A task finished."),
+        ("Wavefunction", "A task needs your input."),
         ("Wavefunction", "A task needs your input."),
     ]
     await configure(desktop=False)

@@ -7,6 +7,7 @@ import json
 import os
 import re
 import subprocess
+import unicodedata
 from pathlib import Path
 
 
@@ -240,8 +241,15 @@ def diff(root, name, staged=False, combined=False):
                     original = os.fsdecode(entries[i])
                     i += 1
                     if "R" in entry[:2].decode() and os.fsdecode(entry[3:]) == name:
+                        from .fileops import _spelled
+
                         original = path(root, original)
-                        if (root / original).exists() and not git(root, "ls-files", "--", original).strip():
+                        # Exactly that spelling: a case-insensitive volume also finds a case-only rename's new name.
+                        if (
+                            (root / original).exists()
+                            and _spelled(root, original)
+                            and not git(root, "ls-files", "--", original).strip()
+                        ):
                             return recreated_warning
                         paths.append(original)
             result = git(root, "diff", "--no-ext-diff", "--no-textconv", "HEAD", "--", *paths)
@@ -281,11 +289,13 @@ def registered_worktree(root, destination, *, missing_ok=False):
     ):
         raise ValueError("The managed checkout is missing or linked.")
     entries = git(root, "worktree", "list", "--porcelain", "-z").split(b"\0\0")
+    # Git on macOS lists paths precomposed (NFC), while the volume keeps the folder's spelling.
+    listed = "worktree " + unicodedata.normalize("NFC", str(folder))
     entry = next(
         (
             item.split(b"\0")
             for item in entries
-            if item.startswith(b"worktree " + os.fsencode(folder) + b"\0")
+            if unicodedata.normalize("NFC", os.fsdecode(item.split(b"\0")[0])) == listed
         ),
         None,
     )

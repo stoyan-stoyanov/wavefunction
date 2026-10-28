@@ -18,6 +18,10 @@ Accepted limitations. A review reports one of these again only if a change makes
 
 - Closing a terminal, or its shell exiting, stops every process in the terminal's session or below its shell, and those whose environment carries the terminal's tag. A process that starts a session of its own and loses its parent before the terminal next records its processes, every 5 s, is found only by that tag, which `ps` cannot read for some system programs; such a process can outlive the terminal. Recording every half second cost a few percent of a core per open terminal.
 
+## Worktrees made outside Wavefunction
+
+- A project folder that is a worktree made with `git worktree add`, or by another tool, keeps its objects and refs in its main repository, which the sandbox doesn't grant with it. Git there fails with "not a git repository", so the Changes tab, code history and the agent's Git commands don't work until the main repository is allowed in Settings › Access. Granting it automatically would trust the folder's `.git` file, which the agent can rewrite to name another repository's registration, such as one Git kept for a deleted folder.
+
 ## GitHub through the proxy
 
 - Commands act on GitHub as the user through `git` and `gh`, as in other coding agents' terminals. The proxy refuses only pushes that delete branches or push tags; there is no API blocklist.

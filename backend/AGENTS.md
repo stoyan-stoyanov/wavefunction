@@ -11,7 +11,7 @@ Python 3.12, FastAPI and LangGraph. Read the root [AGENTS.md](../AGENTS.md) firs
 | Running a task | `runtime.py`, `agent_factory.py`, `execution_policy.py`, `steering.py`, `spec_v2.py`, `toolkit.py`, `tool_discovery.py`, `local_coding.py` | `test_execution_policy.py`, `test_run_record.py`, `test_run_settlement.py`, `test_context_compaction.py`, `test_no_progress.py`, `test_truncation_recovery.py` |
 | Helpers (the agent's own sub-agents) | `coding_agents.py` | `test_helper_orchestration.py`, `test_run_settlement.py` |
 | Local tools and the sandbox | `hands.py`, `fileops.py`, `sandbox.py`, `irreversible.py`, `coding_access.py`, `folder_setup.py`, `terminals.py`, `terminal_tools.py`, `web.py` | `test_coding_tools.py`, `test_terminals.py`, `test_permissions.py`, `test_file_editing.py`, `test_environment_context.py`, `test_repository_discovery.py`, `test_sandbox.py` (destructive) |
-| Git, worktrees and history | `coding_delivery.py`, `coding_git_ops.py`, `coding_checkpoints.py`, `coding_snapshots.py`, `coding_recovery.py`, `coding_cleanup.py`, `change_review.py`, `github_cli.py`, `github_proxy.py` | `test_coding_delivery.py`, `test_worktree_cleanup.py`, `test_helper_git.py`, `test_github_setup.py`, `test_coding_checkpoints.py` (destructive) |
+| Git, worktrees and history | `coding_delivery.py`, `coding_git_ops.py`, `coding_checkpoints.py`, `coding_snapshots.py`, `coding_recovery.py`, `coding_cleanup.py`, `worktree_access.py`, `change_review.py`, `github_cli.py`, `github_proxy.py` | `test_coding_delivery.py`, `test_worktree_cleanup.py`, `test_helper_git.py`, `test_github_setup.py`, `test_coding_checkpoints.py` (destructive) |
 | Models and providers | `models.py`, `provider_chat.py`, `gateway_chat.py`, `codex.py`, `anthropic_provider.py`, `gemini_provider.py`, `ollama_provider.py`, `openrouter.py`, `vercel_gateway.py`, `reasoning.py`, `model_registry.py` | `test_codex*.py`, `test_*_provider.py`, `test_openrouter.py`, `test_vercel_gateway.py`, `test_model_registry.py` |
 | Connectors (MCP) | `connectors.py`, `connector_catalog.py`, `connector_oauth.py`, `connector_setup.py`, `catalog_setup.py`, `catalog_connections.py`, `local_integrations.py`, `integration_setup.py`, `mail_*.py`, `microsoft_*.py`, `n8n_mcp.py` | `test_connectors.py` |
 | Skills | `skills.py`, `skill_discovery.py`, `skills/` (built in), `coding_skills/` | `test_skill_versions.py`, `test_slash_skills.py`, `test_skill_catalog.py` |
@@ -28,6 +28,7 @@ The tests drive the HTTP API, so find a behavior's tests by its route or name, n
 - Run pytest from this folder: `uv run --no-sync pytest tests/test_x.py -k name`. The whole suite: `npm run test:backend` from the repository root.
 - `tests/conftest.py` gives each run a temporary data folder and signs `gh` out. Its `coding` fixture serves the API over isolated services; `ScriptedModel`, `tool_call_message` and `script_gateway` drive real tool loops without a model. The plain helpers `create`, `git` and `repository` are in `tests/support.py`. No test module imports another.
 - Markers: `sandbox` (needs macOS Seatbelt; skipped elsewhere), `destructive` (runs real deletions; CI only, never locally), `live` (real external services; opt-in with `-m live`).
+- The irreversible-command classifier's table test is in `test_sandbox.py`, which is `destructive` as a whole, so it runs only in CI: try new cases locally by passing their text to `command_danger`.
 - The budget (count and time) is in [docs/TESTING.md](../docs/TESTING.md) and enforced by `conftest.py`.
 
 ## Rules here
@@ -36,3 +37,4 @@ The tests drive the HTTP API, so find a behavior's tests by its route or name, n
 - Keep each run's captured spec and guidance, checkpoints and file versions intact.
 - Real accounts, the Keychain, credentials and user repositories stay out of ordinary tests.
 - Live connector checks (`npm run test:connectors:live`) are opt-in and never use real account mutations as fixtures.
+- Git on macOS writes paths precomposed (NFC), while a folder made in Finder keeps its accents decomposed (NFD) on disk: compare such paths normalized.

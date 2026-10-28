@@ -254,7 +254,8 @@ def describe_failure(error: BaseException) -> str:
 
 
 def resolve(values: dict[str, str], secrets: Any) -> dict[str, str]:
-    """Values as they are, except `$NAME`, which is read from the secret store.
+    """Values as they are, except `$NAME`, which is read from the secret store, and `$$NAME`,
+    which is a literal `$NAME`.
 
     Used for both an http connector's headers and a stdio connector's environment, so a token
     can be kept out of settings whichever way a server wants to be given it.
@@ -264,13 +265,19 @@ def resolve(values: dict[str, str], secrets: Any) -> dict[str, str]:
         # Substituted wherever it appears, not only when it is the whole value: the common shape
         # is `Bearer $TOKEN`, and a header that had to be all-or-nothing would force the word
         # "Bearer" into the stored secret.
-        resolved[key] = SECRET_REFERENCE.sub(lambda match: secret_value(secrets, match.group(1)) or "", value)
+        resolved[key] = SECRET_REFERENCE.sub(
+            lambda match: (
+                match.group(0)[1:] if match.group(1) else secret_value(secrets, match.group(2)) or ""
+            ),
+            value,
+        )
     return resolved
 
 
 # `$NAME` in a header or an environment value. Upper-case and underscores only, so a `$TOKEN`
-# followed by ordinary prose does not swallow the prose.
-SECRET_REFERENCE = re.compile(r"\$([A-Z][A-Z0-9_]*)")
+# followed by ordinary prose does not swallow the prose. `$$NAME` escapes it, for a password
+# or URL that has a `$` before a capital.
+SECRET_REFERENCE = re.compile(r"\$(\$?)([A-Z][A-Z0-9_]*)")
 
 
 def secret_key(name: str) -> str:
@@ -298,8 +305,8 @@ def secret_names(server: McpServer) -> list[str]:
     """Every `$NAME` this connector's settings refer to, in the order they appear."""
     names: list[str] = []
     for value in (*server.headers.values(), *server.env.values()):
-        for name in SECRET_REFERENCE.findall(value):
-            if name not in names:
+        for escaped, name in SECRET_REFERENCE.findall(value):
+            if not escaped and name not in names:
                 names.append(name)
     return names
 
@@ -437,7 +444,7 @@ class ConnectorRegistry:
             config = connection_config(server, self.secrets)
             if server.auth == "oauth":
                 config["auth"] = self.stored_oauth(server)
-            client = MultiServerMCPClient({server.name: config})
+            client = MultiServerMCPClient({server.name: config})  # type: ignore[arg-type]
             tools = await asyncio.wait_for(client.get_tools(server_name=server.name), timeout=30)
         except asyncio.CancelledError:
             raise
@@ -456,7 +463,7 @@ class ConnectorRegistry:
 
             def signatures(entry: ConnectorTools) -> list[tuple]:
                 return [
-                    (tool.name, tool.description, tool.get_input_schema().model_json_schema(), tool.metadata)
+                    (tool.name, tool.description, tool.get_input_schema().model_json_schema(), tool.metadata)  # type: ignore[attr-defined]
                     for tool in entry.tools
                 ]
 
@@ -547,7 +554,7 @@ class ConnectorRegistry:
             callback = CallbackServer(
                 preferred,
                 required=bool(setup),
-                hostname=urlparse(setup["redirect_uri"]).hostname if setup else "127.0.0.1",
+                hostname=urlparse(setup["redirect_uri"]).hostname if setup else "127.0.0.1",  # type: ignore[arg-type]
             )
         except ValueError as error:
             return ConnectorTools(server=server.name, error=str(error))
@@ -566,14 +573,15 @@ class ConnectorRegistry:
             await asyncio.to_thread(login_path)  # Asks the login shell once; not on the event loop.
             config = connection_config(server, self.secrets)
             config["auth"] = oauth_provider(server.url, server.name, self.secrets, callback)
-            client = MultiServerMCPClient({server.name: config})
+            client = MultiServerMCPClient({server.name: config})  # type: ignore[arg-type]
             await asyncio.wait_for(client.get_tools(server_name=server.name), timeout=CALLBACK_TIMEOUT + 30)
             # Tools call the server with the provider they were made with. Made with this
             # sign-in's, a token that later cannot be refreshed would open a browser from an
             # agent's tool call; with the stored tokens it asks the user to sign in again.
             config["auth"] = self.stored_oauth(server)
             tools = await asyncio.wait_for(
-                MultiServerMCPClient({server.name: config}).get_tools(server_name=server.name), timeout=30
+                MultiServerMCPClient({server.name: config}).get_tools(server_name=server.name),  # type: ignore[arg-type]
+                timeout=30,
             )
         except asyncio.CancelledError:
             raise
@@ -780,7 +788,7 @@ async def probe_server(url: str) -> dict[str, Any]:
                         client.stream(
                             "POST" if transport == "http" else "GET",
                             candidate,
-                            **(
+                            **(  # type: ignore[arg-type]
                                 {"json": INITIALIZE, "headers": PROBE_HEADERS}
                                 if transport == "http"
                                 else {"headers": {"Accept": "text/event-stream"}}

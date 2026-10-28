@@ -66,7 +66,7 @@ async def test_uploaded_image_reaches_the_model_in_real_agent_loops(stack):
     )
     assert row["media_type"].startswith("image/")
     assert (stack.files.project_dir(agent["id"]) / row["relative_path"]).read_bytes() == data
-    assert "16 × 12" in stack.repository.get_project_file_texts(agent["id"])[0]["extracted_text"]
+    assert "16 × 12" in stack.repository.get_project_file_texts(agent["id"], [row["id"]])[0]["extracted_text"]
     spec = agent_spec(ToolBinding(name="read_documents"))
     model = CapturingModel(
         script=[
@@ -88,8 +88,8 @@ async def test_uploaded_image_reaches_the_model_in_real_agent_loops(stack):
     Image.new("RGB", (64, 48), "red").save(
         camera, format="MPO", save_all=True, append_images=[Image.new("RGB", (16, 12), "blue")]
     )
-    row = await upload(stack, agent["id"], "camera.jpg", camera.getvalue())
-    assert row["media_type"] == "image/jpeg"
+    jpeg = await upload(stack, agent["id"], "camera.jpg", camera.getvalue())
+    assert jpeg["media_type"] == "image/jpeg"
     # A phone photo larger than the preview limit still gets a thumbnail: JPEG decodes small.
     from wavefunction.document_images import PREVIEW_PIXELS, preview_png
 
@@ -105,9 +105,66 @@ async def test_uploaded_image_reaches_the_model_in_real_agent_loops(stack):
     # Names that are not ASCII stay distinct for the user and the model.
     names = [(await upload(stack, agent["id"], name, b"text"))["name"] for name in ("報告.txt", "請求書.txt")]
     assert names == ["報告.txt", "請求書.txt"]
-    assert any(
-        "64 × 48" in text["extracted_text"] for text in stack.repository.get_project_file_texts(agent["id"])
+    assert (
+        "64 × 48" in stack.repository.get_project_file_texts(agent["id"], [jpeg["id"]])[0]["extracted_text"]
     )
+
+
+async def test_uploaded_slides_and_word_files_keep_text_in_tables_groups_charts_and_controls(stack):
+    from docx import Document
+    from docx.oxml import parse_xml
+    from pptx import Presentation
+    from pptx.chart.data import ChartData
+    from pptx.enum.chart import XL_CHART_TYPE
+    from pptx.util import Inches
+
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[6])  # Blank
+    table = slide.shapes.add_table(2, 2, Inches(1), Inches(2), Inches(4), Inches(1)).table
+    table.cell(0, 0).text, table.cell(0, 1).text = "Region", "Revenue"
+    table.cell(1, 0).text, table.cell(1, 1).text = "EMEA", "SYNTHETIC-42"
+    group = slide.shapes.add_group_shape()
+    group.shapes.add_textbox(Inches(1), Inches(4), Inches(3), Inches(1)).text_frame.text = "GROUPED-NOTE"
+    numbers = ChartData()
+    numbers.categories = ["Q1", "Q2"]
+    numbers.add_series("Sales", (1, 2))
+    # python-pptx types what add_chart returns as the chart; it is the chart's frame.
+    frame = slide.shapes.add_chart(
+        XL_CHART_TYPE.COLUMN_CLUSTERED, Inches(5), Inches(2), Inches(4), Inches(3), numbers
+    )
+    chart = frame.chart  # type: ignore[attr-defined]
+    chart.has_title = True
+    chart.chart_title.text_frame.text = "CHART-TITLE"
+    slides = BytesIO()
+    deck.save(slides)
+    # A form's fields are content controls around ordinary paragraphs. An empty one shows Word's
+    # prompt, which is not the document's text.
+    document = Document()
+    document.add_paragraph("Before the control")
+    for index, (properties, text) in enumerate(
+        [("", "CONTROL-TEXT"), ("<w:showingPlcHdr/>", "Click or tap here to enter text.")], 1
+    ):
+        document.element.body.insert(
+            index,
+            parse_xml(
+                '<w:sdt xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+                f"<w:sdtPr>{properties}</w:sdtPr><w:sdtContent><w:p><w:r><w:t>{text}</w:t></w:r></w:p>"
+                "</w:sdtContent></w:sdt>"
+            ),
+        )
+    word = BytesIO()
+    document.save(word)
+
+    rows = [
+        await upload(stack, stack.agent["id"], "deck.pptx", slides.getvalue()),
+        await upload(stack, stack.agent["id"], "form.docx", word.getvalue()),
+    ]
+    texts = stack.repository.get_project_file_texts(stack.agent["id"], [row["id"] for row in rows])
+    by_name = {text["name"]: text["extracted_text"] for text in texts}
+    assert by_name["deck.pptx"] == (
+        "## Slide 1\n- Region | Revenue\n- EMEA | SYNTHETIC-42\n- GROUPED-NOTE\n- CHART-TITLE\n"
+    )
+    assert by_name["form.docx"] == "Before the control\n\nCONTROL-TEXT\n"
 
 
 async def test_desktop_transfers_preserve_files_and_only_read_captured_attachments(stack, tmp_path):

@@ -276,8 +276,8 @@ def build_agent_tools(context):
         repeating answers or diffs already received. Omit a cursor to reread that helper.
         Returns compact status for unchanged helpers. Also wakes when the parent receives
         steering, so you can act on the user's new instructions before waiting again.
-        Returns at once with reason needs_user when the rest only wait on the user, and with
-        reason settled when every helper has finished and its result was already received.
+        Returns at once with reason needs_answer when the rest are paused and one asks you a question,
+        needs_user when they only wait on the user, settled when all finished and you have their results.
         """
         if not agent_ids or len(set(agent_ids)) != len(agent_ids):
             raise ToolCallRejected("Select distinct helpers owned by this task.")
@@ -303,31 +303,26 @@ def build_agent_tools(context):
             ):
                 reason = "ready"
                 break
-            unsettled = [run for run in runs if run["status"] not in SETTLED or run["id"] in runtime.tasks]
+            unsettled = [
+                run for run in runs if run and (run["status"] not in SETTLED or run["id"] in runtime.tasks)
+            ]
             if not unsettled:
                 # Every helper has finished and its result was seen: nothing can change.
                 reason = "settled"
                 break
-            if all(run["id"] not in runtime.tasks and runtime.needs_user(run) for run in unsettled):
-                # Only the user can approve or set these up; waiting longer would only poll.
-                reason = "needs_user"
+            if all(run["id"] not in runtime.tasks and run["status"] in PAUSED for run in unsettled):
+                # Only this task answering a question it received, or the user, can change these.
+                reason = "needs_user" if all(map(runtime.needs_user, unsettled)) else "needs_answer"
                 break
             remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
                 break
             # Run events wake this at once. Only a settled helper releasing its task has no
             # event, so check quickly during that brief window and slowly otherwise.
-            releasing = any(run["status"] in SETTLED and run["id"] in runtime.tasks for run in runs)
+            releasing = any(run["status"] in SETTLED and run["id"] in runtime.tasks for run in unsettled)
             waiters = [
                 asyncio.create_task(runtime.changed(run_id, min(remaining, 1 if releasing else 30)))
-                for run_id in [
-                    parent_id,
-                    *(
-                        run["id"]
-                        for run in runs
-                        if run and (run["status"] not in SETTLED or run["id"] in runtime.tasks)
-                    ),
-                ]
+                for run_id in [parent_id, *(run["id"] for run in unsettled)]
             ]
             waited = True
             try:

@@ -56,16 +56,27 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong";
 }
 
+// The newest read of the connections wins. Reading them takes a moment (the ChatGPT model list
+// comes with them), so one started before a change could otherwise land after the read that
+// follows the change and put back what it replaced: a provider shown connected after removal.
+// A saved change counts as newer than any read already under way.
+let connectionsRead = 0;
+// A model choice saved after a read started is newer than the models that read found; the rest
+// of it, such as a key saved just before, still lands.
+let modelsSaved = 0;
+function keepSavedModels(read: Connections, current: Connections | null, since: number): Connections {
+  return since === modelsSaved || !current
+    ? read
+    : { ...read, enabled_models: current.enabled_models, model: current.model };
+}
+
 export const useSettings = create<SettingsState>((set, get) => {
   let actionSequence = 0;
-  // The newest read of the connections wins. Reading them takes a moment (the ChatGPT model list
-  // comes with them), so one started before a change could otherwise land after the read that
-  // follows the change and put back what it replaced: a provider shown connected after removal.
-  let connectionsRead = 0;
   async function readConnections(): Promise<Connections> {
-    const read = ++connectionsRead;
+    const [read, since] = [++connectionsRead, modelsSaved];
     const connections = await api.getConnections();
-    if (read === connectionsRead) set({ connections });
+    if (read === connectionsRead)
+      set({ connections: keepSavedModels(connections, get().connections, since) });
     return get().connections ?? connections;
   }
 
@@ -338,6 +349,7 @@ export const useSettings = create<SettingsState>((set, get) => {
       if (!connections || get().modelPreferencesSaving) return;
       const previous = connections.enabled_models;
       const next = Array.from(new Set(models));
+      modelsSaved++;
       set({
         modelPreferencesSaving: true,
         error: null,
@@ -345,6 +357,7 @@ export const useSettings = create<SettingsState>((set, get) => {
       });
       try {
         const { models: enabledModels, model } = await api.updateEnabledModels(next);
+        modelsSaved++;
         const current = get().connections;
         // The default follows the enabled list returned by the server.
         if (current) {
@@ -371,6 +384,7 @@ export const useSettings = create<SettingsState>((set, get) => {
         "selecting-model",
         async () => {
           const { model: saved } = await api.updateDefaultModel(model);
+          modelsSaved++;
           const current = get().connections;
           // Choosing enables: the server adds the model to the list it is picked from.
           const key = `${saved.provider}::${saved.model}`;
