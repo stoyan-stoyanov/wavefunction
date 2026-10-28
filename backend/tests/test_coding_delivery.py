@@ -560,7 +560,9 @@ class FakeGitHub:
         if request.url.path.endswith("/git-receive-pack"):
             if request.headers.get("content-encoding") == "gzip":
                 body = gzip.decompress(body)
-            updates, _ = ref_updates(body)
+            parsed = ref_updates(body)
+            assert parsed is not None
+            updates, _ = parsed
             self.refs.update({ref: new for _, new, ref in updates})
             report = (
                 b"".join(
