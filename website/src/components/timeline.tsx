@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useReducedMotion } from "@/lib/use-reduced-motion";
 
 // Each request is typed into the composer, then sent; the rest of the scene follows its send.
 const FIRST = "Build a billing dashboard.";
 const SECOND = "Also add a usage chart.";
+const THIRD = "Use Stripe for the invoices.";
 const KEYSTROKE = 45;
 const FIRST_SENT = 1500;
 const SECOND_SENT = FIRST_SENT + 2400;
+// Sent while Billing API is still running, so the steer reaches a subagent at work.
+const THIRD_SENT = SECOND_SENT + 2200;
 const HELPERS = [
-  { title: "Billing API", start: FIRST_SENT + 600, end: FIRST_SENT + 5200 },
+  { title: "Billing API", start: FIRST_SENT + 600, end: FIRST_SENT + 6400 },
   { title: "Dashboard UI", start: FIRST_SENT + 800, end: FIRST_SENT + 6000 },
   { title: "Integration tests", start: FIRST_SENT + 1000, end: FIRST_SENT + 6500 },
   { title: "Usage chart", start: SECOND_SENT + 800, end: FIRST_SENT + 7000 },
@@ -26,6 +29,36 @@ function typed(text: string, sent: number, clock: number) {
 }
 
 export function Timeline() {
+  const instant = useReducedMotion();
+  const [run, setRun] = useState(0);
+  const [finished, setFinished] = useState(false);
+  const finish = useCallback(() => setFinished(true), []);
+  return (
+    <div>
+      {/* A new key mounts a fresh scene, which plays again from the start. */}
+      <Scene key={run} replayed={run > 0} onFinished={finish} />
+      {/* Reduced motion shows the finished scene, so there is nothing to replay. */}
+      {!instant && (
+        <div className="mt-3 flex justify-end sm:mt-5">
+          <button
+            type="button"
+            onClick={() => {
+              setFinished(false);
+              setRun((count) => count + 1);
+            }}
+            disabled={!finished}
+            className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm text-soft transition-[color,opacity] duration-300 hover:text-text disabled:pointer-events-none disabled:opacity-0"
+          >
+            <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M2.5 8a5.5 5.5 0 1 0 1.7-4M2.5 2v3h3" /></svg>
+            Replay
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Scene({ replayed, onFinished }: { replayed: boolean; onFinished: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const instant = useReducedMotion();
   const [seen, setSeen] = useState(false);
@@ -35,6 +68,11 @@ export function Timeline() {
   useEffect(() => {
     if (instant) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // A replay starts at once, a moment after mounting so the transitions run from the start.
+    if (replayed) {
+      timer = setTimeout(() => setSeen(true), 50);
+      return () => clearTimeout(timer);
+    }
     // Start once the window is mostly in view, then pause so the reader settles on it first.
     const watcher = new IntersectionObserver(
       ([entry]) => {
@@ -50,7 +88,13 @@ export function Timeline() {
       watcher.disconnect();
       clearTimeout(timer);
     };
-  }, [instant]);
+  }, [instant, replayed]);
+
+  useEffect(() => {
+    if (!seen) return;
+    const timer = setTimeout(onFinished, FINISH + 400);
+    return () => clearTimeout(timer);
+  }, [seen, onFinished]);
 
   // Drive the composer's typing; everything else runs on CSS transition delays from the same start.
   useEffect(() => {
@@ -59,8 +103,12 @@ export function Timeline() {
     const ticker = setInterval(() => {
       const elapsed = performance.now() - started;
       // Same text bails out of rendering, so only keystrokes and sends re-render the scene.
-      setTyping(typed(FIRST, FIRST_SENT, elapsed) || typed(SECOND, SECOND_SENT, elapsed));
-      if (elapsed >= SECOND_SENT) clearInterval(ticker);
+      setTyping(
+        typed(FIRST, FIRST_SENT, elapsed) ||
+          typed(SECOND, SECOND_SENT, elapsed) ||
+          typed(THIRD, THIRD_SENT, elapsed),
+      );
+      if (elapsed >= THIRD_SENT) clearInterval(ticker);
     }, KEYSTROKE / 2);
     return () => clearInterval(ticker);
   }, [seen, instant]);
@@ -73,7 +121,7 @@ export function Timeline() {
   });
 
   return (
-    <div ref={ref} className="overflow-hidden rounded-2xl border border-text/15 bg-white shadow-[0_20px_60px_-30px_rgb(27_38_56/0.3)] [zoom:0.6] min-[400px]:[zoom:0.75] sm:[zoom:1]" role="img" aria-label="Wavefunction desktop example: Billing dashboard is selected in the sidebar, with Billing API, Dashboard UI, and Integration tests nested beneath it as subagents. The conversation stays open while you ask for a usage chart, and a fourth helper appears under the same parent. All four complete for review.">
+    <div ref={ref} className="overflow-hidden rounded-2xl border border-text/15 bg-white shadow-[0_20px_60px_-30px_rgb(27_38_56/0.3)] [zoom:0.6] min-[400px]:[zoom:0.75] sm:[zoom:1]" role="img" aria-label="Wavefunction desktop example: Billing dashboard is selected in the sidebar, with Billing API, Dashboard UI, and Integration tests nested beneath it as subagents, each on its own branch. The conversation stays open: you ask for a usage chart and a fourth subagent starts, then you ask for Stripe invoices and the message goes to the Billing API subagent while it works. All four complete for review.">
       {/* Keep the app window in one row; scale the whole illustration to fit phones. */}
       <div aria-hidden className="grid grid-cols-[210px_minmax(0,1fr)] lg:grid-cols-[248px_minmax(0,1fr)]">
         <div className="flex min-h-[570px] min-w-0 flex-col border-r border-text/10 bg-panel">
@@ -109,7 +157,8 @@ export function Timeline() {
                     }}>
                       <div className="min-h-0 overflow-hidden">
                         <div className="flex items-center gap-2 py-2.5 pl-7 pr-3 text-soft">
-                          <svg viewBox="0 0 16 16" className="size-3 shrink-0 text-faint/60" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v5a2 2 0 0 0 2 2h8m-3-3 3 3-3 3" /></svg>
+                          {/* A branch: each subagent works in a worktree of its own. */}
+                          <svg viewBox="0 0 16 16" className="size-3 shrink-0 text-faint/70" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><circle cx="4.5" cy="3.5" r="1.5" /><circle cx="4.5" cy="12.5" r="1.5" /><circle cx="11.5" cy="5" r="1.5" /><path d="M4.5 5v6M11.5 6.5c0 2.6-2.2 3.8-5.3 4.6" /></svg>
                           <span className="min-w-0 flex-1 truncate text-xs">{helper.title}</span>
                           <TaskStatus playing={playing} instant={instant} start={helper.start} end={helper.end} />
                         </div>
@@ -132,18 +181,24 @@ export function Timeline() {
             <svg viewBox="0 0 20 20" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H7l-4 3V5a1 1 0 0 1 1-1Z" /></svg>
             Billing dashboard
           </div>
-          <div className="flex flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+          <div className="flex flex-1 flex-col gap-5 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
             <div className="ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-panel px-4 py-2.5 text-[13px] leading-relaxed sm:text-sm" style={shown(FIRST_SENT)}>
               {FIRST}
             </div>
-            <p className="max-w-[38ch] text-[13px] leading-relaxed text-soft sm:text-sm" style={shown(FIRST_SENT + 350)}>
-              I’ll work on the API, interface, and tests in parallel.
+            <p className="max-w-[40ch] text-[13px] leading-relaxed text-soft sm:text-sm" style={shown(FIRST_SENT + 350)}>
+              Starting three subagents for the API, interface, and tests, each in its own worktree.
             </p>
             <div className="ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-accent/10 px-4 py-2.5 text-[13px] leading-relaxed sm:text-sm" style={shown(SECOND_SENT)}>
               {SECOND}
             </div>
             <p className="text-[13px] leading-relaxed text-soft sm:text-sm" style={shown(SECOND_SENT + 500)}>
-              On it. The rest keeps moving.
+              On it. A fourth subagent takes the chart; the rest keep moving.
+            </p>
+            <div className="ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-accent/10 px-4 py-2.5 text-[13px] leading-relaxed sm:text-sm" style={shown(THIRD_SENT)}>
+              {THIRD}
+            </div>
+            <p className="text-[13px] leading-relaxed text-soft sm:text-sm" style={shown(THIRD_SENT + 500)}>
+              Passed to Billing API. It’s adjusting without starting over.
             </p>
             <div className="flex items-center gap-2 text-xs text-done sm:text-[13px]" style={shown(FINISH)}>
               <Check /> All four tasks are ready to review.
