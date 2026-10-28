@@ -345,6 +345,8 @@ export const useSettings = create<SettingsState>((set, get) => {
       });
       try {
         const { models: enabledModels, model } = await api.updateEnabledModels(next);
+        // A read started before the save must not put the old list back.
+        connectionsRead++;
         const current = get().connections;
         // The default follows the enabled list returned by the server.
         if (current) {
@@ -371,6 +373,8 @@ export const useSettings = create<SettingsState>((set, get) => {
         "selecting-model",
         async () => {
           const { model: saved } = await api.updateDefaultModel(model);
+          // A read started before the change must not put the old default back.
+          connectionsRead++;
           const current = get().connections;
           // Choosing enables: the server adds the model to the list it is picked from.
           const key = `${saved.provider}::${saved.model}`;
