@@ -6,6 +6,8 @@ import asyncio
 import copy
 import json
 from contextlib import nullcontext, suppress
+from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from langgraph.checkpoint.base import empty_checkpoint
@@ -100,6 +102,8 @@ class Checkpoints:
                 return
         point_id, code, error = str(uuid4()), None, None
         folder = (run.get("spec") or {}).get("working_directory") or self.ws.effective_folder(thread)
+        # Recorded as it resolves, like the root it is compared with.
+        folder = folder and str(Path(folder).resolve())
         saver = await self.ws.services.runtime.checkpointer()
         model = await saver.aget_tuple({"configurable": {"thread_id": run["conversation_id"]}})
         model_type, model_bytes = None, None
@@ -191,7 +195,7 @@ class Checkpoints:
             self.settled(source_thread_id)
         if checkpoint_id:
             point = self.point(source_thread_id, checkpoint_id)
-            if point["folder"] != str(folder):
+            if Path(point["folder"]).resolve() != folder:
                 raise ValueError("Return to this message's original repository before forking its code.")
             code = point["code"]
         else:
@@ -319,7 +323,7 @@ class Checkpoints:
                     "INSERT INTO coding_attachments VALUES (?, ?, ?)", (str(uuid4()), thread_id, file["id"])
                 )
 
-    async def clone_history(self, source, target, point=None, *, copy_draft=True):
+    async def clone_history(self, source, target, point: Any = None, *, copy_draft=True):
         repo = self.ws.services.repository
         run_ids, event_ids = {}, {}
         draft = None
@@ -431,7 +435,9 @@ class Checkpoints:
                 conversation_id=target["conversation_id"],
                 run_id=run_ids[row["run_id"]],
                 event_id=event_ids.get(row["event_id"]),
-                folder=moved_to if row["folder"] == moved_from else row["folder"],
+                folder=moved_to
+                if (row["folder"] and str(Path(row["folder"]).resolve())) == moved_from
+                else row["folder"],
                 model_config=json.dumps(model_config) if model_config else None,
                 model_type=None,
                 model=None,
@@ -494,7 +500,8 @@ class Checkpoints:
             point = self.point(thread_id, checkpoint_id) if checkpoint_id else None
             if point and not worktree:
                 raise ValueError("Fork this message in a worktree so its code matches its history.")
-            if point and point["folder"] != self.ws.effective_folder(source):
+            # A folder recorded before it moved behind a symlink still names the same checkout.
+            if point and str(Path(point["folder"]).resolve()) != self.ws.effective_folder(source):
                 raise ValueError("Return to this message's original repository before forking its code.")
             if worktree:
                 await self.ws.cleanup.restore(thread_id)
@@ -563,7 +570,7 @@ class Checkpoints:
                 raise ValueError("Fork this helper to restore or continue its history independently.")
             await self.ws.cleanup.restore(thread_id)
             root = self.ws.root(thread_id)
-            if point["folder"] != str(root):
+            if Path(point["folder"]).resolve() != root:
                 raise ValueError("Return to this message's repository before restoring its code.")
             for run in self.ws.runs(thread_id):
                 if (
@@ -577,10 +584,17 @@ class Checkpoints:
             async with self.ws.reviews.locks.setdefault(str(root), asyncio.Lock()):
                 self.ws.delivery.mutable(thread_id, root, restore=True)
                 with self.ws.db() as db:
-                    latest = db.execute(
-                        "SELECT * FROM coding_checkpoints WHERE thread_id = ? AND folder = ? ORDER BY created_at DESC LIMIT 1",
-                        (thread_id, str(root)),
-                    ).fetchone()
+                    latest = next(
+                        (
+                            row
+                            for row in db.execute(
+                                "SELECT folder, code, error FROM coding_checkpoints WHERE thread_id = ? ORDER BY created_at DESC",
+                                (thread_id,),
+                            )
+                            if row["folder"] and Path(row["folder"]).resolve() == root
+                        ),
+                        None,
+                    )
                 if not latest or latest["error"]:
                     raise ValueError("There is no complete code checkpoint for this continuation.")
                 end = json.loads(latest["code"])
