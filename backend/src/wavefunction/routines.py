@@ -21,7 +21,7 @@ from pydantic import ValidationError
 
 from .execution_policy import ToolCallRejected, excerpt_text
 from .repository import now_iso
-from .routine_timing import Once, describe, from_words, next_due, parse
+from .routine_timing import Interval, Once, describe, from_words, next_due, parse
 
 logger = logging.getLogger(__name__)
 
@@ -131,9 +131,11 @@ class Routines:
             else current["report_to"]
         )
         enabled = changes.get("enabled", current["enabled"])
+        # A new time starts counting again from now, so it is not due at once for a time it never
+        # had; a once that has run can be set again. An interval counts from the last run, so a
+        # new one keeps it and does not run again at once.
+        restart = timing.model_dump() != current["timing"] and not isinstance(timing, Interval)
         with self.ws.db() as db:
-            # A new time starts counting again from now, so it is not due at once for a time it
-            # never had; a once that has run can be set again.
             db.execute(
                 """UPDATE coding_routines SET instruction = ?, timing = ?, report_to = ?, enabled = ?,
                           created_at = CASE WHEN ? THEN ? ELSE created_at END,
@@ -143,9 +145,9 @@ class Routines:
                     json.dumps(timing.model_dump()),
                     report_to,
                     int(bool(enabled)),
-                    timing.model_dump() != current["timing"],
+                    restart,
                     now_iso(),
-                    timing.model_dump() != current["timing"],
+                    restart,
                     thread_id,
                 ),
             )
