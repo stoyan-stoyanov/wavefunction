@@ -5,6 +5,10 @@ from conftest import script_gateway, tool_call_message
 from langchain_core.messages import AIMessage
 from support import create
 
+from wavefunction.execution_policy import ToolCallRejected
+from wavefunction.hands import build_hands
+from wavefunction.sandbox import Grant
+
 
 @pytest.mark.sandbox
 async def test_workbench_rejects_binary_and_oversized_files_without_corrupting_them(coding, tmp_path):
@@ -79,6 +83,50 @@ async def test_real_coding_loop_edits_and_runs_tests(coding, tmp_path):
     events = services.repository.list_run_events(run["id"])
     assert any(e["event_type"] == "tool_completed" and "OK" in str(e["payload"]) for e in events), events
     assert ws.thread(thread["id"])["title"] == "Fix total and test it"
+
+
+@pytest.mark.sandbox
+async def test_a_refused_edit_or_command_is_not_reported_as_possibly_completed(coding, tmp_path):
+    client, ws, services = coding
+    folder = tmp_path / "repo"
+    folder.mkdir()
+    locked = folder / "locked.txt"
+    locked.write_text("before\n")
+    locked.chmod(0o444)
+    thread = await create(client, folder=str(folder))
+    script_gateway(
+        services.models,
+        [
+            tool_call_message(
+                "edit_file", {"path": "locked.txt", "old_text": "before", "new_text": "after"}, "edit"
+            ),
+            tool_call_message("run_command", {"command": "echo built", "workdir": "build"}, "command"),
+            AIMessage(content="Done"),
+        ],
+    )
+    run = await ws.send(thread["id"], "Edit the file and build")
+    await services.runtime.wait(run["id"])
+    events = services.repository.list_run_events(run["id"])
+    told = {e["payload"]["id"]: e["payload"]["result"] for e in events if e["event_type"] == "tool_failed"}
+    # Nothing ran, so the model hears why, and neither call is flagged for checking.
+    assert "is read-only" in told["edit"] and "Settings › Access" not in told["edit"]
+    assert "not an existing folder" in told["command"]
+    assert not any("may have completed" in text for text in told.values())
+    assert not any(e["event_type"] == "action_outcome_unknown" for e in events)
+    assert locked.read_text() == "before\n"
+    # A write the sandbox refuses is refused before anything changed, too.
+    tools = {
+        tool.name: tool
+        for tool in build_hands(
+            tmp_path / "scratch",
+            lambda: [Grant(folder)],
+            lambda: "sandboxed",
+            ensure_access=lambda path, writable: None,
+        )
+    }
+    with pytest.raises(ToolCallRejected):
+        await tools["write_file"].ainvoke({"path": str(folder / "new.txt"), "content": "new"})
+    assert not (folder / "new.txt").exists()
 
 
 @pytest.mark.sandbox
