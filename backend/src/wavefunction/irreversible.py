@@ -33,6 +33,8 @@ TEMPORARY = tuple(dict.fromkeys(Path(p).resolve() for p in ("/tmp", tempfile.get
 # Separators and redirections; a backtick or $( starts a command too.
 OPERATORS = "();<>|&\n`"
 REDIRECTIONS = {"<", ">", "<<", ">>", "<<<", "<>", ">&", "<&", ">|", "&>", "&>>"}
+# A here-document's `<<` and its closing word, bare, quoted or escaped; not a `<<<` string.
+HEREDOC = re.compile(r"""(?<!<)<<(?!<)(-?)[ \t]*(?:'([^'\n]*)'|"([^"\n]*)"|\\?([^\s;&|<>()`'"]+))""")
 SHELLS = {"sh", "bash", "zsh", "dash", "ksh", "fish"}
 # Words that run the command after them, and the options of theirs that take a value.
 WRAPPERS = {
@@ -248,6 +250,9 @@ VALUE_OPTIONS = {
     "pipx": {"--spec", "--python", "--index-url", "--pip-args"},
 }
 VALUE_OPTIONS["pnpx"] = VALUE_OPTIONS["pnpm"] | {"--package", "-p"}
+# Package managers' own commands that uninstall a dependency (`npm rm lodash`), not file deletes.
+PACKAGE_MANAGERS = {"npm", "pnpm", "yarn", "bun"}
+UNINSTALLS = {"rm", "remove", "uninstall", "un", "unlink", "r"}
 # This deliberate cleanup exemption does not claim these folders are backed up.
 GENERATED = {"node_modules", ".venv", "venv", "__pycache__", "target", "dist", "build", ".next"}
 DELETERS = {"rm", "unlink", "shred", "srm"}
@@ -308,7 +313,7 @@ def command_danger(
     None marks a disposable root; a set contains the exact files with recovery bytes. Unknown
     directory/glob contents ask, rather than treating ignored or omitted files as backed up.
     """
-    undoable = {scratch: None}
+    undoable: dict[Path, set[Path] | None] = {scratch: None}
     if project is not None and (project / ".git").exists():
         root = project.resolve()
         undoable[root] = {
@@ -329,14 +334,15 @@ def irreversible(
     recoverable or harmless; relative paths resolve against `cwd`."""
     if depth > 3:
         return NESTED
+    text, bodies = _heredocs(command)
     try:
-        lexed = _lex(command)
+        lexed = _lex(text)
     except ValueError:
         # Unbalanced quotes: what can still be seen of a forced or recursive delete asks.
         return DELETES if re.search(r"(^|[\s;&|(`])(sudo\s+)?rm\s+-\w*[rRf]", command) else None
     tokens = [token for token, _ in lexed]
     roots = {root.resolve(): files for root, files in undoable.items()} | dict.fromkeys(TEMPORARY)
-    words, commands = [], []
+    words, read, commands = [], [], []
     redirection_target = False
     for index, (token, operator) in enumerate(lexed):
         if operator:
@@ -344,24 +350,29 @@ def irreversible(
             if ">" in token and index + 1 < len(tokens) and DEVICE.match(tokens[index + 1]):
                 return MAC
             if token in REDIRECTIONS:
+                if token == "<<" and bodies and (body := bodies.pop(0)) is not None:
+                    read.append(body)
                 redirection_target = True
                 continue
-            commands.append((words, token))
-            words = []
+            commands.append((words, token, "\n".join(read)))
+            words, read = [], []
         elif redirection_target:
             redirection_target = False
         else:
             words.append(token)
-    commands.append((words, ""))
+    commands.append((words, "", "\n".join(read)))
     # Track cd within its successful && chain. A later sequential list may run even
     # if that cd failed; subshells, pipelines and background jobs need their own scope.
     sequential = {";", "\n"}
     shared_shell = all(
         token == "&&" or token in sequential or token in REDIRECTIONS for token, operator in lexed if operator
     )
-    database, here = False, cwd
-    previous, cwd_changed = "", False
-    for words, separator in commands:
+    database, here, queries = False, cwd, []
+    previous, cwd_changed, carried = "", False, ""
+    for words, separator, body in commands:
+        # A pipeline passes what its first command reads on: `cat <<EOF | psql`.
+        body = "\n".join(filter(None, (carried, body)))
+        carried = body if separator in {"|", "|&"} else ""
         if previous in sequential and cwd_changed:
             here = None
         previous = separator
@@ -383,23 +394,61 @@ def irreversible(
                 else Path(here, target)
             )
             continue
+        # A here-document is input to its command: commands to a shell, queries to a database client.
+        readers = {Path(word).name for word in words} if body else set()
+        if readers & DB_CLIENTS:
+            database, queries = True, [*queries, body]
         database = database or name in DB_CLIENTS or name.lower() in SQL_START
         if name in SHELLS or name == "eval":
-            payload = " ".join(args) if name == "eval" else _shell_payload(args)
-            found = payload and irreversible(
-                payload,
+            found, scripts = None, [" ".join(args) if name == "eval" else _shell_payload(args)]
+        else:
+            found, scripts = _check(name, args, piped, here, roots), []
+        for script in filter(None, [*scripts, body if readers & SHELLS else ""]):
+            found = found or irreversible(
+                script,
                 cwd=here or Path("/"),
                 undoable=undoable if here else {},
                 depth=depth + 1,
                 proxy_protects_remote_delete=proxy_protects_remote_delete,
             )
-        else:
-            found = _check(name, args, piped, here, roots)
         if found == REMOTE_DELETE and proxy_protects_remote_delete:
             continue
         if found:
             return found
-    return DATABASE if database and any(SQL.search(text) for text in (command, *tokens)) else None
+    return DATABASE if database and any(SQL.search(part) for part in (text, *tokens, *queries)) else None
+
+
+def _heredocs(command: str) -> tuple[str, list[str | None]]:
+    """The command without its here-documents' lines, and the body of each unquoted `<<` in
+    order. A body is input to the command with the `<<`, not commands of its own. One whose
+    closing line never comes is None, and its lines stay commands."""
+    lines, kept, bodies, quote, index = command.split("\n"), [], [], "", 0
+    while index < len(lines):
+        line, index, opened, at = lines[index], index + 1, [], 0
+        kept.append(line)
+        while at < len(line):
+            char = line[at]
+            if quote:
+                quote = "" if char == quote else quote
+                at += 2 if char == "\\" and quote == '"' else 1
+            elif char == "<" and (match := HEREDOC.match(line, at)):
+                opened.append((match.group(1), next(g for g in match.groups()[1:] if g is not None)))
+                at = match.end()
+            else:
+                quote = char if char in "'\"" else ""
+                at += 2 if char == "\\" else 1
+        for strip, delimiter in opened:
+            end = next(
+                (
+                    i
+                    for i in range(index, len(lines))
+                    if (lines[i].lstrip("\t") if strip else lines[i]) == delimiter
+                ),
+                None,
+            )
+            bodies.append(None if end is None else "\n".join(lines[index:end]))
+            index = index if end is None else end + 1
+    return "\n".join(kept), bodies
 
 
 def _lex(command: str) -> list[tuple[str, bool]]:
@@ -440,16 +489,19 @@ def _lex(command: str) -> list[tuple[str, bool]]:
 def _unwrap(words: list[str]) -> tuple[str, list[str], bool]:
     """The program a command runs past variable assignments and wrappers such as sudo, its
     arguments, and whether xargs feeds it."""
-    index, piped, wrapper = 0, False, ""
+    index, piped, wrapper, manager = 0, False, "", ""
     while index < len(words):
         word = words[index]
         if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*=.*", word):
             index += 1
             continue
         name = Path(word).name
+        if manager and name in UNINSTALLS:
+            return manager, words[index:], piped
         if name not in WRAPPERS:
             return word, words[index + 1 :], piped
         piped = piped or name == "xargs"
+        manager = name if name in PACKAGE_MANAGERS else ""
         # Options after `uv run`, `npm exec`, etc. still belong to that launcher.
         if name not in {"run", "exec", "dlx"}:
             wrapper = name
@@ -506,7 +558,7 @@ def _within(target: str, cwd: Path | None, roots: dict[Path, set[Path] | None], 
     # Their unexpanded path cannot establish a disposable or captured target.
     if any(char in target for char in "{}$") or (cwd is None and not Path(target).is_absolute()):
         return False
-    path = Path(target) if Path(target).is_absolute() else cwd / target
+    path = Path(target) if cwd is None or Path(target).is_absolute() else cwd / target
     has_pattern = any(c in target for c in "*?[")
     if has_pattern and (".." in path.parts or target.endswith(("/", "/."))):
         return False
