@@ -205,7 +205,21 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
                     assert services.repository.conversation_summary(
                         ws.agent_id, ws.thread(question["agent_id"])["conversation_id"]
                     )["asks_questions"]
-                    if "permission-gamma" not in tools:
+                    if "question-gamma" not in tools:
+                        # Only the parent can answer a question it already received: waiting
+                        # for it again cannot change anything.
+                        message = tool_call_message(
+                            "wait_agents",
+                            {
+                                "agent_ids": [question["agent_id"]],
+                                "timeout_seconds": 5,
+                                "after": {question["agent_id"]: question["cursor"]},
+                            },
+                            "question-gamma",
+                        )
+                    elif "permission-gamma" not in tools:
+                        assert json.loads(tools["question-gamma"].content)["reason"] == "needs_answer"
+                        assert tools["question-gamma"].artifact == {"polled": False}
                         # Ordinary clarifications belong to the parent; an approval card
                         # does not. Model the latter pause without executing any command.
                         with pytest.raises(ValueError, match="running parent"):

@@ -664,8 +664,8 @@ Wait up to an hour for a helper to finish or need input; prefer long waits (minu
         repeating answers or diffs already received. Omit a cursor to reread that helper.
         Returns compact status for unchanged helpers. Also wakes when the parent receives
         steering, so you can act on the user's new instructions before waiting again.
-        Returns at once with reason needs_user when the rest only wait on the user, and with
-        reason settled when every helper has finished and its result was already received.
+        Returns at once with reason needs_answer when the rest are paused and one asks you a question,
+        needs_user when they only wait on the user, settled when all finished and you have their results.
 
 ```json
 {
