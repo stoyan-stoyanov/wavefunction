@@ -303,7 +303,9 @@ def build_agent_tools(context):
             ):
                 reason = "ready"
                 break
-            unsettled = [run for run in runs if run["status"] not in SETTLED or run["id"] in runtime.tasks]
+            unsettled = [
+                run for run in runs if run and (run["status"] not in SETTLED or run["id"] in runtime.tasks)
+            ]
             if not unsettled:
                 # Every helper has finished and its result was seen: nothing can change.
                 reason = "settled"
@@ -317,17 +319,10 @@ def build_agent_tools(context):
                 break
             # Run events wake this at once. Only a settled helper releasing its task has no
             # event, so check quickly during that brief window and slowly otherwise.
-            releasing = any(run["status"] in SETTLED and run["id"] in runtime.tasks for run in runs)
+            releasing = any(run["status"] in SETTLED and run["id"] in runtime.tasks for run in unsettled)
             waiters = [
                 asyncio.create_task(runtime.changed(run_id, min(remaining, 1 if releasing else 30)))
-                for run_id in [
-                    parent_id,
-                    *(
-                        run["id"]
-                        for run in runs
-                        if run and (run["status"] not in SETTLED or run["id"] in runtime.tasks)
-                    ),
-                ]
+                for run_id in [parent_id, *(run["id"] for run in unsettled)]
             ]
             waited = True
             try:
