@@ -56,12 +56,14 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong";
 }
 
+// The newest read of the connections wins. Reading them takes a moment (the ChatGPT model list
+// comes with them), so one started before a change could otherwise land after the read that
+// follows the change and put back what it replaced: a provider shown connected after removal.
+// A saved change counts as newer than any read already under way.
+let connectionsRead = 0;
+
 export const useSettings = create<SettingsState>((set, get) => {
   let actionSequence = 0;
-  // The newest read of the connections wins. Reading them takes a moment (the ChatGPT model list
-  // comes with them), so one started before a change could otherwise land after the read that
-  // follows the change and put back what it replaced: a provider shown connected after removal.
-  let connectionsRead = 0;
   async function readConnections(): Promise<Connections> {
     const read = ++connectionsRead;
     const connections = await api.getConnections();

@@ -51,12 +51,10 @@ it("keeps an enabled model and a chosen default when an earlier connections read
     action: null,
     modelPreferencesSaving: false,
   });
-  const put = vi
-    .spyOn(api, "updateEnabledModels")
-    .mockImplementation(async (models) => ({
-      models,
-      model: makeModel({ provider: "codex", model: "gpt-a" }),
-    }));
+  const put = vi.spyOn(api, "updateEnabledModels").mockImplementation(async (models) => ({
+    models,
+    model: makeModel({ provider: "codex", model: "gpt-a" }),
+  }));
 
   let land = slowRead();
   await useSettings.getState().saveEnabledModels(["codex::gpt-a", "openrouter::x-ai/grok"]);
