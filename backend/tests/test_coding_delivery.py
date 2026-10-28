@@ -236,6 +236,28 @@ async def test_new_worktree_chat_under_a_folder_name_stored_decomposed(coding, t
     assert (checked["head"], checked["branch"]) == (git(folder, "rev-parse", "HEAD"), branch)
 
 
+@pytest.mark.sandbox
+async def test_users_own_linked_worktree_reaches_its_shared_git_directory_only(coding, tmp_path):
+    client, ws, services = coding
+    main = repository(tmp_path)
+    feature = tmp_path / "feature"
+    git(main, "worktree", "add", "-b", "feature", str(feature))
+    (feature / "a.txt").write_text("edited in the user's worktree\n")
+    thread = await create(client, folder=str(feature))
+    assert [file["path"] for file in (await state(client, thread))["files"]] == ["a.txt"]
+    # Code history writes objects and refs there.
+    code = await ws.checkpoints.git(feature, action="checkpoint_capture", owner=thread["id"], point="edit")
+    assert git(main, "show", f"{code['commit']}:a.txt") == "edited in the user's worktree"
+    # A registration written inside a writable folder cannot name an ordinary parent folder.
+    forged = tmp_path / "worktrees" / "forged"
+    forged.mkdir(parents=True)
+    (forged / ".git").write_text(f"gitdir: {forged}\n")
+    (forged / "gitdir").write_text(f"{forged / '.git'}\n")
+    (forged / "commondir").write_text("../..\n")
+    ws.allow_folder(str(forged))
+    assert ws.checkout_access(forged)[0] == services.grants()
+
+
 async def recorded(ws, thread, folder, mutate):
     repo = ws.services.repository
     run = repo.create_run(
