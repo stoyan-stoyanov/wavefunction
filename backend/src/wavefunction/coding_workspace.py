@@ -692,10 +692,7 @@ class CodingWorkspace:
             if unanswered:
                 await asyncio.gather(*(connectors.refresh(server) for server in unanswered))
         names = set(TOOL_REGISTRY) | set(connectors.tools())
-        # Checked as stored, so a managed worktree replaced by a link is refused, then recorded
-        # resolved, so code history still matches once the folder moves behind a symlink.
-        self.checkout_access(folder)
-        folder = folder and str(Path(folder).resolve())
+        folder = self.checked_folder(folder)
         inventory = await asyncio.to_thread(
             discover, folder, self.services.skills, grants=self.services.grants()
         )
@@ -909,6 +906,12 @@ class CodingWorkspace:
                 # reads status or the backend captures a checkpoint.
                 grants = [Grant(g.path, g.writable and g.path.is_relative_to(folder)) for g in grants]
         return self.worktree_grants(folder, grants), owner["thread_id"] if owner else None
+
+    def checked_folder(self, folder):
+        """A message's folder checked as stored, so a managed worktree replaced by a link is
+        refused, then resolved, so code history still matches once it moves behind a symlink."""
+        self.checkout_access(folder)
+        return folder and str(Path(folder).resolve())
 
     def worktree_grants(self, folder, grants):
         """Add a managed worktree's shared Git metadata once its registration is verified."""
