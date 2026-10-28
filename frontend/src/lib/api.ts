@@ -293,12 +293,16 @@ async function consumeEventStream(
   signal.addEventListener("abort", cancel, { once: true });
   const decoder = new TextDecoder();
   let buffer = "";
+  let carry = "";
   try {
     for (;;) {
       throwIfAborted(signal);
       const { done, value } = await reader.read();
       throwIfAborted(signal);
-      buffer += decoder.decode(value, { stream: !done }).replaceAll("\r\n", "\n");
+      const text = carry + decoder.decode(value, { stream: !done });
+      // A read can end between the "\r" and "\n" of a line end: keep that "\r" for the next one.
+      carry = !done && text.endsWith("\r") ? "\r" : "";
+      buffer += text.slice(0, text.length - carry.length).replaceAll("\r\n", "\n");
       const blocks = buffer.split("\n\n");
       buffer = blocks.pop() ?? "";
       for (const block of blocks) {

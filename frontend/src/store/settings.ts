@@ -56,12 +56,14 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong";
 }
 
+// The newest read of the connections wins. Reading them takes a moment (the ChatGPT model list
+// comes with them), so one started before a change could otherwise land after the read that
+// follows the change and put back what it replaced: a provider shown connected after removal.
+// A saved change counts as newer than any read already under way.
+let connectionsRead = 0;
+
 export const useSettings = create<SettingsState>((set, get) => {
   let actionSequence = 0;
-  // The newest read of the connections wins. Reading them takes a moment (the ChatGPT model list
-  // comes with them), so one started before a change could otherwise land after the read that
-  // follows the change and put back what it replaced: a provider shown connected after removal.
-  let connectionsRead = 0;
   async function readConnections(): Promise<Connections> {
     const read = ++connectionsRead;
     const connections = await api.getConnections();
@@ -345,6 +347,8 @@ export const useSettings = create<SettingsState>((set, get) => {
       });
       try {
         const { models: enabledModels, model } = await api.updateEnabledModels(next);
+        // A read started before the save must not put the old list back.
+        connectionsRead++;
         const current = get().connections;
         // The default follows the enabled list returned by the server.
         if (current) {
@@ -371,6 +375,8 @@ export const useSettings = create<SettingsState>((set, get) => {
         "selecting-model",
         async () => {
           const { model: saved } = await api.updateDefaultModel(model);
+          // A read started before the change must not put the old default back.
+          connectionsRead++;
           const current = get().connections;
           // Choosing enables: the server adds the model to the list it is picked from.
           const key = `${saved.provider}::${saved.model}`;

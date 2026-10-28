@@ -111,6 +111,23 @@ def test_header_values_can_name_a_secret_instead_of_carrying_one(connectors) -> 
     assert "sk-live-abc" not in server.model_dump_json()
 
 
+def test_a_literal_dollar_before_a_capital_is_written_doubled_and_kept() -> None:
+    """A password like `Pa$W0rd` is not a key named W0: `$$` keeps it, and Settings doesn't ask for it."""
+    from wavefunction.connectors import secret_names
+
+    secrets = MemorySecretStore()
+    secrets.set("db_user", "app")
+    server = McpServer(
+        name="pg",
+        command=sys.executable,
+        env={"DATABASE_URL": "postgresql://$DB_USER:Pa$$W0rd@db.internal/app"},
+    )
+
+    sent = connection_config(server, secrets)["env"]["DATABASE_URL"]
+    assert sent == "postgresql://app:Pa$W0rd@db.internal/app"
+    assert secret_names(server) == ["DB_USER"]
+
+
 @pytest.fixture
 def http_server(request):
     """A real MCP server over streamable HTTP, on a port nothing else is using."""
