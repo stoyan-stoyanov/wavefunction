@@ -36,3 +36,4 @@ The tests drive the HTTP API, so find a behavior's tests by its route or name, n
 - Keep each run's captured spec and guidance, checkpoints and file versions intact.
 - Real accounts, the Keychain, credentials and user repositories stay out of ordinary tests.
 - Live connector checks (`npm run test:connectors:live`) are opt-in and never use real account mutations as fixtures.
+- Git on macOS writes paths precomposed (NFC), while a folder made in Finder keeps its accents decomposed (NFD) on disk: compare such paths normalized.

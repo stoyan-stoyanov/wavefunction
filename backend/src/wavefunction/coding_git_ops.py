@@ -7,6 +7,7 @@ import json
 import os
 import re
 import subprocess
+import unicodedata
 from pathlib import Path
 
 
@@ -281,11 +282,13 @@ def registered_worktree(root, destination, *, missing_ok=False):
     ):
         raise ValueError("The managed checkout is missing or linked.")
     entries = git(root, "worktree", "list", "--porcelain", "-z").split(b"\0\0")
+    # Git on macOS lists paths precomposed (NFC), while the volume keeps the folder's spelling.
+    listed = "worktree " + unicodedata.normalize("NFC", str(folder))
     entry = next(
         (
             item.split(b"\0")
             for item in entries
-            if item.startswith(b"worktree " + os.fsencode(folder) + b"\0")
+            if unicodedata.normalize("NFC", os.fsdecode(item.split(b"\0")[0])) == listed
         ),
         None,
     )

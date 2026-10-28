@@ -11,6 +11,7 @@ import json
 import shutil
 import sqlite3
 import threading
+import unicodedata
 from collections import Counter
 from contextlib import AsyncExitStack, contextmanager, suppress
 from pathlib import Path
@@ -934,6 +935,10 @@ class CodingWorkspace:
                 raise ValueError("Invalid worktree Git metadata.")
             return (base / value.removeprefix(prefix)).resolve()
 
+        def nfc(path):
+            # Git on macOS records these paths precomposed, the volume keeps the folder's spelling.
+            return unicodedata.normalize("NFC", str(path))
+
         try:
             original = source / ".git"
             common = original if original.is_dir() else pointer(original, source, "gitdir: ")
@@ -942,9 +947,9 @@ class CodingWorkspace:
             admin = pointer(folder / ".git", folder, "gitdir: ")
             if (
                 common.resolve() != common
-                or admin.parent != common / "worktrees"
-                or pointer(admin / "commondir", admin) != common
-                or pointer(admin / "gitdir", admin) != folder / ".git"
+                or nfc(admin.parent) != nfc(common / "worktrees")
+                or nfc(pointer(admin / "commondir", admin)) != nfc(common)
+                or nfc(pointer(admin / "gitdir", admin)) != nfc(folder / ".git")
             ):
                 raise ValueError("The worktree's Git registration no longer matches its saved source.")
             paths = [

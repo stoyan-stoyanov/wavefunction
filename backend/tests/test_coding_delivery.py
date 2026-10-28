@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import tempfile
+import unicodedata
 from pathlib import Path
 from unittest.mock import patch
 
@@ -215,6 +216,24 @@ def test_git_state_counts_unlisted_changes_and_flags_conflicts(tmp_path):
         current = coding_git_ops.state(folder.resolve())
     assert [file["path"] for file in current["files"]] == ["a.txt"] and current["total_files"] == 2
     assert current["conflicted"]
+
+
+@pytest.mark.sandbox
+async def test_new_worktree_chat_under_a_folder_name_stored_decomposed(coding, tmp_path):
+    # Finder stores an accented folder name decomposed (NFD); Git on macOS records it precomposed.
+    client, ws, _ = coding
+    parent = tmp_path / unicodedata.normalize("NFD", "Développement")
+    parent.mkdir()
+    folder = repository(parent)
+    response = await client.post("/api/coding/threads", json={"folder": str(folder), "worktree": True})
+    assert response.status_code == 201, response.text
+    thread = response.json()
+    branch = f"codex/chat-{thread['id'][:8]}"
+    assert (await state(client, thread))["branch"] == branch
+    assert (Path(thread["folder"]) / "a.txt").read_text() == "before\n"
+    # Removing the checkout first finds it among its repository's worktrees; only that check runs.
+    checked = await ws.cleanup.git(ws.delivery.worktree(thread["id"]), "worktree_cleanup_check")
+    assert (checked["head"], checked["branch"]) == (git(folder, "rev-parse", "HEAD"), branch)
 
 
 async def recorded(ws, thread, folder, mutate):
