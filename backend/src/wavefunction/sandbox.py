@@ -80,7 +80,7 @@ SYSTEM_PATH = ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/
 # Where package managers keep their caches in the sandbox, as folders of a writable cache
 # folder. Installs and builds write caches even offline, and the user's own (~/.npm, ~/.cache,
 # ~/Library/Caches, ~/go, ~/.cargo) are read-only there. rustup still finds its toolchains:
-# they live in ~/.rustup, not in CARGO_HOME.
+# they live in ~/.rustup, not in CARGO_HOME. Poetry keeps its virtualenvs in its cache.
 TOOL_CACHES = {
     "XDG_CACHE_HOME": "xdg",
     "npm_config_cache": "npm",
@@ -89,6 +89,7 @@ TOOL_CACHES = {
     "GOCACHE": "go-build",
     "GOMODCACHE": "go-mod",
     "CARGO_HOME": "cargo",
+    "POETRY_CACHE_DIR": "poetry",
 }
 
 DEFAULT_TIMEOUT = 120
@@ -270,7 +271,7 @@ def git_config_files() -> list[Path]:
 
 
 def toolchain_roots() -> list[Path]:
-    """Read-only runtime support, without granting a PATH entry's entire parent/home."""
+    """Read-only runtime support, without granting home, a folder in it or one that holds it."""
     home = Path.home()
     roots = [
         home / path
@@ -288,8 +289,36 @@ def toolchain_roots() -> list[Path]:
             ".local/share/uv",
             ".local/share/pipx/venvs",
             ".bun/bin",
+            # Managers whose shims run code kept beside them (rbenv's libexec, pnpm's store),
+            # conda installs and their environments, and JDKs that /usr/bin/java finds.
+            ".rbenv",
+            ".nodenv",
+            "Library/pnpm",
+            "miniconda3",
+            "anaconda3",
+            "miniforge3",
+            "opt/miniconda3",
+            "opt/anaconda3",
+            ".conda",
+            "Library/Java/JavaVirtualMachines",
         )
     ]
+    # Go's official installer, JDKs installed from a .pkg, and conda installed for all users.
+    roots += [
+        Path(path)
+        for path in (
+            "/usr/local/go",
+            "/Library/Java/JavaVirtualMachines",
+            "/opt/miniconda3",
+            "/opt/anaconda3",
+            "/opt/miniforge3",
+        )
+    ]
+    # Where a PATH bin's install folder is never granted: home and its folders, which can hold
+    # credentials beside a bin (~/.cargo, ~/.docker); the system and Homebrew prefixes, whose
+    # folders the profile lists one by one; and a volume's root.
+    home_root = home.resolve()
+    prefixes = {Path(path).parent for path in SYSTEM_PATH}
     for entry in command_path():
         directory = Path(entry).expanduser()
         if not directory.is_absolute() or directory.name not in {"bin", "sbin", "shims"}:
@@ -297,6 +326,13 @@ def toolchain_roots() -> list[Path]:
         if str(directory) in SYSTEM_PATH:
             continue  # These system/Homebrew prefixes are already covered by the profile.
         roots.append(directory)
+        # A toolchain installed elsewhere, such as Go's /usr/local/go or a conda in /opt, runs
+        # from its bin but reads the libraries and sources beside it.
+        install = directory.resolve().parent
+        if directory.is_dir() and not (
+            install.is_relative_to(home_root) or install in prefixes or os.path.ismount(install)
+        ):
+            roots.append(install)
         # uv/pipx and other installers expose symlinks to an executable elsewhere.
         with contextlib.suppress(OSError):
             for path in directory.iterdir():
@@ -320,7 +356,7 @@ def toolchain_roots() -> list[Path]:
     )
 
 
-def _quote(path: Path) -> str:
+def _quote(path: Path | str) -> str:
     """Escape a path for the profile language.
 
     Paths reach here from a folder picker, but they are still user data being spliced into a
@@ -453,7 +489,7 @@ def build_profile(
         runtime_roots += [Path(__file__).resolve().parent, *toolchain_roots()]
         if getattr(sys, "frozen", False):
             # The loader sets this directory; an environment variable must never grant access.
-            runtime_roots.append(Path(sys._MEIPASS).resolve())
+            runtime_roots.append(Path(sys._MEIPASS).resolve())  # pyright: ignore[reportAttributeAccessIssue]
         if developer := developer_runtime():
             runtime_roots.append(developer)
         for root in runtime_roots:
@@ -665,7 +701,7 @@ async def _run_process(
         # the work stopped, which is the one lie a full-access runner must not tell.
         start_new_session=True,
     )
-    if stdin is not None:
+    if stdin is not None and process.stdin is not None:
         # Buffered by the pipe's transport, written as the command reads, then closed.
         process.stdin.write(stdin)
         process.stdin.close()
@@ -685,7 +721,7 @@ async def _run_process(
         # A detached descendant may keep inherited pipes open after the shell exits.
         # asyncio exposes no public Process.close(); close its transport so collectors
         # receive EOF and retain their partial output without waiting for that child.
-        process._transport.close()
+        process._transport.close()  # pyright: ignore[reportAttributeAccessIssue]
         await process.wait()
 
     # Snapshots are bounded and throttled, so a verbose build cannot flood the event stream.
@@ -715,7 +751,7 @@ async def _run_process(
     tasks = [
         asyncio.create_task(
             _collect(
-                process.stdout,
+                process.stdout,  # pyright: ignore[reportArgumentType] (a pipe, never None)
                 spool_dir,
                 "stdout",
                 spools,
@@ -725,7 +761,7 @@ async def _run_process(
         ),
         asyncio.create_task(
             _collect(
-                process.stderr,
+                process.stderr,  # pyright: ignore[reportArgumentType] (a pipe, never None)
                 spool_dir,
                 "stderr",
                 spools,
