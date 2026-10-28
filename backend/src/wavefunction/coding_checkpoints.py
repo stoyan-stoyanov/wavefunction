@@ -36,6 +36,12 @@ PRUNE_MODELS = [
 ]
 
 
+def resolved(folder):
+    """A recorded folder as it resolves now: one recorded before it moved behind a symlink still
+    names the same checkout as the resolved root it is compared with."""
+    return folder and str(Path(folder).resolve())
+
+
 class Checkpoints:
     def __init__(self, ws):
         self.ws = ws
@@ -101,9 +107,9 @@ class Checkpoints:
             ).fetchone():
                 return
         point_id, code, error = str(uuid4()), None, None
-        folder = (run.get("spec") or {}).get("working_directory") or self.ws.effective_folder(thread)
-        # Recorded as it resolves, like the root it is compared with.
-        folder = folder and str(Path(folder).resolve())
+        folder = resolved(
+            (run.get("spec") or {}).get("working_directory") or self.ws.effective_folder(thread)
+        )
         saver = await self.ws.services.runtime.checkpointer()
         model = await saver.aget_tuple({"configurable": {"thread_id": run["conversation_id"]}})
         model_type, model_bytes = None, None
@@ -195,7 +201,7 @@ class Checkpoints:
             self.settled(source_thread_id)
         if checkpoint_id:
             point = self.point(source_thread_id, checkpoint_id)
-            if Path(point["folder"]).resolve() != folder:
+            if resolved(point["folder"]) != str(folder):
                 raise ValueError("Return to this message's original repository before forking its code.")
             code = point["code"]
         else:
@@ -435,9 +441,7 @@ class Checkpoints:
                 conversation_id=target["conversation_id"],
                 run_id=run_ids[row["run_id"]],
                 event_id=event_ids.get(row["event_id"]),
-                folder=moved_to
-                if (row["folder"] and str(Path(row["folder"]).resolve())) == moved_from
-                else row["folder"],
+                folder=moved_to if resolved(row["folder"]) == moved_from else row["folder"],
                 model_config=json.dumps(model_config) if model_config else None,
                 model_type=None,
                 model=None,
@@ -500,8 +504,7 @@ class Checkpoints:
             point = self.point(thread_id, checkpoint_id) if checkpoint_id else None
             if point and not worktree:
                 raise ValueError("Fork this message in a worktree so its code matches its history.")
-            # A folder recorded before it moved behind a symlink still names the same checkout.
-            if point and str(Path(point["folder"]).resolve()) != self.ws.effective_folder(source):
+            if point and resolved(point["folder"]) != self.ws.effective_folder(source):
                 raise ValueError("Return to this message's original repository before forking its code.")
             if worktree:
                 await self.ws.cleanup.restore(thread_id)
@@ -570,7 +573,7 @@ class Checkpoints:
                 raise ValueError("Fork this helper to restore or continue its history independently.")
             await self.ws.cleanup.restore(thread_id)
             root = self.ws.root(thread_id)
-            if Path(point["folder"]).resolve() != root:
+            if resolved(point["folder"]) != str(root):
                 raise ValueError("Return to this message's repository before restoring its code.")
             for run in self.ws.runs(thread_id):
                 if (
@@ -591,7 +594,7 @@ class Checkpoints:
                                 "SELECT folder, code, error FROM coding_checkpoints WHERE thread_id = ? ORDER BY created_at DESC",
                                 (thread_id,),
                             )
-                            if row["folder"] and Path(row["folder"]).resolve() == root
+                            if resolved(row["folder"]) == str(root)
                         ),
                         None,
                     )
