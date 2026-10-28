@@ -1,4 +1,4 @@
-"""Sandbox access to a linked worktree's shared Git metadata, in the backend before a command runs."""
+"""Sandbox access to a managed worktree's shared Git metadata, in the backend before a command runs."""
 
 from __future__ import annotations
 
@@ -8,16 +8,15 @@ from pathlib import Path
 from .sandbox import Grant
 
 
-def linked_worktree_grants(folder: Path, grants: list[Grant], source: Path | None) -> list[Grant]:
-    """Grant a linked worktree's shared Git metadata: reads, and writes while it is writable.
+def linked_worktree_grants(folder: Path, grants: list[Grant], source: Path) -> list[Grant]:
+    """Grant registered worktree metadata only while its checkout is writable.
 
     Worktrees share objects and refs, but keep their own HEAD/index. Anchor discovery to the
-    reciprocal Git registration, and for a managed worktree (`source` saved) to its source, never
-    just the child-controlled .git file. The shared directory must already be a Git directory, so
-    a registration forged in a writable folder cannot name an ordinary parent folder. A managed
-    worktree is granted only while writable. No subprocess or persisted extra grant.
+    saved source and reciprocal Git registration, never just the child-controlled .git file:
+    a worktree made outside the app has no saved source, and its .git file could name any
+    registration Git still keeps, so it gets nothing here. No subprocess or persisted extra grant.
     """
-    if source and (folder.resolve() != folder or source.resolve() != source):
+    if folder.resolve() != folder or source.resolve() != source:
         raise ValueError("The managed checkout was replaced by a link.")
 
     def pointer(path, base, prefix=""):
@@ -33,17 +32,13 @@ def linked_worktree_grants(folder: Path, grants: list[Grant], source: Path | Non
         return unicodedata.normalize("NFC", str(path))
 
     try:
+        original = source / ".git"
+        common = original if original.is_dir() else pointer(original, source, "gitdir: ")
+        if (common / "commondir").exists():
+            common = pointer(common / "commondir", common)
         admin = pointer(folder / ".git", folder, "gitdir: ")
-        # The user's own worktree (`git worktree add`): the Git directory that registered it.
-        common = admin.parent.parent
-        if source:
-            original = source / ".git"
-            common = original if original.is_dir() else pointer(original, source, "gitdir: ")
-            if (common / "commondir").exists():
-                common = pointer(common / "commondir", common)
         if (
             common.resolve() != common
-            or not ((common / "HEAD").is_file() and (common / "objects").is_dir())
             or nfc(admin.parent) != nfc(common / "worktrees")
             or nfc(pointer(admin / "commondir", admin)) != nfc(common)
             or nfc(pointer(admin / "gitdir", admin)) != nfc(folder / ".git")
@@ -68,18 +63,12 @@ def linked_worktree_grants(folder: Path, grants: list[Grant], source: Path | Non
         ]
         if any(path.resolve() != path for path in paths):
             raise ValueError("Linked Git metadata cannot be granted.")
-    except (OSError, ValueError) as error:
-        # Any other folder (a repository, a submodule, an unregistered checkout) is left to Git.
-        if not source:
-            return grants
-        if isinstance(error, ValueError):
-            raise
+    except OSError as error:
         raise ValueError("The managed worktree's Git registration is unavailable.") from error
-    writable = any(g.writable and folder.is_relative_to(g.path) for g in grants)
-    if not writable and (source or not any(folder.is_relative_to(g.path) for g in grants)):
+    if not any(g.writable and folder.is_relative_to(g.path) for g in grants):
         return grants
     # Avoid redundant paths in both the sandbox and the model's access context.
-    additions = [Grant(common), *(Grant(path, True) for path in paths if writable)]
+    additions = [Grant(common), *(Grant(path, True) for path in paths)]
     return [
         *grants,
         *(

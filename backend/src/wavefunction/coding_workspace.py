@@ -908,11 +908,9 @@ class CodingWorkspace:
         return self.worktree_grants(folder, grants), owner["thread_id"] if owner else None
 
     def worktree_grants(self, folder, grants):
-        """Add a linked worktree's shared Git metadata once its registration is verified."""
-        if folder is None:
-            return grants
-        source = self.worktree_source(folder)
-        return linked_worktree_grants(Path(folder), grants, Path(source) if source else None)
+        """Add a managed worktree's shared Git metadata once its registration is verified."""
+        source = self.worktree_source(folder) if folder is not None else None
+        return linked_worktree_grants(Path(folder), grants, Path(source)) if source else grants
 
     def runner(self, folder=None):
         grants, owner = self.checkout_access(folder)
