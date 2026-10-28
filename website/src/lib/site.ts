@@ -5,7 +5,7 @@ export const site = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.wavefunction.si",
   headline: "Minimal by design. Built to keep up.",
   description:
-    "A fast, open-source coding agent for your Mac. Keep the conversation going while it works on several tasks at once.",
+    "A fast, open-source coding agent for your Mac. It works on several tasks at once, while you keep the conversation going.",
   github,
   // Redirects to the latest release's DMG (app/download/route.ts).
   download: "/download",

@@ -4,6 +4,7 @@ import {
   BusyIdeVisual,
   CleanAppVisual,
   ConnectorsVisual,
+  Mark,
   PrivacyVisual,
   RepositoryVisual,
   SetupVisual,
@@ -37,6 +38,7 @@ export default function Home() {
         <Minimal />
         <ParallelWorkflows />
         <ComputerUse />
+        <Providers />
         <Privacy />
         <OpenSource />
         <Stats />
@@ -146,6 +148,9 @@ function Nav() {
           </a>
           <a href="#how" className="transition-colors hover:text-text">
             How it works
+          </a>
+          <a href="#models" className="transition-colors hover:text-text">
+            Models
           </a>
           <a href="#privacy" className="transition-colors hover:text-text">
             Privacy
@@ -263,13 +268,44 @@ function ParallelWorkflows() {
           Optimized for parallel workflows
         </h2>
         <p className="reveal mt-7 max-w-[40rem] text-lg leading-relaxed text-soft sm:text-xl">
-          Keep the conversation going. Ask anything anytime. Wavefunction steers
-          and orchestrates subagents in parallel, picks up your request at any
-          time, and brings their work together.
+          Keep the conversation going. Give it a task, then another, and
+          another. Wavefunction splits the work across subagents, steers them as
+          your plans change, and brings their work together.
         </p>
         <div className="reveal mt-16 rounded-[28px] bg-panel p-3 sm:p-8 lg:p-10">
           <Timeline />
         </div>
+        <ul className="mt-14 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              title: "The conversation keeps flowing",
+              description:
+                "Send the next task while the last one runs. Each new piece of work that can run on its own gets a subagent, and nothing waits its turn.",
+            },
+            {
+              title: "Parallel without collisions",
+              description:
+                "Every chat starts on its own branch, and subagents that could touch the same files each get a worktree. Wavefunction reviews their changes and brings them together.",
+            },
+            {
+              title: "Steer while it works",
+              description:
+                "Change your mind mid-task. Your message reaches the subagent already on it, so it adjusts without starting over.",
+            },
+            {
+              title: "Fork or rewind",
+              description:
+                "Start a new chat from any message, or put the code and the conversation back to how they were.",
+            },
+          ].map(({ title, description }) => (
+            <li key={title} className="reveal border-t border-text/15 pt-6">
+              <h3 className="text-[17px] font-medium">{title}</h3>
+              <p className="mt-3 text-[16px] leading-relaxed text-soft">
+                {description}
+              </p>
+            </li>
+          ))}
+        </ul>
       </Container>
     </section>
   );
@@ -324,19 +360,77 @@ function ComputerUse() {
   );
 }
 
+// The providers the app's model settings offer, and how each one connects.
+const PROVIDERS = [
+  { logo: "openai", name: "ChatGPT", connect: "Sign in with Plus or Pro" },
+  { logo: "anthropic", name: "Anthropic", connect: "API key" },
+  { logo: "gemini", name: "Google Gemini", connect: "API key" },
+  { logo: "openai", name: "OpenAI", connect: "API key" },
+  { logo: "openrouter", name: "OpenRouter", connect: "API key" },
+  { logo: "vercel", name: "Vercel AI Gateway", connect: "API key" },
+  { logo: "ollama", name: "Ollama", connect: "On your Mac or your server" },
+  { logo: null, name: "OpenAI-compatible", connect: "LM Studio and other servers" },
+];
+
+function Providers() {
+  return (
+    <section id="models" className="scroll-mt-16 pt-44 sm:pt-64">
+      <Container>
+        <h2 className="reveal max-w-[24ch] text-[clamp(2rem,4.4vw,3.5rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+          Bring your own model
+        </h2>
+        <p className="reveal mt-7 max-w-[40rem] text-lg leading-relaxed text-soft sm:text-xl">
+          Sign in with ChatGPT, use your own API keys, or run models on your
+          Mac. Pick a model for each chat and switch whenever you like.
+        </p>
+        <ul className="reveal mt-16 grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+          {PROVIDERS.map(({ logo, name, connect }) => (
+            <li
+              key={name}
+              className="flex min-w-0 flex-col gap-8 rounded-[20px] bg-panel p-5 sm:rounded-[24px] sm:p-7"
+            >
+              {logo ? (
+                <Mark name={logo} className="size-7 text-text" />
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-7 text-text"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  aria-hidden
+                >
+                  <rect x="3" y="4" width="18" height="7" rx="2" />
+                  <rect x="3" y="13" width="18" height="7" rx="2" />
+                  <path d="M7 7.5h.01M7 16.5h.01" strokeWidth="2.5" />
+                </svg>
+              )}
+              <div className="min-w-0">
+                <h3 className="text-[15px] font-medium sm:text-[17px]">
+                  {name}
+                </h3>
+                <p className="mt-1 text-sm text-soft">{connect}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Container>
+    </section>
+  );
+}
+
 function Privacy() {
   return (
     <section id="privacy" className="scroll-mt-16 pt-44 sm:pt-64">
       <Container>
-        <div className="mx-auto max-w-[44rem] text-center">
-          <h2 className="reveal text-balance text-[clamp(2.5rem,6vw,4.75rem)] font-semibold leading-none tracking-[-0.045em]">
-            Secure and private
-          </h2>
-          <p className="reveal mx-auto mt-7 max-w-[36ch] text-lg leading-relaxed text-soft sm:text-xl">
-            Use local models or require zero data retention from your provider.
-          </p>
-        </div>
-        <div className="mx-auto mt-12 max-w-[820px] sm:mt-16">
+        <h2 className="reveal text-balance text-[clamp(2.5rem,6vw,4.75rem)] font-semibold leading-none tracking-[-0.045em]">
+          Secure and private
+        </h2>
+        <p className="reveal mt-7 max-w-[36ch] text-lg leading-relaxed text-soft sm:text-xl">
+          Use local models or require zero data retention from your provider.
+        </p>
+        <div className="mt-12 sm:mt-16">
           <PrivacyVisual />
         </div>
       </Container>
@@ -347,48 +441,14 @@ function Privacy() {
 function Minimal() {
   return (
     <section id="minimal" className="scroll-mt-16 pt-44 sm:pt-64">
-      {/* Phones show the two mockups straight after the intro; from md up they follow the list. */}
-      <Container className="grid gap-14 lg:grid-cols-[0.8fr_1.2fr] lg:gap-x-20 lg:gap-y-16">
-        <div>
-          <h2 className="reveal text-[clamp(2.5rem,6vw,4.75rem)] font-semibold leading-none tracking-[-0.045em]">
-            Less is more
-          </h2>
-          <p className="reveal mt-7 max-w-[28ch] text-lg leading-relaxed text-soft sm:text-xl">
-            One agent. A conversation. More room to focus on your code.
-          </p>
-        </div>
-        <ul className="order-2 grid gap-x-10 gap-y-10 sm:grid-cols-2 md:order-1">
-          {[
-            {
-              title: "Fewer sidebars. Fewer tabs.",
-              description:
-                "Simple, clean, minimal interface. The conversation stays at the center.",
-            },
-            {
-              title: "Your browser, always",
-              description:
-                "No built-in browser. Links open in your default browser, with the setup you already use.",
-            },
-            {
-              title: "Just a coding agent",
-              description:
-                "No dots, bots, built-in apps of all kinds, or a million extra features. Just the tools to get things done.",
-            },
-            {
-              title: "Computer use in a VM",
-              description:
-                "Your own computer stays under your control. The agent works in an isolated virtual desktop when it needs computer use.",
-            },
-          ].map(({ title, description }) => (
-            <li key={title} className="reveal border-t border-text/15 pt-6">
-              <h3 className="text-[17px] font-medium">{title}</h3>
-              <p className="mt-3 text-[16px] leading-relaxed text-soft">
-                {description}
-              </p>
-            </li>
-          ))}
-        </ul>
-        <div className="order-1 grid gap-4 md:order-2 md:grid-cols-2 md:max-lg:mt-2 lg:col-span-2">
+      <Container>
+        <h2 className="reveal text-[clamp(2.5rem,6vw,4.75rem)] font-semibold leading-none tracking-[-0.045em]">
+          Less is more
+        </h2>
+        <p className="reveal mt-7 max-w-[28ch] text-lg leading-relaxed text-soft sm:text-xl">
+          One agent. A conversation. More room to focus on your code.
+        </p>
+        <div className="mt-14 grid gap-4 md:grid-cols-2 sm:mt-16">
           <figure className="reveal flex min-w-0 flex-col gap-6 rounded-[28px] bg-panel p-6 sm:p-9">
             <BusyIdeVisual />
             <figcaption className="text-[15.5px] text-soft">
@@ -410,6 +470,37 @@ function Minimal() {
             </figcaption>
           </figure>
         </div>
+        <ul className="mt-14 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            {
+              title: "Fewer sidebars. Fewer tabs.",
+              description:
+                "Simple, clean, minimal interface. The conversation stays at the center.",
+            },
+            {
+              title: "Your browser, always",
+              description:
+                "No built-in browser. Links open in your default browser, with the setup you already use.",
+            },
+            {
+              title: "Just a coding agent",
+              description:
+                "No dots, bots, built-in apps of all kinds, or a million extra features. Just the tools to get things done.",
+            },
+            {
+              title: "Computer use in a container",
+              description:
+                "Your own computer stays under your control. When the agent needs a desktop, it uses its own, in a local Docker container.",
+            },
+          ].map(({ title, description }) => (
+            <li key={title} className="reveal border-t border-text/15 pt-6">
+              <h3 className="text-[17px] font-medium">{title}</h3>
+              <p className="mt-3 text-[16px] leading-relaxed text-soft">
+                {description}
+              </p>
+            </li>
+          ))}
+        </ul>
       </Container>
     </section>
   );
@@ -419,18 +510,16 @@ function OpenSource() {
   return (
     <section id="open-source" className="scroll-mt-16 pt-44 sm:pt-64">
       <Container>
-        <div className="mx-auto max-w-[42rem] text-center">
-          <h2 className="reveal text-balance text-[clamp(2rem,4.4vw,3.5rem)] font-medium leading-[1.08] tracking-[-0.035em]">
-            Open source, down to the prompt
-          </h2>
-          <p className="reveal mx-auto mt-6 max-w-[34rem] text-lg leading-relaxed text-soft sm:text-xl">
-            Interested in contributing? We welcome new contributors.
-          </p>
-          <div className="reveal mt-8">
-            <Source label="View on GitHub" />
-          </div>
+        <h2 className="reveal text-balance text-[clamp(2rem,4.4vw,3.5rem)] font-medium leading-[1.08] tracking-[-0.035em]">
+          Open source, down to the prompt
+        </h2>
+        <p className="reveal mt-6 max-w-[34rem] text-lg leading-relaxed text-soft sm:text-xl">
+          Interested in contributing? We welcome new contributors.
+        </p>
+        <div className="reveal mt-8">
+          <Source label="View on GitHub" />
         </div>
-        <div className="mx-auto mt-14 max-w-[960px] sm:mt-20">
+        <div className="mt-14 sm:mt-20">
           <RepositoryVisual />
         </div>
       </Container>
@@ -491,7 +580,7 @@ function FAQ() {
     {
       question: "Which models can I use?",
       answer:
-        "Use local models through Ollama or a compatible server, connect OpenAI, OpenRouter, or Vercel AI Gateway, or sign in with ChatGPT. Choose the model that fits each conversation.",
+        "Sign in with ChatGPT, use an API key from OpenAI, Anthropic, Google Gemini, OpenRouter or Vercel AI Gateway, or run models locally through Ollama, LM Studio or another OpenAI-compatible server. Choose the model that fits each conversation.",
     },
     {
       question: "How do I keep my work private?",
