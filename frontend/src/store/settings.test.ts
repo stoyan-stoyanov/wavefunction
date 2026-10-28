@@ -56,9 +56,12 @@ it("keeps an enabled model and a chosen default when an earlier connections read
     model: makeModel({ provider: "codex", model: "gpt-a" }),
   }));
 
+  // The read was started by saving an Anthropic key, which it still brings in.
   let land = slowRead();
   await useSettings.getState().saveEnabledModels(["codex::gpt-a", "openrouter::x-ai/grok"]);
-  await land(connections(["codex::gpt-a"]));
+  const keySaved = connections(["codex::gpt-a"]);
+  await land({ ...keySaved, secrets: { ...keySaved.secrets, anthropic_api_key: true } });
+  expect(useSettings.getState().connections?.secrets.anthropic_api_key).toBe(true);
   // The next toggle is built from the list shown, so a stale list would save without Grok.
   const shown = useSettings.getState().connections!.enabled_models;
   await useSettings.getState().saveEnabledModels([...shown, "openrouter::openai/gpt-x"]);
