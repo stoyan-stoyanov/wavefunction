@@ -1290,9 +1290,17 @@ function WebSearchSettings() {
   const action = useSettings((state) => state.action);
   const [key, setKey] = useState("");
   const hasTavily = Boolean(connections?.secrets.tavily_api_key);
-  // OpenRouter and a ChatGPT sign-in search for their own models; Tavily searches for any model.
+  // These providers search for their own models; Tavily searches for any model.
+  const secrets = connections?.secrets;
   const available =
-    hasTavily || Boolean(connections?.secrets.openrouter_api_key || connections?.codex.connected);
+    hasTavily ||
+    Boolean(
+      secrets?.openrouter_api_key ||
+      secrets?.vercel_api_key ||
+      secrets?.anthropic_api_key ||
+      secrets?.gemini_api_key ||
+      connections?.codex.connected,
+    );
   async function connect() {
     const value = key.trim();
     if (!value) return;
@@ -1307,7 +1315,7 @@ function WebSearchSettings() {
   return (
     <NativeSection
       title="Web search"
-      description="Chats on an OpenRouter or ChatGPT model search the web through that provider. Nothing to set up."
+      description="Chats on a ChatGPT, OpenRouter, Vercel AI Gateway, Anthropic or Gemini model search the web through that provider. Nothing to set up."
       actions={
         <span className={cn("text-xs", available ? "text-success" : "text-muted-foreground")}>
           {available ? "Available" : "Not set up"}
@@ -1341,7 +1349,7 @@ function WebSearchSettings() {
             {hasTavily ? <ForgetKeyButton secret="tavily_api_key" label="Remove key" /> : null}
           </div>
           <p className="text-xs text-muted-foreground">
-            Only needed for chats whose model runs somewhere other than OpenRouter or ChatGPT.
+            Only needed for chats on OpenAI, Ollama or another OpenAI-compatible server.
           </p>
         </form>
       </div>

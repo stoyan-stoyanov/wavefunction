@@ -317,15 +317,16 @@ def web_search_status(context: ToolContext) -> tuple[bool, str]:
         where = context.model.provider if context.model else "openrouter"
         if where == "codex":
             return True, "Searches the web on your ChatGPT subscription. No extra key needed."
-        return True, "Searches the web through OpenRouter. No extra key needed."
+        name = {"vercel": "the Vercel AI Gateway", "anthropic": "Anthropic", "gemini": "Gemini"}
+        return True, f"Searches the web through {name.get(where, 'OpenRouter')}. No extra key needed."
     if provider == "tavily":
         return True, "Searches the web through Tavily."
     where = context.model.provider if context.model else "another provider"
     return False, (
         f"Web search cannot run: this agent's model is on {where}, and no Tavily key is saved. "
-        "Either switch the agent to a model on OpenRouter or a ChatGPT sign-in, both of which "
-        "search the web themselves at no extra setup, or add a Tavily API key under "
-        "Settings > Models > Web search."
+        "Either switch the agent to a model on a ChatGPT sign-in, OpenRouter, the Vercel AI "
+        "Gateway, Anthropic or Gemini, which all search the web themselves at no extra setup, "
+        "or add a Tavily API key under Settings > Models > Web search."
     )
 
 
