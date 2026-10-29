@@ -7,6 +7,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 ### Added
 
 - Settings › About shows what a new version changes before you install it. ([#8](https://github.com/stoyan-stoyanov/wavefunction/pull/8))
+- Chats on Anthropic, Gemini or Vercel AI Gateway models can search the web with that provider's own search, without a Tavily key. ([#14](https://github.com/stoyan-stoyanov/wavefunction/pull/14))
 
 ### Fixed
 

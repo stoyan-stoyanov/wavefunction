@@ -199,7 +199,7 @@ class Harness:
         assert any("Example Domain" in result for result in self.used(run, "fetch_page"))
         assert "Example Domain" in answer, answer[:200]
         if not searchable:
-            return "skipped search: the app doesn't use this provider's own search yet, and no Tavily key is saved; fetch_page passed"
+            return "skipped search: the app searches for this provider only with a Tavily key, and none is saved; fetch_page passed"
 
     async def documents(self):
         thread, _ = await self.thread("documents")

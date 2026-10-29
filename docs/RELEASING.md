@@ -25,7 +25,8 @@ About the real-model check:
   - `--key-file`: the app's own key file, `~/Library/Application Support/app.harness.coding/Agent/.wavefunction.env`;
   - `--model`: a model that reads images, which computer use needs.
 - Neither file is ever refreshed or written.
-- The app uses a provider's own web search only for a ChatGPT sign-in and OpenRouter so far; other providers need a saved Tavily key to search. Without one, the search half of the `web` scenario reports `skipped`, so run the check through ChatGPT or OpenRouter at least once per release.
+- Web search uses the provider's own search for a ChatGPT sign-in, OpenRouter, the Vercel AI Gateway, Anthropic and Gemini.
+- OpenAI's own API and other OpenAI-compatible servers search only with a saved Tavily key. Without one, the search half of the `web` scenario reports `skipped`, so run the check through one of the first five at least once per release.
 - Computer use needs Docker running and the computer image built under **Settings › Computer use**. Without them that scenario reports `skipped`, and the check fails.
 - `--only web,documents` reruns just the named scenarios. `--max-requests` (default 120) stops the run after that many model requests.
 - If the release changes code for a particular provider, also run the check with that provider.

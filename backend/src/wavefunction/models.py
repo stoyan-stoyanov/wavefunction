@@ -29,6 +29,13 @@ from .spec_common import ModelSpec
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 VERCEL_GATEWAY_BASE_URL = "https://ai-gateway.vercel.sh/v1"
+# Providers whose own search runs on the key a chat already uses. A ChatGPT sign-in searches too.
+SEARCH_KEYS = {
+    "openrouter": "openrouter_api_key",
+    "vercel": "vercel_api_key",
+    "anthropic": "anthropic_api_key",
+    "gemini": "gemini_api_key",
+}
 
 
 # Pacing for the offline demo model, so its reply streams like a real one.
@@ -119,7 +126,7 @@ def _provider_metadata(error: BaseException) -> dict[str, Any]:
     return metadata if isinstance(metadata, dict) else {}
 
 
-def _codex_auth_failure(error: BaseException) -> str:
+def _codex_auth_failure(error: BaseException | None) -> str:
     seen: set[int] = set()
     while error is not None and id(error) not in seen:
         seen.add(id(error))
@@ -428,9 +435,10 @@ class ModelGateway:
 
         OpenRouter runs the search itself — natively for OpenAI, Anthropic, Google, Perplexity
         and xAI models, through Exa for the rest — so a model on OpenRouter needs no extra key.
-        Anything else falls back to Tavily, which does.
+        So do Anthropic, Gemini and the Vercel AI Gateway, on the key the chat already runs on
+        (`provider_search.py`). Anything else falls back to Tavily, which needs its own key.
         """
-        if model.provider == "openrouter" and self.secrets.get("openrouter_api_key"):
+        if (key := SEARCH_KEYS.get(model.provider)) and self.secrets.get(key):
             return "built-in"
         # A ChatGPT sign-in already includes search: the endpoint carries OpenAI's own
         # `web_search` tool and every model offered here declares `supports_search_tool`, so no
@@ -446,7 +454,9 @@ class ModelGateway:
     ) -> str:
         """Search the web, and return what the sources said along with where it came from.
 
-        A plain chat request with the web plugin attached: OpenRouter runs the search, puts the
+        A ChatGPT sign-in, Anthropic, Gemini and the Vercel AI Gateway each search with their own
+        tool (`codex.search_web`, `provider_search.py`). On OpenRouter it is a plain chat request
+        with the web plugin attached: OpenRouter runs the search, puts the
         results in front of the model, and returns what it cited as `url_citation` annotations.
         Those annotations are the useful part, so the answer text is only a fallback for a
         provider whose native search does not annotate.
@@ -455,6 +465,22 @@ class ModelGateway:
             if self.codex is None or not self.codex.connected():
                 raise RuntimeError("Sign in with ChatGPT in Settings › Models before searching")
             text, usage = await search_web(self.codex, model.model, query, max_results)
+            report_usage(usage)
+            return text
+        if model.provider in {"anthropic", "gemini", "vercel"}:
+            from .provider_search import anthropic_search, gateway_search, gemini_search
+
+            key = self.secrets.get(SEARCH_KEYS[model.provider])
+            if not key:
+                raise RuntimeError("Connect this model's API key in Settings › Models before searching")
+            if model.provider == "anthropic":
+                text, usage = await anthropic_search(key, model.model, query, max_results)
+            elif model.provider == "gemini":
+                text, usage = await gemini_search(key, model.model, query, max_results)
+            else:
+                text, usage = await gateway_search(
+                    key, model.model, query, max_results, zero_data_retention=zero_data_retention
+                )
             report_usage(usage)
             return text
         api_key = self.secrets.get("openrouter_api_key")
@@ -528,7 +554,7 @@ class ModelGateway:
         if "supported_parameters" in known:
             params = known["supported_parameters"]
             profile["tool_calling"] = "tools" in params
-        built.profile = profile or None
+        built.profile = profile or None  # type: ignore[assignment]
         built.metadata = {**(built.metadata or {}), "provider": model.provider}
         return built
 
@@ -690,14 +716,14 @@ class ModelGateway:
             betas.append("thinking-binding-controls-2026-08-01")
         output_tokens = max_tokens if max_tokens is not None else model.max_tokens
         return ChatAnthropic(
-            model=model.model,
+            model=model.model,  # type: ignore[call-arg]
             api_key=api_key,
-            max_tokens=output_tokens or known.get("max_output_tokens") or 64000,
+            max_tokens=output_tokens or known.get("max_output_tokens") or 64000,  # type: ignore[call-arg]
             streaming=True,
             stream_usage=True,
             betas=betas or None,
             model_kwargs={"cache_control": {"type": "ephemeral"}},
-            default_request_timeout=300,
+            default_request_timeout=300,  # type: ignore[call-arg]
             max_retries=max_retries,
             **extra,
             **reasoning_kwargs("anthropic", model.reasoning_effort),
@@ -753,7 +779,7 @@ class ModelGateway:
         http_client, http_async_client = codex_http_clients(self.codex)
         return ChatCodex(
             model=model.model,
-            api_key="managed-by-codex-transport",
+            api_key="managed-by-codex-transport",  # type: ignore[arg-type]
             base_url=CODEX_BASE_URL,
             default_headers=codex_headers(credentials),
             use_responses_api=True,
