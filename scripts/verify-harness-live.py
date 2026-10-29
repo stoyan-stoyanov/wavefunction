@@ -20,6 +20,7 @@ import subprocess
 import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from urllib.parse import urlparse
 
 import httpx
 
@@ -181,9 +182,11 @@ class Harness:
             run = await self.send(
                 thread,
                 "Use the web_search tool to find the official website of the Python programming language. "
-                "Reply with its URL.",
+                "Reply with its full URL, starting with https://.",
             )
-            assert "python.org" in self.completed(run).lower()
+            answer = self.completed(run)
+            hosts = {urlparse(url).hostname for url in re.findall(r"https?://[^\s)\]>]+", answer)}
+            assert hosts & {"python.org", "www.python.org"}, f"no python.org link: {answer[:200]}"
             assert any("http" in result for result in self.used(run, "web_search")), (
                 "search returned no links"
             )
