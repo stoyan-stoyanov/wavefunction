@@ -4,6 +4,8 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+## 0.2.0 - 2026-10-29
+
 ### Added
 
 - Settings › About shows what a new version changes before you install it. ([#8](https://github.com/stoyan-stoyanov/wavefunction/pull/8))
