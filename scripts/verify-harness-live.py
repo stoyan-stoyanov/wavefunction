@@ -373,18 +373,30 @@ async def verify(args):
         github_cli.commands_signed_in = signed_out
         sent = 0
 
+        def count():
+            nonlocal sent
+            sent += 1
+            if sent > args.max_requests:
+                raise RuntimeError(f"Stopped at the {args.max_requests}-call budget (--max-requests)")
+
         class Budget(AgentMiddleware):
-            """Counts every model call, helpers' included, and stops past --max-requests."""
+            """Counts each attempt at a model call, helpers' included. Innermost, so the retries
+            ProviderPolicyMiddleware makes pass through it too."""
 
             async def awrap_model_call(self, request, handler):
-                nonlocal sent
-                sent += 1
-                if sent > args.max_requests:
-                    raise RuntimeError(f"Stopped at the {args.max_requests}-call budget (--max-requests)")
+                count()
                 return await handler(request)
 
         build_middleware = agent_factory.build_middleware
-        agent_factory.build_middleware = lambda *a, **kw: [Budget(), *build_middleware(*a, **kw)]
+        agent_factory.build_middleware = lambda *a, **kw: [*build_middleware(*a, **kw), Budget()]
+        # A web search is a provider request of its own, outside the agent's middleware.
+        search = services.models.web_search
+
+        async def counted_search(*a, **kw):
+            count()
+            return await search(*a, **kw)
+
+        services.models.web_search = counted_search
         try:
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=main.app), base_url="http://test"
