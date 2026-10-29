@@ -83,6 +83,7 @@ These use synthetic data, clean up after themselves, and are not needed for docs
 
 - `scripts/verify-coding-features.py --backend <frozen engine>`: a frozen build's tools, terminals, history, helpers and restart, with a scripted model.
 - `scripts/verify-coding-live.py [--provider openrouter] --cache-check`: real model calls through an existing sign-in or a key file; measures provider-reported cached tokens. Report misses as well as hits. Cross-chat cache hits are reported, not required.
+- `scripts/verify-harness-live.py --auth-file <sign-in>`: one real-model scenario per capability a release ships (conversation, coding, web, documents, computer, helpers, approval), each passing only on a random code the tool must have produced. Required before a release ([RELEASING.md](RELEASING.md#before-a-release)).
 - `scripts/verify-orchestration-live.py`: real parallel delegation with a cost stop.
 - `scripts/verify-computer.py --build`: real computer-use input in Docker.
 - `scripts/verify-microsoft-sdk.ps1`: offline compatibility of the pinned Microsoft Graph module.
