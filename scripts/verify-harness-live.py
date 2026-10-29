@@ -185,7 +185,9 @@ class Harness:
                 "Reply with its full URL, starting with https://.",
             )
             answer = self.completed(run)
-            hosts = {urlparse(url).hostname for url in re.findall(r"https?://[^\s)\]>]+", answer)}
+            # Links as models write them: in Markdown bold or code, or ending a sentence.
+            links = re.findall(r"https?://[^\s)\]>*`\"']+", answer)
+            hosts = {urlparse(link.rstrip(".,;:")).hostname for link in links}
             assert hosts & {"python.org", "www.python.org"}, f"no python.org link: {answer[:200]}"
             assert any("http" in result for result in self.used(run, "web_search")), (
                 "search returned no links"
