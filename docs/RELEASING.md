@@ -2,6 +2,34 @@
 
 A version tag builds a signed, notarized app on GitHub Actions and opens a **draft** release. Publishing the draft ships it: the website's download button (`releases/latest`) and every installed app's update check read the latest published release.
 
+## Before a release
+
+Check the commit you will tag, on `main`. Run `npm run setup` first, so your local dependencies match the lockfiles. Every check below uses synthetic data in a throwaway folder and cleans up after itself; none of them touches your own app data.
+
+| Check | Command | What it proves |
+|---|---|---|
+| Every suite | `npm run check -- --all` | Tests, types and lint for the engine, interface, desktop shell and launcher |
+| The app builds | `npm run desktop:build` | The bundled engine and the app build from the lockfiles |
+| The bundled engine | `uv run --no-sync --project backend python scripts/verify-coding-features.py --backend backend/dist/wavefunction-backend/wavefunction-backend` | Tools, terminals, history, helpers and restart in the packaged engine, with a scripted model |
+| Each capability, with a real model | `uv run --no-sync --project backend python scripts/verify-harness-live.py --auth-file ~/.codex/auth.json` | A conversation's memory, coding, web search and page reading, uploaded documents, computer use, helpers, and the approval card for a command that can't be undone |
+| The native app | `uv run --no-sync --project backend python scripts/verify-native.py --app src-tauri/target/release/bundle/macos/Wavefunction.app` | Launch, the bundled tools, and data surviving a restart. It refuses to run beside existing Wavefunction data, so run it from a macOS account without any. |
+
+Tests that run real deletion commands (`destructive`) never run locally: check instead that the commit's **Checks** run on GitHub passed, which ran them on macOS.
+
+About the real-model check:
+
+- Each scenario plants a random code that the model can only report if the tool really worked, then prints a pass/fail table. The check exits 1 unless every scenario passed.
+- `--auth-file` takes a current ChatGPT sign-in, such as the Codex CLI's `~/.codex/auth.json` (run `codex login` if it has expired).
+- To use an API key instead, pass all three:
+  - `--provider`: `openrouter`, `vercel`, `anthropic`, `gemini` or `openai`;
+  - `--key-file`: the app's own key file, `~/Library/Application Support/app.harness.coding/Agent/.wavefunction.env`;
+  - `--model`: a model that reads images, which computer use needs.
+- Neither file is ever refreshed or written.
+- The app uses a provider's own web search only for a ChatGPT sign-in and OpenRouter so far; other providers need a saved Tavily key to search. Without one, the search half of the `web` scenario reports `skipped`, so run the check through ChatGPT or OpenRouter at least once per release.
+- Computer use needs Docker running and the computer image built under **Settings › Computer use**. Without them that scenario reports `skipped`, and the check fails.
+- `--only web,documents` reruns just the named scenarios. `--max-requests` (default 120) stops the run after that many model requests.
+- If the release changes code for a particular provider, also run the check with that provider.
+
 ## Release
 
 1. Choose the version (see [the changelog](#the-changelog)), set it everywhere it is recorded, then commit and merge it:
@@ -25,7 +53,8 @@ A version tag builds a signed, notarized app on GitHub Actions and opens a **dra
    - `Wavefunction-<version>-macos-arm64-notices-and-sources.zip`: the third-party notices, also inside the app under `Contents/Resources/legal`, and the source archives of the bundled Python and Rust dependencies
    - `SHA256SUMS`
    The draft's description is the same changelog section.
-4. Review the draft, optionally install the DMG, and publish it.
+4. Review the draft. Install its DMG and use it for a few minutes: send a message, attach a document, and check that **Settings › About** shows the new version. Then publish it.
+5. Open an installed copy of the previous version. Shortly after launch, it should offer the update in **Settings › About**, with this release's notes, and install it. No local check can cover this step.
 
 ## The changelog
 
