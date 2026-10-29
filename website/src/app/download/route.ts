@@ -6,19 +6,17 @@ export async function GET() {
   return Response.redirect((await latestDmg()) ?? site.releases, 302);
 }
 
-// Asked of GitHub at most every few minutes, so a new release reaches the button without a deploy.
+// Read at most every few minutes, so a new release reaches the button without a deploy. The
+// update manifest comes from GitHub's download servers, unlike the REST API, which allows
+// 60 unauthenticated requests an hour per address and so fails from shared hosting.
 async function latestDmg() {
   "use cache";
   cacheLife("minutes");
   try {
-    const response = await fetch(site.latestReleaseApi, {
-      headers: { Accept: "application/vnd.github+json", "User-Agent": "wavefunction.si" },
-    });
+    const response = await fetch(site.updateManifest);
     if (!response.ok) return null;
-    const { assets } = (await response.json()) as {
-      assets: { name: string; browser_download_url: string }[];
-    };
-    return assets.find((asset) => asset.name.endsWith(".dmg"))?.browser_download_url ?? null;
+    const { version } = (await response.json()) as { version: string };
+    return `${site.github}/releases/download/v${version}/Wavefunction-${version}-macos-arm64.dmg`;
   } catch {
     return null;
   }
