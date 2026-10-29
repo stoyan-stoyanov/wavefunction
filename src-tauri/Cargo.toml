@@ -28,7 +28,7 @@ tauri-plugin-window-state = "2"
 tokio = { version = "1", features = ["sync", "time"] }
 uuid = { version = "1", features = ["v4"] }
 # macOS TLS rather than rustls: rustls would require every reqwest client in the app to install a crypto provider.
-tauri-plugin-updater = { version = "=2.14.0", default-features = false, features = ["native-tls", "zip"] }
+tauri-plugin-updater = { version = "=2.14.1", default-features = false, features = ["native-tls", "zip"] }
 
 [target."cfg(target_os = \"macos\")".dependencies]
 block2 = "0.6"
