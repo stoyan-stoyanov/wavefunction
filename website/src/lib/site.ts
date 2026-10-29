@@ -10,7 +10,8 @@ export const site = {
   // Redirects to the latest release's DMG (app/download/route.ts).
   download: "/download",
   releases: `${github}/releases/latest`,
-  latestReleaseApi: "https://api.github.com/repos/stoyan-stoyanov/wavefunction/releases/latest",
+  // The latest release's update manifest, which installed apps read too.
+  updateManifest: `${github}/releases/latest/download/latest.json`,
   license: `${github}/blob/main/LICENSE`,
   security: `${github}/blob/main/SECURITY.md`,
 };
