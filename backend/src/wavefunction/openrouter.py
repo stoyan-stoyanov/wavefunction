@@ -36,7 +36,7 @@ class OpenRouterCatalog:
                 f"{OPENROUTER_BASE_URL}/models/user",
                 headers={
                     "Authorization": f"Bearer {key}",
-                    "HTTP-Referer": "https://wavefunction.local",
+                    "HTTP-Referer": "https://www.wavefunction.si",
                     "X-OpenRouter-Title": "Wavefunction",
                 },
             )

@@ -491,7 +491,7 @@ class ModelGateway:
                 f"{OPENROUTER_BASE_URL}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {api_key}",
-                    "HTTP-Referer": "https://wavefunction.local",
+                    "HTTP-Referer": "https://www.wavefunction.si",
                     "X-OpenRouter-Title": "Wavefunction",
                 },
                 json={
@@ -641,7 +641,7 @@ class ModelGateway:
                 {
                     "base_url": OPENROUTER_BASE_URL,
                     "default_headers": {
-                        "HTTP-Referer": "https://wavefunction.local",
+                        "HTTP-Referer": "https://www.wavefunction.si",
                         "X-OpenRouter-Title": "Wavefunction",
                         "X-OpenRouter-Metadata": "enabled",
                     },
