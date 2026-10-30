@@ -96,11 +96,12 @@ jobs:
       - name: Nothing left changed (commit what the job generated, or ignore it)
         run: git status --porcelain && test -z "$(git status --porcelain)"
   # Cases marked `sandbox`, and the launcher integration, whose fixture chat runs in a repository,
-  # run commands through the macOS sandbox, which Linux lacks.
+  # run commands through the macOS sandbox, which Linux lacks. The newest macOS, because that's what
+  # users run and the sandbox can change between versions.
   backend-macos:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: macos-14
+    runs-on: macos-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -123,11 +124,12 @@ jobs:
       - run: npm --prefix frontend ci --no-audit --no-fund
       - run: npm run test:launcher
   # The desktop shell. It bundles the frozen backend, which compiling and testing it never runs,
-  # so an empty stand-in takes its place.
+  # so an empty stand-in takes its place. The same macOS as release.yml, so this compiles with the
+  # toolchain that builds the app.
   native:
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
