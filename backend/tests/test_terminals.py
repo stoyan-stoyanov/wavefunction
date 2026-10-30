@@ -131,11 +131,22 @@ for line in sys.stdin:
             elif self._cursor < 12 and not any(
                 "AGENT:typed-value" in str(m.content) for m in messages if isinstance(m, ToolMessage)
             ):
-                # As an agent would: read again until the program's reply has arrived. The first
-                # read can return just the echoed input, before the program has printed.
+                # As an agent would: read on from the returned cursor until the program's reply
+                # has arrived. The first read can return just the echoed input, before the program
+                # has printed, and rereading from the start wouldn't wait for more: a slow start
+                # would then look like a stuck loop and end the run.
+                reads = [
+                    json.loads(str(m.content))
+                    for m in messages
+                    if isinstance(m, ToolMessage) and m.name == "read_terminal"
+                ]
                 message = tool_call_message(
                     "read_terminal",
-                    {"terminal_id": sessions[0].id, "wait_seconds": 1},
+                    {
+                        "terminal_id": sessions[0].id,
+                        "cursor": reads[-1]["cursor"] if reads else 0,
+                        "wait_seconds": 5,
+                    },
                     f"output-{self._cursor}",
                 )
             else:
@@ -146,7 +157,7 @@ for line in sys.stdin:
     services.models.chat_model = lambda *_args, **_kwargs: TerminalModel()
     run = await ws.send(thread["id"], "Run an interactive background check")
     result = await services.runtime.wait(run["id"])
-    assert result["status"] == "completed", result
+    assert result["status"] == "completed", result["error"]
     snapshot = (await client.get("/api/coding/workspace")).json()
     assert (
         next(t for t in snapshot["threads"] if t["id"] == thread["id"])["last_finished_run_id"] == run["id"]
