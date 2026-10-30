@@ -11,7 +11,9 @@ concurrency:
   group: release-${{ github.ref }}
 jobs:
   macos:
-    runs-on: macos-14
+    # Pinned, not macos-latest: a Mac app runs on newer macOS but not older, and what builds a
+    # release shouldn't change without a commit. `native` in checks.yml uses the same image.
+    runs-on: macos-15
     timeout-minutes: 60
     env:
       TAG: ${{ github.ref_name }}
