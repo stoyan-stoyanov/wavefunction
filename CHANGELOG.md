@@ -6,11 +6,11 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Added
 
-- Model lists show when each model was released, where that's known. ([#17](https://github.com/stoyan-stoyanov/wavefunction/pull/17))
+- Model lists show when each model was released, where that's known. ([#18](https://github.com/stoyan-stoyanov/wavefunction/pull/18))
 
 ### Changed
 
-- Adding a provider in Settings lists all its models with checkboxes, so you can pick several at once, instead of one from a dropdown. ([#17](https://github.com/stoyan-stoyanov/wavefunction/pull/17))
+- Adding a provider in Settings lists all its models with checkboxes, so you can pick several at once, instead of one from a dropdown. ([#18](https://github.com/stoyan-stoyanov/wavefunction/pull/18))
 
 ## 0.2.0 - 2026-10-29
 
