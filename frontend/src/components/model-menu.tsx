@@ -39,11 +39,8 @@ export function ModelMenu({
   className,
   currentModel,
   onReasoningChange,
-  availableModels = false,
 }: {
   options: ModelOption[];
-  /** Setup offers the provider catalogue before any models have been enabled. */
-  availableModels?: boolean;
   loading?: boolean;
   disabled?: boolean;
   selectedKey: string;
@@ -96,18 +93,12 @@ export function ModelMenu({
           ) : null
         }
       >
-        <ModelSelectorInput
-          placeholder={availableModels ? "Search available models…" : "Search enabled models…"}
-        />
+        <ModelSelectorInput placeholder="Search enabled models…" />
         <ModelSelectorList className="max-h-80">
           <ModelSelectorEmpty>
-            {options.length
-              ? "No model matches your search."
-              : availableModels
-                ? "No available models. Refresh the provider’s model list."
-                : "Enable models in Settings to add them here."}
+            {options.length ? "No model matches your search." : "Enable models in Settings to add them here."}
           </ModelSelectorEmpty>
-          <ModelSelectorGroup heading={availableModels ? "Available models" : "Enabled models"}>
+          <ModelSelectorGroup heading="Enabled models">
             {options.map((option) => (
               <ModelSelectorItem
                 key={option.key}

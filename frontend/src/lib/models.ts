@@ -84,6 +84,7 @@ export interface ModelChoice {
   name: string;
   description?: string;
   context_length?: number;
+  release_date?: string | null;
   unavailable?: string;
 }
 /** Providers connected with an API key alone, whose catalogue the backend reads with it. */

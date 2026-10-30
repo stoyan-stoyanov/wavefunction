@@ -7485,6 +7485,17 @@
             ],
             "title": "Reasoning Efforts"
           },
+          "release_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Date"
+          },
           "max_output_tokens": {
             "anyOf": [
               {
@@ -7512,6 +7523,7 @@
           "supported_parameters",
           "pricing",
           "reasoning_efforts",
+          "release_date",
           "max_output_tokens",
           "adaptive_thinking"
         ],
@@ -8218,6 +8230,17 @@
               }
             ],
             "title": "Reasoning Efforts"
+          },
+          "release_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Date"
           }
         },
         "type": "object",
@@ -9538,6 +9561,17 @@
               }
             ],
             "title": "Reasoning Efforts"
+          },
+          "release_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Date"
           }
         },
         "type": "object",
@@ -9550,7 +9584,8 @@
           "output_modalities",
           "supported_parameters",
           "pricing",
-          "reasoning_efforts"
+          "reasoning_efforts",
+          "release_date"
         ],
         "title": "GatewayModel"
       },
@@ -9630,6 +9665,17 @@
             ],
             "title": "Reasoning Efforts"
           },
+          "release_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Release Date"
+          },
           "max_output_tokens": {
             "anyOf": [
               {
@@ -9653,6 +9699,7 @@
           "supported_parameters",
           "pricing",
           "reasoning_efforts",
+          "release_date",
           "max_output_tokens"
         ],
         "title": "GeminiModel"
