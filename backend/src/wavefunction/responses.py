@@ -95,6 +95,7 @@ class GatewayModel(TypedDict):
     supported_parameters: list[str]
     pricing: dict[str, str]
     reasoning_efforts: list[str] | None
+    release_date: str | None
 
 
 class GatewayModels(TypedDict):
@@ -133,6 +134,7 @@ class CodexModel(TypedDict):
     description: str
     # The built-in fallback list has none.
     reasoning_efforts: NotRequired[list[str] | None]
+    release_date: NotRequired[str | None]
 
 
 class CodexLogin(TypedDict):

@@ -1987,6 +1987,8 @@ export interface components {
             };
             /** Reasoning Efforts */
             reasoning_efforts: string[] | null;
+            /** Release Date */
+            release_date: string | null;
             /** Max Output Tokens */
             max_output_tokens: number | null;
             /** Adaptive Thinking */
@@ -2236,6 +2238,8 @@ export interface components {
             description: string;
             /** Reasoning Efforts */
             reasoning_efforts?: string[] | null;
+            /** Release Date */
+            release_date?: string | null;
         };
         /** CodexStatus */
         CodexStatus: {
@@ -2694,6 +2698,8 @@ export interface components {
             };
             /** Reasoning Efforts */
             reasoning_efforts: string[] | null;
+            /** Release Date */
+            release_date: string | null;
         };
         /** GatewayModels */
         GatewayModels: {
@@ -2722,6 +2728,8 @@ export interface components {
             };
             /** Reasoning Efforts */
             reasoning_efforts: string[] | null;
+            /** Release Date */
+            release_date: string | null;
             /** Max Output Tokens */
             max_output_tokens: number | null;
         };

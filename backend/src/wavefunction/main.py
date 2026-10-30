@@ -1201,7 +1201,7 @@ async def get_connections(_: Auth) -> dict[str, Any]:
         # Not a secret in the `secrets` sense — nothing was pasted — so it travels as its own
         # block with the account it belongs to.
         "codex": services.codex.status(),
-        "codex_models": codex_models,
+        "codex_models": services.model_registry.dated("codex", codex_models),
         "ollama": services.repository.get_setting("ollama", None),
         "require_zdr": services.repository.get_setting("require_zdr", False) is True,
     }
@@ -1285,7 +1285,7 @@ async def list_vercel_models(_: Auth) -> dict[str, Any]:
         services.repository.set_setting(
             "model_capabilities", {**known, "vercel": {m["id"]: m for m in models}}
         )
-        return {"models": models}
+        return {"models": services.model_registry.dated("vercel", models)}
     except httpx.HTTPStatusError as error:
         if error.response.status_code in {401, 403}:
             raise HTTPException(status_code=409, detail="The Vercel AI Gateway key was rejected.") from error
@@ -1309,7 +1309,7 @@ async def list_anthropic_models(_: Auth) -> dict[str, Any]:
     services.repository.set_setting(
         "model_capabilities", {**known, "anthropic": {m["id"]: m for m in models}}
     )
-    return {"models": models}
+    return {"models": services.model_registry.dated("anthropic", models)}
 
 
 def _anthropic_http_error(error: Exception) -> HTTPException:
@@ -1333,7 +1333,7 @@ async def list_gemini_models(_: Auth) -> dict[str, Any]:
         raise _gemini_http_error(error) from error
     known = services.repository.get_setting("model_capabilities", {})
     services.repository.set_setting("model_capabilities", {**known, "gemini": {m["id"]: m for m in models}})
-    return {"models": models}
+    return {"models": services.model_registry.dated("gemini", models)}
 
 
 def _gemini_http_error(error: Exception) -> HTTPException:
@@ -1353,7 +1353,7 @@ async def list_openrouter_models(_: Auth) -> dict[str, Any]:
         services.repository.set_setting(
             "model_capabilities", {**known, "openrouter": {m["id"]: m for m in models}}
         )
-        return {"models": models}
+        return {"models": services.model_registry.dated("openrouter", models)}
     except RuntimeError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     except httpx.HTTPStatusError as error:

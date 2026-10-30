@@ -60,6 +60,17 @@ function contextLabel(contextLength: number): string {
   if (contextLength >= 1000) return `${Math.round(contextLength / 1000)}K`;
   return `${contextLength}`;
 }
+const releaseDay = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeZone: "UTC" });
+/** "1M context · Released Oct 26, 2026", with whichever of the two is known. */
+function modelFacts(model: ModelChoice): string {
+  const context = contextLabel(model.context_length ?? 0);
+  return [
+    context && `${context} context`,
+    model.release_date && `Released ${releaseDay.format(new Date(model.release_date))}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 function sameModels(left: string[], right: string[]): boolean {
   if (left.length !== right.length) return false;
   const rightSet = new Set(right);
@@ -89,7 +100,7 @@ function ModelChecklist({
         <CommandGroup heading="Available models">
           {models.map((model) => {
             const enabled = isChecked(model.id);
-            const context = contextLabel(model.context_length ?? 0);
+            const facts = modelFacts(model);
             return (
               <CommandItem
                 key={model.id}
@@ -114,9 +125,7 @@ function ModelChecklist({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="truncate text-sm font-medium">{model.name}</span>
-                    {context ? (
-                      <span className="shrink-0 text-2xs text-muted-foreground">{context} context</span>
-                    ) : null}
+                    {facts ? <span className="shrink-0 text-2xs text-muted-foreground">{facts}</span> : null}
                   </div>
                   <p className="truncate font-mono text-2xs text-muted-foreground">
                     {model.unavailable ?? model.id}
@@ -202,7 +211,7 @@ export function ModelCards({
       <div className="grid gap-2">
         {shown.map((model) => {
           const checked = isChecked(model.id);
-          const context = contextLabel(model.context_length ?? 0);
+          const facts = modelFacts(model);
           return (
             <button
               key={model.id}
@@ -231,9 +240,7 @@ export function ModelCards({
                   {model.unavailable ?? model.id}
                 </span>
               </span>
-              {context ? (
-                <span className="shrink-0 text-xs text-muted-foreground">{context} context</span>
-              ) : null}
+              {facts ? <span className="shrink-0 text-xs text-muted-foreground">{facts}</span> : null}
             </button>
           );
         })}
@@ -453,9 +460,7 @@ export function ModelsSettings({
     flow === "choose"
       ? "Add a provider"
       : selectingModel
-        ? selected?.asDefault
-          ? "Choose your default model"
-          : "Choose a model"
+        ? "Choose models"
         : selected
           ? `${selected.adding ? "Connect" : "Manage"} ${selectedName}`
           : "Models";
@@ -520,8 +525,7 @@ export function ModelsSettings({
           <>
             {selected.adding && selected.provider !== "openai" ? (
               <p className="mb-5 text-sm text-muted-foreground">
-                Connect your account, then choose{" "}
-                {selected.asDefault ? "your default coding model" : "a model for your conversations"}.
+                Connect your account, then choose the models you want in chats.
               </p>
             ) : null}
             {selected.provider === "codex" ? <ChatGPTSettings setup={selected.adding} /> : null}
@@ -668,7 +672,11 @@ function ProviderModelSetup({
   const loadConnections = useSettings((state) => state.loadConnections);
   const saveEnabledModels = useSettings((state) => state.saveEnabledModels);
   const setDefaultModel = useSettings((state) => state.setDefaultModel);
-  const [selection, setSelection] = useState("");
+  const prefix = `${provider}::`;
+  // In the order they were picked: the first is the default for new chats.
+  const [picked, setPicked] = useState(() =>
+    connections.enabled_models.filter((key) => key.startsWith(prefix)).map((key) => key.slice(prefix.length)),
+  );
   const [custom, setCustom] = useState("");
   const [operation, setOperation] = useState<"save" | "refresh" | null>(null);
   const action = useSettings((state) => state.action);
@@ -680,27 +688,23 @@ function ProviderModelSetup({
     (isKeyProvider(provider) && action === `saving-${provider}`);
   const [error, setError] = useState("");
   const catalogue = providerCatalogue(provider, connections, openRouterModels, keyModels);
-  const id = custom.trim() || (catalogue.some((model) => model.id === selection) ? selection : "");
-  const options = catalogue.map((model) => ({
-    key: model.id,
-    provider,
-    model: model.id,
-    name: model.name,
-    detail: model.id,
-  }));
+  const typed = custom.trim();
+  const chosen = typed && !picked.includes(typed) ? [...picked, typed] : picked;
+  const name = modelProviders.find(({ id }) => id === provider)?.name ?? "";
   async function finish() {
-    if (!id || busy) return;
+    if (!chosen.length || busy) return;
     setOperation("save");
     setError("");
     try {
       const enabled = useSettings.getState().connections?.enabled_models ?? [];
       await saveEnabledModels([
-        ...new Set([...enabled.filter((key) => !key.startsWith("demo::")), `${provider}::${id}`]),
+        ...enabled.filter((key) => !key.startsWith("demo::") && !key.startsWith(prefix)),
+        ...chosen.map((id) => prefix + id),
       ]);
       if (asDefault)
         await setDefaultModel({
           provider,
-          model: id,
+          model: chosen[0],
           base_url: null,
           temperature: 0.1,
           max_tokens: null,
@@ -730,32 +734,32 @@ function ProviderModelSetup({
     }
   }
   return (
-    <div className="space-y-4 rounded-xl bg-card p-4">
+    <div className="space-y-4">
       <p className="text-sm leading-6 text-muted-foreground">
-        {"New conversations use this default. You can choose another model in each conversation."}
+        Pick the {name} models you want in chats.
+        {asDefault ? " The first one you pick is the default for new conversations." : ""}
       </p>
-      <ModelMenu
-        availableModels
-        options={options}
-        selectedKey={selection}
-        selectedName={catalogue.find((model) => model.id === selection)?.name ?? "Choose a model"}
-        disabled={busy || loadingModels}
-        loading={loadingModels}
-        onChange={(value) => {
-          setSelection(value);
-          setCustom("");
-        }}
-        label={"Default model"}
-        title="Available models"
-        className="w-full"
-      />
-      {!catalogue.length && !loadingModels ? (
+      {catalogue.length ? (
+        <ModelCards
+          label={name}
+          models={catalogue}
+          isChecked={(id) => picked.includes(id)}
+          onToggle={(id) =>
+            setPicked((current) =>
+              current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+            )
+          }
+          disabled={busy}
+        />
+      ) : (
         <p role="status" className="text-sm text-muted-foreground">
-          {provider === "ollama"
-            ? "No models with tool support are available. Download one in Ollama, then refresh."
-            : "No models loaded yet. Refresh to try again."}
+          {loadingModels
+            ? "Loading models…"
+            : provider === "ollama"
+              ? "No models with tool support are available. Download one in Ollama, then refresh."
+              : "No models loaded yet. Refresh to try again."}
         </p>
-      ) : null}
+      )}
       {provider === "codex" ? (
         <details className="text-sm text-muted-foreground">
           <summary className="cursor-pointer">Use another model ID</summary>
@@ -774,9 +778,10 @@ function ProviderModelSetup({
           {error}
         </p>
       ) : null}
-      <div className="flex items-center gap-3">
-        <Button disabled={!id || busy || loadingModels} onClick={() => void finish()}>
-          {operation === "save" ? "Saving…" : asDefault ? "Use this default model" : "Add model"}
+      {/* Stays in reach at the bottom of the page however long the list is. */}
+      <div className="sticky bottom-0 -mx-8 flex items-center gap-3 border-t border-hairline bg-background px-8 py-3">
+        <Button disabled={!chosen.length || busy || loadingModels} onClick={() => void finish()}>
+          {operation === "save" ? "Saving…" : "Save models"}
         </Button>
         <Button variant="ghost" disabled={busy || loadingModels} onClick={() => void refresh()}>
           {loadingModels ? "Loading models…" : "Refresh models"}
