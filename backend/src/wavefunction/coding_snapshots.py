@@ -19,6 +19,8 @@ from .coding_git_ops import git, text
 
 MAX_FILE = 16 * 1024 * 1024
 MAX_TOTAL = 128 * 1024 * 1024
+MAX_FILES = 10000
+TOO_LARGE = "This source snapshot exceeds the code history limit (16 MB per file, 128 MB or 10,000 files)."
 # Secrets stay out of code history even when tracked; build output and dependencies only
 # while untracked.
 PRIVATE = {".git", ".ssh", ".aws", ".gnupg"}
@@ -63,14 +65,23 @@ def capture(root, owner, point):
         cache = json.loads(cache_path.read_text())
     except (OSError, ValueError):
         cache = {}
+    # A tracked file is source, whatever its folder is called: only untracked build output,
+    # dependencies and secrets are left out by name.
+    tracked = {os.fsdecode(n) for n in git(root, "ls-files", "-z", "--cached").split(b"\0") if n}
+    # Every message tries again, so a repository over the limit stops here, before Git walks the
+    # folder for untracked files and each file is checked.
+    source = {name for name in tracked if eligible(name)}
+    if len(source) > MAX_FILES:
+        # Tracked but not here doesn't count: deleted (R), or left out of a sparse checkout (S).
+        rows = git(root, "ls-files", "-z", "-t", "--cached", "--deleted").split(b"\0")
+        absent = {os.fsdecode(row[2:]) for row in rows if row[:2] in (b"R ", b"S ")}
+        if len(source - absent) > MAX_FILES:
+            raise ValueError(TOO_LARGE)
     names = {
         os.fsdecode(n)
         for n in git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard").split(b"\0")
         if n
     }
-    # A tracked file is source, whatever its folder is called: only untracked build output,
-    # dependencies and secrets are left out by name.
-    tracked = {os.fsdecode(n) for n in git(root, "ls-files", "-z", "--cached").split(b"\0") if n}
     # Build output and dependencies kept on disk but not in this snapshot: untracked, or tracked
     # but not copyable (a committed node_modules' links, a bundle past the limits). Recorded by
     # their folder, as ignored folders are, so a restore leaves them as they are instead of taking
@@ -94,7 +105,7 @@ def capture(root, owner, point):
         info = None if linked or not path.exists() else path.stat()
         special = info is not None and not stat.S_ISREG(info.st_mode)
         over = info is not None and (
-            info.st_size > MAX_FILE or total + info.st_size > MAX_TOTAL or len(saved) >= 10000
+            info.st_size > MAX_FILE or total + info.st_size > MAX_TOTAL or len(saved) >= MAX_FILES
         )
         if output and (linked or special or over):
             leave(name)
@@ -106,9 +117,7 @@ def capture(root, owner, point):
         if special:
             raise ValueError(f"Code history cannot copy a submodule or special file: {name}")
         if over:
-            raise ValueError(
-                "This source snapshot exceeds the code history limit (16 MB per file, 128 MB or 10,000 files)."
-            )
+            raise ValueError(TOO_LARGE)
         total += info.st_size
         signature = [info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_mode]
         previous = cache.get(name)
