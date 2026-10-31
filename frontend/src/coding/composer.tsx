@@ -319,15 +319,9 @@ function ComposerBody({
       attachRef.current = null;
     };
   });
-  const blocked =
-    (!draft.trim() && !context.command) ||
-    sending ||
-    restoring ||
-    uploading ||
-    helper ||
-    thread.archived ||
-    baseUnavailable;
-  const [held, hold] = useSendOnceLoaded(thread.id, Boolean(detail) && !baseUnavailable, () => void submit());
+  const settling = sending || restoring || uploading || baseUnavailable;
+  const blocked = (!draft.trim() && !context.command) || settling || helper || thread.archived;
+  const [held, hold] = useSendOnceLoaded(thread.id, Boolean(detail) && !settling, () => void submit());
   async function submit() {
     if (blocked) return;
     if (!detail) return hold();

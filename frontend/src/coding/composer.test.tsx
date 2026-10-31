@@ -725,6 +725,35 @@ it("sends a held message when its chat is opened again", async () => {
   expect(send.mock.calls[0][1]).toBe("Not lost");
 });
 
+it("holds a message through an upload, and drops the hold if the box is cleared", async () => {
+  const busy = { ...thread, id: "uploading-while-loading" };
+  useCoding.setState({ details: {} });
+  render(composer(busy));
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(box, { target: { value: "After the upload" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  const loaded = { [busy.id]: { ...busy, runs: [], attachments: [] } };
+  act(() => useCoding.setState({ uploading: { [busy.id]: true }, details: loaded }));
+  expect(send).not.toHaveBeenCalled();
+
+  act(() => useCoding.setState({ uploading: {} }));
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+  expect(send.mock.calls[0][1]).toBe("After the upload");
+  cleanup();
+
+  const cleared = { ...thread, id: "cleared-while-loading" };
+  useCoding.setState({ details: {} });
+  render(composer(cleared));
+  const next = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(next, { target: { value: "Changed my mind" } });
+  fireEvent.keyDown(next, { key: "Enter" });
+  fireEvent.change(next, { target: { value: "" } });
+  act(() => useCoding.setState({ details: { [cleared.id]: { ...cleared, runs: [], attachments: [] } } }));
+  fireEvent.change(next, { target: { value: "N" } });
+  await act(async () => {});
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
 it("keeps a message written while history loads if the history never arrives", () => {
   useCoding.setState({ details: {} });
   render(composer({ ...thread, id: "never-loaded" }));
