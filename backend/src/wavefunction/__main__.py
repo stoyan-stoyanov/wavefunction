@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-import argparse
-import asyncio
 import os
 import signal
 import threading
 import time
 from contextlib import suppress
-from pathlib import Path
 
-import uvicorn
-
+# Every sandboxed file operation starts this program as an interpreter, so what it needs only as
+# the server is imported only there.
 SERVER_OPTIONS = ("--host", "--port", "--token", "--data-dir", "--parent-pid", "--log-level")
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args():
+    import argparse
+    from pathlib import Path
+
     parser = argparse.ArgumentParser(description="Wavefunction local desktop backend")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, required=True)
@@ -68,7 +68,7 @@ def run_as_python() -> None:
             # As a real interpreter applies `-W error` or `-W ignore::DeprecationWarning`.
             value = option[2:] or (rest.pop(0) if rest else "")
             sys.warnoptions.append(value)
-            warnings._processoptions([value])
+            warnings._processoptions([value])  # pyright: ignore[reportAttributeAccessIssue]
             continue
         if option == "-X":
             rest = rest[1:]  # Its value; implementation options do not apply to a running interpreter.
@@ -167,6 +167,8 @@ def run_as_python() -> None:
         runpy.run_module(rest[1], run_name="__main__", alter_sys=True)
         return
     sys.argv = rest
+    from pathlib import Path
+
     script = os.path.abspath(rest[0])
     search_first(os.path.dirname(script))
     source = Path(script).read_bytes() if os.path.isfile(script) else b"\0"
@@ -213,6 +215,10 @@ def main() -> None:
         threading.Thread(
             target=_watch_parent, args=(args.parent_pid,), name="wavefunction-parent-watch", daemon=True
         ).start()
+
+    import asyncio
+
+    import uvicorn
 
     # Import only after the process-specific settings are present: main constructs the local
     # repository and service graph at import time.
