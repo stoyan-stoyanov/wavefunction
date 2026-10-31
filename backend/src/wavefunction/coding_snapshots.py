@@ -51,20 +51,42 @@ def entries(root, ref):
     return result
 
 
-def capture(root, owner, point):
+IDENTITY = {
+    "GIT_AUTHOR_NAME": "Wavefunction",
+    "GIT_AUTHOR_EMAIL": "checkpoint@localhost",
+    "GIT_COMMITTER_NAME": "Wavefunction",
+    "GIT_COMMITTER_EMAIL": "checkpoint@localhost",
+}
+
+
+def write_tree(root, records):
+    with tempfile.TemporaryDirectory(prefix="wavefunction-index-") as temporary:
+        env = {"GIT_INDEX_FILE": str(Path(temporary) / "index")}
+        git(root, "update-index", "-z", "--index-info", data=records, env=env)
+        return text(root, "write-tree", env=env)
+
+
+def read_json(path):
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def capture(root, owner, point, matching=None):
+    """A snapshot of this checkout, or `{"matches": True}` and no ref if it equals `matching`."""
     if not all(re.fullmatch(r"[a-zA-Z0-9-]{1,80}", key) for key in (owner, point)):
         raise ValueError("Invalid checkpoint identity.")
-    if Path(text(root, "rev-parse", "--show-toplevel")).resolve() != root:
+    top, cache_name, head = text(
+        root, "rev-parse", "--show-toplevel", "--git-path", f"wavefunction/{owner}.json", "--verify", "HEAD"
+    ).rsplit("\n", 2)
+    if Path(top).resolve() != root:
         raise ValueError("Choose the Git repository root to use code history.")
-    head = text(root, "rev-parse", "--verify", "HEAD")
-    cache_path = Path(text(root, "rev-parse", "--git-path", f"wavefunction/{owner}.json"))
+    cache_path = Path(cache_name)
     if not cache_path.is_absolute():
         cache_path = root / cache_path
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        cache = json.loads(cache_path.read_text())
-    except (OSError, ValueError):
-        cache = {}
+    cache = read_json(cache_path)
     # A tracked file is source, whatever its folder is called: only untracked build output,
     # dependencies and secrets are left out by name.
     tracked = {os.fsdecode(n) for n in git(root, "ls-files", "-z", "--cached").split(b"\0") if n}
@@ -145,24 +167,33 @@ def capture(root, owner, point):
             ]:
                 raise ValueError(f"{name} changed while its code checkpoint was being saved.")
             saved[name]["oid"] = oid
-    with tempfile.TemporaryDirectory(prefix="wavefunction-index-") as temporary:
-        env = {"GIT_INDEX_FILE": str(Path(temporary) / "index")}
-        git(root, "read-tree", "--empty", env=env)
-        records = b"".join(
-            f"{row['mode']} {row['oid']}\t".encode() + os.fsencode(name) + b"\0"
-            for name, row in saved.items()
-        )
-        git(root, "update-index", "-z", "--index-info", data=records, env=env)
-        tree = text(root, "write-tree", env=env)
-    identity = {
-        "GIT_AUTHOR_NAME": "Wavefunction",
-        "GIT_AUTHOR_EMAIL": "checkpoint@localhost",
-        "GIT_COMMITTER_NAME": "Wavefunction",
-        "GIT_COMMITTER_EMAIL": "checkpoint@localhost",
-    }
-    commit = text(root, "commit-tree", tree, "-p", head, "-m", "Wavefunction code checkpoint", env=identity)
+    records = b"".join(
+        f"{row['mode']} {row['oid']}\t".encode() + os.fsencode(name) + b"\0" for name, row in saved.items()
+    )
+    # Most snapshots find nothing changed since the last, on the same commit, so they need no new
+    # tree or commit: only a ref of their own.
+    last_path = cache_path.with_suffix(".last.json")
+    digest = hashlib.sha256(head.encode() + b"\0" + records).hexdigest()
+    last = read_json(last_path)
+    same = last.get("digest") == digest
+    tree = last["tree"] if same else write_tree(root, records)
+    modes = {name: stat.S_IMODE(row["stat"][-1]) for name, row in saved.items()}
+    if matching == {"tree": tree, "modes": modes}:
+        cache_path.write_text(json.dumps(saved))
+        return {"matches": True}
     ref = f"refs/wavefunction/checkpoints/{point}"
-    git(root, "update-ref", ref, commit)
+    commit = last.get("commit") if same else None
+    try:
+        if commit:
+            git(root, "update-ref", ref, commit)
+    except ValueError:  # Nothing kept it, and Git has since pruned it.
+        commit = None
+    if not commit:
+        commit = text(
+            root, "commit-tree", tree, "-p", head, "-m", "Wavefunction code checkpoint", env=IDENTITY
+        )
+        git(root, "update-ref", ref, commit)
+    last_path.write_text(json.dumps({"digest": digest, "tree": tree, "commit": commit}))
     cache_path.write_text(json.dumps(saved))
     # Ignored files are not code history, but they are on disk: a later restore must not take
     # one missing from a snapshot for a file that was absent. A folder is listed as "dir/".
@@ -186,7 +217,7 @@ def capture(root, owner, point):
         "ref": ref,
         "ignored": ignored,
         "tracked": True,
-        "modes": {name: stat.S_IMODE(row["stat"][-1]) for name, row in saved.items()},
+        "modes": modes,
     }
 
 
@@ -254,7 +285,7 @@ def restore_plan(
 def operate(root, request):
     action = request["action"]
     if action == "checkpoint_capture":
-        return capture(root, request["owner"], request["point"])
+        return capture(root, request["owner"], request["point"], request.get("matching"))
     if action == "checkpoint_plan":
         return restore_plan(
             root,
