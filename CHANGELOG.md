@@ -10,6 +10,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Changed
 
+- The app uses less memory after it starts: it loads only your default model's provider, and connector code only if you have a connector. ([#25](https://github.com/stoyan-stoyanov/wavefunction/pull/25))
 - The app opens to your last chat straight away, so you can start typing before the engine has finished starting. A message sent early goes as soon as the chat has loaded. ([#24](https://github.com/stoyan-stoyanov/wavefunction/pull/24))
 - Adding a provider in Settings lists all its models with checkboxes, so you can pick several at once, instead of one from a dropdown. ([#18](https://github.com/stoyan-stoyanov/wavefunction/pull/18))
 
