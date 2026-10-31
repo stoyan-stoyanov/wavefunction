@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import {
@@ -18,6 +19,25 @@ import { site } from "@/lib/site";
 
 export const ensureStatic = "navigation";
 
+// Here rather than in the layout, so the 404 page doesn't claim the homepage as its canonical URL.
+export const metadata: Metadata = { alternates: { canonical: "/" } };
+
+// Links the name to the product for search engines. Google also needs a real rating or review
+// before it shows this as a rich result, so don't add one until there is something to cite.
+const APPLICATION_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Wavefunction",
+  description: site.description,
+  url: site.url,
+  downloadUrl: `${site.url}${site.download}`,
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "macOS",
+  license: site.license,
+  sameAs: site.github,
+  offers: { "@type": "Offer", price: 0, priceCurrency: "USD" },
+};
+
 // Fade the hero waves into the page below and soften them behind the headline.
 const HERO_MASK = {
   maskImage:
@@ -31,6 +51,10 @@ const HERO_MASK = {
 export default function Home() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(APPLICATION_JSON_LD).replace(/</g, "\\u003c") }}
+      />
       <Nav />
       <main>
         <Hero />
