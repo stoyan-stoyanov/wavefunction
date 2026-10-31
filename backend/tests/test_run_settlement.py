@@ -125,14 +125,14 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
                     "spawn",
                 )
             elif self._cursor == 1:
-                child.update(json.loads(tools["spawn"].content))
+                child.update(json.loads(str(tools["spawn"].content)))
                 # A grant acquired after spawn must not widen the helper's captured ceiling.
                 ws.allow_folder(str(added_later))
                 permission_ready.set()
                 await asyncio.wait_for(child_ready.get(), 10)
                 message = tool_call_message("stop_agent", {"agent_id": child["agent_id"]}, "stop")
             elif self._cursor == 2:
-                stopped = json.loads(tools["stop"].content)
+                stopped = json.loads(str(tools["stop"].content))
                 assert stopped["status"] == "cancelled", stopped
                 # Done, a helper leaves the sidebar; a follow-up brings it back below.
                 assert ws.thread(child["agent_id"])["archived"]
@@ -149,10 +149,10 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
                     {"name": "list_terminals", "args": {}, "id": "terminals", "type": "tool_call"}
                 )
             elif self._cursor == 3:
-                followup.update(json.loads(tools["continue"].content))
+                followup.update(json.loads(str(tools["continue"].content)))
                 assert not ws.thread(child["agent_id"])["archived"]
                 # The main agent sees its helpers' terminals, by helper, and can close them.
-                listed = json.loads(tools["terminals"].content)
+                listed = json.loads(str(tools["terminals"].content))
                 assert any(row["id"] == terminals[0][0].id and row["helper"] == "Editor" for row in listed), (
                     listed
                 )
@@ -182,7 +182,7 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
                     "Choose one of the user's enabled models: demo::demo-reliable, openai::gpt-helper"
                     in tools["unlisted"].content
                 )
-                reader = json.loads(tools["reader"].content)
+                reader = json.loads(str(tools["reader"].content))
                 assert ws.thread(reader["agent_id"])["model"]["model"] == "gpt-helper"
                 assert reader["folder"] == str(paths["checkout"])
                 await services.runtime.wait(reader["run_id"])
@@ -194,7 +194,7 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
                 )
             elif self._cursor == 5:
                 # By default a helper edits the parent's checkout directly: no worktree, nothing to merge.
-                writer = json.loads(tools["writer"].content)
+                writer = json.loads(str(tools["writer"].content))
                 assert (
                     writer["folder"] == str(paths["checkout"])
                     and ws.delivery.worktree(writer["agent_id"]) is None
@@ -269,7 +269,7 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
                 assert (paths["checkout"] / "a.txt").read_text() == "Writer edit\n"
                 message = tool_call_message("get_agent", {"agent_id": writer["agent_id"]}, "writer-result")
             elif self._cursor == 6:
-                result = json.loads(tools["writer-result"].content)
+                result = json.loads(str(tools["writer-result"].content))
                 assert result["status"] == "completed" and "diff" not in result, result
                 # It read a.txt before the helper edited it, so its replacement is stale.
                 message = tool_call_message(
@@ -392,7 +392,7 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
                     )
                     message = tool_call_message("get_agent", {"agent_id": child["agent_id"]}, "adopted")
                 else:
-                    assert json.loads(tools["adopted"].content)["status"] == "cancelled", tools[
+                    assert json.loads(str(tools["adopted"].content))["status"] == "cancelled", tools[
                         "adopted"
                     ].content
                     message = AIMessage(content="Checked the earlier helpers")
