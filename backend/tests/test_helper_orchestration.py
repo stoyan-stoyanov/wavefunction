@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from conftest import tool_call_message
 from langchain_core.messages import AIMessage
-from support import create
+from support import create, reached
 
 
 @pytest.mark.sandbox
@@ -116,7 +116,7 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
                 )
             elif 2 <= self._cursor <= 5:
                 if self._cursor == 3:
-                    await asyncio.wait_for(alpha_ready.wait(), 5)
+                    await reached(alpha_ready, services.runtime, children["alpha"]["run_id"])
                 name = names[self._cursor - 2]
                 message = tool_call_message(
                     "spawn_agent",
@@ -399,10 +399,10 @@ async def test_parent_orchestrates_isolated_children_and_integrates_their_review
     services.models.chat_model = lambda *_args, **_kwargs: models.pop(0)
     run = await ws.send(parent["id"], "Coordinate four helpers without losing the parent change")
     try:
-        await asyncio.wait_for(waiting_for_steering.wait(), 15)
+        await reached(waiting_for_steering, services.runtime, run["id"])
         steered = await ws.send(parent["id"], "Also retain the original parent edit when integrating")
         assert steered["id"] == run["id"]
-        result = await asyncio.wait_for(services.runtime.wait(run["id"]), 30)
+        result = await services.runtime.wait(run["id"])
         assert result["status"] == "completed", result
         assert len(children) == len(results) == 4
         assert (folder / "a.txt").read_text() == "Integrated four helpers\n"

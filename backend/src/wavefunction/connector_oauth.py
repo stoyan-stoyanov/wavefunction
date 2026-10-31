@@ -19,13 +19,15 @@ import socket
 import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import TCPServer
 from threading import Thread
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs, parse_qsl, urlencode, urlparse
 
 from mcp.client.auth import OAuthClientProvider, TokenStorage
 from mcp.client.auth.exceptions import OAuthTokenError
 from mcp.shared.auth import OAuthClientInformationFull, OAuthClientMetadata, OAuthMetadata, OAuthToken
+from pydantic import AnyUrl
 
 # How long to wait for someone to finish signing in before giving the port back.
 CALLBACK_TIMEOUT = 300
@@ -106,13 +108,13 @@ def client_metadata(server: str, secrets: Any, redirect_uri: str) -> OAuthClient
     setup = registered_setup(server, secrets)
     return OAuthClientMetadata(
         client_name="Wavefunction",
-        redirect_uris=[setup.get("redirect_uri", redirect_uri)],
+        redirect_uris=[AnyUrl(setup.get("redirect_uri", redirect_uri))],
         grant_types=["authorization_code", "refresh_token"],
         response_types=["code"],
         scope=setup.get("scope") or None,
         # A desktop app cannot keep a secret, so it registers as a public client using PKCE. Left
         # unset, a server assumes client_secret_basic, which servers for public clients refuse.
-        token_endpoint_auth_method=setup.get("auth_method") or "none",
+        token_endpoint_auth_method=setup.get("auth_method") or "none",  # pyright: ignore[reportArgumentType] (the model validates it)
     )
 
 
@@ -237,6 +239,10 @@ class ConnectorOAuthProvider(OAuthClientProvider):
     async def _refresh_token(self):
         return self._single_client_auth(await super()._refresh_token())
 
+    @property
+    def storage(self) -> SecretTokenStorage:
+        return cast(SecretTokenStorage, self.context.storage)
+
     async def _auth_flow(self, request):
         await self._adopt_stored_tokens()
         flow = super()._auth_flow(request)
@@ -256,7 +262,7 @@ class ConnectorOAuthProvider(OAuthClientProvider):
         with the one held here would fail and ask the user to sign in, though valid tokens are stored."""
         if not self._initialized or self.context.is_token_valid():
             return
-        storage = self.context.storage
+        storage = self.storage
         stored, current = await storage.get_tokens(), self.context.current_tokens
         if stored is None or current is None or stored.refresh_token == current.refresh_token:
             return
@@ -268,7 +274,7 @@ class ConnectorOAuthProvider(OAuthClientProvider):
 
     async def _initialize(self) -> None:
         await super()._initialize()
-        storage = self.context.storage
+        storage = self.storage
         session = storage._read(session_key(storage.server)) or {}
         if session.get("server_url") != storage.server_url:
             return
@@ -277,7 +283,7 @@ class ConnectorOAuthProvider(OAuthClientProvider):
             self.context.oauth_metadata = OAuthMetadata.model_validate(session["metadata"])
 
     async def _perform_authorization(self):
-        storage = self.context.storage
+        storage = self.storage
         setup = registered_setup(storage.server, storage.secrets)
         if setup.get("scope"):
             self.context.client_metadata.scope = setup["scope"]
@@ -310,7 +316,7 @@ class RegisteredOAuthProvider(ConnectorOAuthProvider):
 
     async def _slack_response(self, response):
         """Slack's user OAuth endpoint returns token_type=user and HTTP-200 errors."""
-        if self.context.storage.server != "slack":
+        if self.storage.server != "slack":
             return response
         import httpx
 
@@ -345,6 +351,14 @@ def provider_type(server: str, secrets: Any):
     return RegisteredOAuthProvider if registered_setup(server, secrets) else ConnectorOAuthProvider
 
 
+class _LoopbackHTTPServer(HTTPServer):
+    def server_bind(self) -> None:
+        """Skips HTTPServer's lookup of this address's name, which nothing here reads. It runs on
+        the event loop, so a resolver that doesn't answer would freeze every chat until it gave up:
+        35 s on GitHub's macOS 15 and 26 runners."""
+        TCPServer.server_bind(self)
+
+
 class CallbackServer:
     """A loopback server that catches the redirect at the end of the flow.
 
@@ -364,7 +378,7 @@ class CallbackServer:
             raise ValueError(
                 f"OAuth callback port {preferred} is in use. Close the other sign-in window or change the callback URL in both Wavefunction and your provider."
             )
-        self.port = preferred if required else self._bindable(preferred) or self._free()
+        self.port = preferred if required and preferred else self._bindable(preferred) or self._free()
         self.reused = preferred is not None and self.port == preferred
         self._result: dict[str, str] = {}
         self._done = asyncio.Event()
@@ -422,7 +436,7 @@ class CallbackServer:
             def log_message(self, *args: Any) -> None:
                 """Quiet: this is not the app's log."""
 
-        self._server = HTTPServer(("127.0.0.1", self.port), Handler)
+        self._server = _LoopbackHTTPServer(("127.0.0.1", self.port), Handler)
         Thread(target=self._server.serve_forever, daemon=True).start()
 
     async def wait(self) -> tuple[str, str | None]:

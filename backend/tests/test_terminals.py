@@ -92,9 +92,11 @@ async def test_agent_terminal_server_survives_replies_and_remains_owned_by_its_c
     client, ws, services = coding
     folder = tmp_path / "repo"
     folder.mkdir()
+    # Not ThreadingHTTPServer: it looks up its own address, which can take 35 s (see conftest.py).
     (folder / "preview.py").write_text("""
+import socketserver
 import sys
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from threading import Thread
 
@@ -104,8 +106,8 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b"preview-ready")
 
-server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-Path("server.port").write_text(str(server.server_port))
+server = socketserver.ThreadingTCPServer(("127.0.0.1", 0), Handler)
+Path("server.port").write_text(str(server.server_address[1]))
 Thread(target=server.serve_forever, daemon=True).start()
 for line in sys.stdin:
     Path("background.txt").write_text(line)

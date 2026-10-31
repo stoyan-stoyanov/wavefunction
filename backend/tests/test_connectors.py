@@ -294,6 +294,11 @@ async def test_signing_in_registers_a_client_and_opens_a_browser(
     opened: dict[str, str] = {}
     monkeypatch.setattr(oauth.webbrowser, "open", lambda url: opened.setdefault("url", url))
     monkeypatch.setattr(oauth, "CALLBACK_TIMEOUT", 5 if oauth_endpoint.live else 0.05)
+
+    def looked_up(name=""):
+        raise AssertionError(f"signing in waited on a lookup of {name}: this blocks the event loop")
+
+    monkeypatch.setattr(socket, "getfqdn", looked_up)
     result = await registry.sign_in(server)
 
     assert "oauth/authorize" in opened.get("url", ""), "no browser round trip was started"
