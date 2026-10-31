@@ -1817,22 +1817,55 @@ it("shows loading and retry for an uncached chat while keeping cached chats imme
   fireEvent.click(screen.getByRole("button", { name: saved.title }));
   expect(screen.getByRole("status", { name: "Loading conversation" })).toBeVisible();
   expect(screen.queryByRole("heading", { name: "What are we building?" })).not.toBeInTheDocument();
-  expect(screen.queryByRole("textbox", { name: "Message Wavefunction" })).not.toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "Message Wavefunction" })).toBeVisible();
   expect(screen.getByLabelText("Workspace toolbar")).toHaveTextContent(saved.title);
   await act(async () => reject(new Error("History unavailable")));
   expect(screen.getByRole("alert")).toHaveTextContent("History unavailable");
   expect(screen.queryByRole("status", { name: "Loading conversation" })).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Retry" }));
   expect(screen.getByRole("status", { name: "Loading conversation" })).toBeVisible();
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
   await act(async () => finish(saved));
   expect(screen.getByText("Saved reply")).toBeVisible();
-  expect(screen.getByRole("textbox", { name: "Message Wavefunction" })).toBeEnabled();
+  expect(screen.getByRole("textbox", { name: "Message Wavefunction" })).toBe(box);
+  expect(box).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: empty.title }));
   expect(screen.getByRole("heading", { name: "What are we building?" })).toBeVisible();
   fireEvent.click(screen.getByRole("button", { name: saved.title }));
   expect(screen.getByText("Saved reply")).toBeVisible();
   expect(screen.queryByRole("status", { name: "Loading conversation" })).not.toBeInTheDocument();
   expect(codingApi.thread).toHaveBeenCalledTimes(2);
+});
+
+it("lands at the end of a chat whose history arrives after the chat opens", () => {
+  useCoding.setState({ details: {} });
+  const view = render(<CodingApp />);
+  const viewport = view.container.querySelector<HTMLDivElement>(".conversation-scroll")!;
+  Object.defineProperties(viewport, {
+    scrollHeight: { configurable: true, value: 6000 },
+    clientHeight: { configurable: true, value: 600 },
+  });
+  const scrollTo = vi.spyOn(viewport, "scrollTo");
+  act(() =>
+    useCoding.setState({
+      details: {
+        [thread.id]: {
+          ...thread,
+          runs: [
+            {
+              id: "saved",
+              status: "completed",
+              input: { text: "Request" },
+              output: { text: "The newest reply" },
+              events: [],
+            },
+          ] as unknown as ThreadDetail["runs"],
+        },
+      },
+    }),
+  );
+  expect(screen.getByText("The newest reply")).toBeVisible();
+  expect(scrollTo).toHaveBeenLastCalledWith({ top: 5400, behavior: "instant" });
 });
 
 it("jumps to the visible end once and follows later layout changes without fighting a reader", () => {

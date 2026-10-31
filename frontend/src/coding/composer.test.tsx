@@ -691,3 +691,30 @@ it("keeps a helper read-only while allowing stop and navigation to its parent", 
   expect(select).toHaveBeenCalledWith("parent");
   expect(send).not.toHaveBeenCalled();
 });
+
+it("sends a message written while the chat's history loads once it arrives, as a new chat", async () => {
+  const gitThread = { ...thread, worktree_available: true };
+  useCoding.setState({ details: {} });
+  render(composer(gitThread));
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(box, { target: { value: "First message" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(send).not.toHaveBeenCalled();
+  expect(box).toHaveValue("First message");
+
+  act(() => useCoding.setState({ details: { [thread.id]: { ...gitThread, runs: [], attachments: [] } } }));
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+  expect(send.mock.calls[0][1]).toBe("First message");
+  expect(send.mock.calls[0][3]).toMatchObject({ worktree: true });
+  expect(screen.getByRole("textbox", { name: "Message Wavefunction" })).toBe(box);
+});
+
+it("keeps a message written while history loads if the history never arrives", () => {
+  useCoding.setState({ details: {} });
+  render(composer());
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(box, { target: { value: "Still here" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(send).not.toHaveBeenCalled();
+  expect(box).toHaveValue("Still here");
+});

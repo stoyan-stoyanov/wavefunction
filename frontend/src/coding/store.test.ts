@@ -676,3 +676,64 @@ describe("independent coding conversations", () => {
     expect(store.useCoding.getState().sending.a).toBe(false);
   });
 });
+
+describe("the saved workspace", () => {
+  const workspace = (threads: Schemas["SidebarThread"][]) => ({
+    agent_id: "one-agent",
+    threads,
+    projects: [makeProject()],
+    access: "sandboxed" as const,
+    default_mode: "auto" as const,
+  });
+
+  it("opens the last chat before the engine answers, then takes the engine's list", async () => {
+    localStorage.setItem("wavefunction.workspace", JSON.stringify(workspace([thread("a"), thread("b")])));
+    localStorage.setItem("harness.thread", "b");
+    const answer = pending<ReturnType<typeof workspace>>();
+    vi.mocked(codingApi.workspace).mockReturnValue(answer.promise);
+
+    const opening = store.useCoding.getState().initialize();
+    expect(store.useCoding.getState()).toMatchObject({ loading: false, selected: "b" });
+    expect(store.useCoding.getState().workspace?.threads.map((item) => item.id)).toEqual(["a", "b"]);
+
+    answer.resolve(workspace([thread("c")]));
+    await opening;
+    expect(store.useCoding.getState().selected).toBe("c");
+    expect(store.useCoding.getState().workspace?.threads.map((item) => item.id)).toEqual(["c"]);
+  });
+
+  it("gives up the saved view when the engine fails", async () => {
+    localStorage.setItem("wavefunction.workspace", JSON.stringify(workspace([thread("a")])));
+    localStorage.setItem("harness.thread", "a");
+    vi.mocked(codingApi.workspace).mockRejectedValue(new Error("The engine stopped"));
+
+    await store.useCoding.getState().initialize();
+    expect(store.useCoding.getState()).toMatchObject({ workspace: null, selected: null, loading: false });
+    expect(store.useCoding.getState().error).toContain("The engine stopped");
+  });
+
+  it("saves a bounded list without archived chats", async () => {
+    const many = Array.from({ length: 700 }, (_, index) => thread(`chat-${index}`));
+    localStorage.setItem("harness.thread", "chat-1");
+    vi.mocked(codingApi.workspace).mockResolvedValue(
+      workspace([{ ...thread("old"), archived: true }, ...many]),
+    );
+
+    await store.useCoding.getState().initialize();
+    const saved = JSON.parse(localStorage.getItem("wavefunction.workspace")!);
+    expect(saved.threads).toHaveLength(500);
+    expect(saved.threads.some((item: { id: string }) => item.id === "old")).toBe(false);
+  });
+
+  it("keeps the engine's list for next time and ignores a save it can't use", async () => {
+    localStorage.setItem("wavefunction.workspace", "{not json");
+    localStorage.setItem("harness.thread", "a");
+    vi.mocked(codingApi.workspace).mockResolvedValue(workspace([thread("a")]));
+
+    const opening = store.useCoding.getState().initialize();
+    expect(store.useCoding.getState().loading).toBe(true);
+    await opening;
+    const saved = JSON.parse(localStorage.getItem("wavefunction.workspace")!);
+    expect(saved.threads.map((item: { id: string }) => item.id)).toEqual(["a"]);
+  });
+});

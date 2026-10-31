@@ -103,6 +103,23 @@ function fitMessage(input: HTMLTextAreaElement) {
   input.style.height = `${input.scrollHeight}px`;
 }
 
+/** Holds a message sent before the chat's history arrives. History says whether this is a new
+ * chat, and so where its first message starts. If it never arrives, the message stays in the box. */
+function useSendOnceLoaded(ready: boolean, send: () => void) {
+  const [waiting, setWaiting] = useState(false);
+  const sent = useRef(false);
+  useEffect(() => {
+    if (!waiting || !ready || sent.current) return;
+    sent.current = true;
+    send();
+  });
+  const hold = () => {
+    sent.current = false;
+    setWaiting(true);
+  };
+  return [waiting && !ready, hold] as const;
+}
+
 export function Composer(props: Parameters<typeof ComposerBody>[0]) {
   return (
     <ComposerBody
@@ -297,17 +314,18 @@ function ComposerBody({
       attachRef.current = null;
     };
   });
+  const blocked =
+    (!draft.trim() && !context.command) ||
+    sending ||
+    restoring ||
+    uploading ||
+    helper ||
+    thread.archived ||
+    baseUnavailable;
+  const [held, hold] = useSendOnceLoaded(Boolean(detail) && !baseUnavailable, () => void submit());
   async function submit() {
-    if (
-      (!draft.trim() && !context.command) ||
-      sending ||
-      restoring ||
-      uploading ||
-      helper ||
-      thread.archived ||
-      baseUnavailable
-    )
-      return;
+    if (blocked) return;
+    if (!detail) return hold();
     stopListening();
     const text = draft;
     const sentContext = context;
@@ -528,18 +546,14 @@ function ComposerBody({
             className="send-button"
             aria-label={action}
             title={action}
-            disabled={
-              (!draft.trim() && !context.command) ||
-              sending ||
-              restoring ||
-              uploading ||
-              helper ||
-              thread.archived ||
-              baseUnavailable
-            }
+            disabled={blocked || held}
             onClick={() => void submit()}
           >
-            {sending ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+            {sending || held ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <ArrowUp className="size-4" />
+            )}
           </button>
         </div>
       </div>
