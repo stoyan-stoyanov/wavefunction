@@ -1046,7 +1046,7 @@ async def run_events(request: Request, run_id: str, _: Auth, after: int = 0) -> 
 async def decide_approval(run_id: str, payload: ApprovalDecision, _: Auth) -> dict[str, Any]:
     try:
         return _run_response(
-            await services.runtime.resume(
+            await services.runtime.resume(  # pyright: ignore[reportArgumentType]
                 run_id, payload.decision, payload.feedback, expected_approval=payload.expected_approval
             )
         )
@@ -1059,7 +1059,7 @@ async def decide_approval(run_id: str, payload: ApprovalDecision, _: Auth) -> di
 @app.post("/api/runs/{run_id}/cancel", response_model=api.Run)
 async def cancel_run(run_id: str, _: Auth) -> dict[str, Any]:
     try:
-        return _run_response(await services.runtime.cancel(run_id))
+        return _run_response(await services.runtime.cancel(run_id))  # pyright: ignore[reportArgumentType]
     except KeyError as error:
         raise not_found(error) from error
 
