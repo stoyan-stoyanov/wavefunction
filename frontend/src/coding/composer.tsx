@@ -103,26 +103,32 @@ function fitMessage(input: HTMLTextAreaElement) {
   input.style.height = `${input.scrollHeight}px`;
 }
 
-// Chats with a message held, so leaving one doesn't cancel it: it goes when the chat is open again.
-const heldChats = new Set<string>();
+// Each chat's held message, so leaving one doesn't cancel it: it goes when the chat is open again.
+const heldChats = new Map<string, string>();
 
 /** Holds a message sent before the chat's history arrives. History says whether this is a new
- * chat, and so where its first message starts. If it never arrives, the message stays in the box. */
-function useSendOnceLoaded(chat: string, ready: boolean, send: () => void) {
-  const [waiting, setWaiting] = useState(() => heldChats.has(chat));
-  const sent = useRef(false);
+ * chat, and so where its first message starts. If it never arrives, the message stays in the box.
+ * Editing cancels the hold, so nothing goes that wasn't submitted. */
+function useSendOnceLoaded(chat: string, draft: string, ready: boolean, send: () => void) {
+  const [held, setHeld] = useState(() => heldChats.get(chat) ?? null);
+  const done = useRef(false);
   useEffect(() => {
-    if (!waiting || !ready || sent.current) return;
-    sent.current = true;
-    heldChats.delete(chat);
-    send();
+    if (held === null || done.current) return;
+    if (held !== draft) {
+      done.current = true;
+      heldChats.delete(chat);
+    } else if (ready) {
+      done.current = true;
+      heldChats.delete(chat);
+      send();
+    }
   });
   const hold = () => {
-    sent.current = false;
-    heldChats.add(chat);
-    setWaiting(true);
+    done.current = false;
+    heldChats.set(chat, draft);
+    setHeld(draft);
   };
-  return [waiting && !ready, hold] as const;
+  return [held === draft && !ready, hold] as const;
 }
 
 export function Composer(props: Parameters<typeof ComposerBody>[0]) {
@@ -321,7 +327,7 @@ function ComposerBody({
   });
   const settling = sending || restoring || uploading || baseUnavailable;
   const blocked = (!draft.trim() && !context.command) || settling || helper || thread.archived;
-  const [held, hold] = useSendOnceLoaded(thread.id, Boolean(detail) && !settling, () => void submit());
+  const [held, hold] = useSendOnceLoaded(thread.id, draft, Boolean(detail) && !settling, () => void submit());
   async function submit() {
     if (blocked) return;
     if (!detail) return hold();

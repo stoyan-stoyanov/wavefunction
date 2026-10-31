@@ -754,6 +754,21 @@ it("holds a message through an upload, and drops the hold if the box is cleared"
   expect(send).toHaveBeenCalledTimes(1);
 });
 
+it("cancels a held message as soon as it is edited, so only what was submitted is sent", async () => {
+  const edited = { ...thread, id: "edited-while-loading" };
+  useCoding.setState({ details: {} });
+  render(composer(edited));
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(box, { target: { value: "First thought" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  fireEvent.change(box, { target: { value: "" } });
+  fireEvent.change(box, { target: { value: "Not ready to send this" } });
+  act(() => useCoding.setState({ details: { [edited.id]: { ...edited, runs: [], attachments: [] } } }));
+  await act(async () => {});
+  expect(send).not.toHaveBeenCalled();
+  expect(box).toHaveValue("Not ready to send this");
+});
+
 it("keeps a message written while history loads if the history never arrives", () => {
   useCoding.setState({ details: {} });
   render(composer({ ...thread, id: "never-loaded" }));
