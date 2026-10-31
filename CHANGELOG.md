@@ -15,7 +15,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Fixed
 
-- Long chats take far less disk space, because each message is saved once instead of with every checkpoint. Chats saved earlier stay the size they were.
+- Long chats take far less disk space, because each message is saved once instead of with every checkpoint. Chats saved earlier stay the size they were. ([#31](https://github.com/stoyan-stoyanov/wavefunction/pull/31))
 - Messages send faster in repositories too large for code history, because each one no longer scans every file before giving up. ([#23](https://github.com/stoyan-stoyanov/wavefunction/pull/23))
 - Signing in to a connector no longer freezes the app for half a minute on a network whose DNS doesn't answer. ([#21](https://github.com/stoyan-stoyanov/wavefunction/pull/21))
 
