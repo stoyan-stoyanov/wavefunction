@@ -12,6 +12,10 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 - Adding a provider in Settings lists all its models with checkboxes, so you can pick several at once, instead of one from a dropdown. ([#18](https://github.com/stoyan-stoyanov/wavefunction/pull/18))
 
+### Fixed
+
+- Signing in to a connector no longer freezes the app for half a minute on a network whose DNS doesn't answer. ([#PR](https://github.com/stoyan-stoyanov/wavefunction/pull/PR))
+
 ## 0.2.0 - 2026-10-29
 
 ### Added

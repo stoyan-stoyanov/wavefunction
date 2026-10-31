@@ -4,6 +4,7 @@ import asyncio
 import os
 import re
 import shutil
+import socket
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,6 +32,9 @@ def pytest_configure(config):
     directory = TemporaryDirectory(prefix="wavefunction-pytest-")
     environment = pytest.MonkeyPatch()
     environment.setenv("WAVEFUNCTION_DATA_DIR", directory.name)
+    # http.server looks up its own address, and no test reads the answer. A resolver that doesn't
+    # answer, as on GitHub's macOS 15 and 26 runners, costs each test process 35 s.
+    environment.setattr(socket, "getfqdn", lambda name="": name)
     get_settings.cache_clear()
     _check_response_models(environment)
     config.add_cleanup(directory.cleanup)

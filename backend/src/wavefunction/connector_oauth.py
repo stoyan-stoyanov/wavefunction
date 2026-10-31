@@ -19,6 +19,7 @@ import socket
 import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import TCPServer
 from threading import Thread
 from typing import Any
 from urllib.parse import parse_qs, parse_qsl, urlencode, urlparse
@@ -345,6 +346,14 @@ def provider_type(server: str, secrets: Any):
     return RegisteredOAuthProvider if registered_setup(server, secrets) else ConnectorOAuthProvider
 
 
+class _LoopbackHTTPServer(HTTPServer):
+    def server_bind(self) -> None:
+        """Skips HTTPServer's lookup of this address's name, which nothing here reads. It runs on
+        the event loop, so a resolver that doesn't answer would freeze every chat until it gave up:
+        35 s on GitHub's macOS 15 and 26 runners."""
+        TCPServer.server_bind(self)
+
+
 class CallbackServer:
     """A loopback server that catches the redirect at the end of the flow.
 
@@ -422,7 +431,7 @@ class CallbackServer:
             def log_message(self, *args: Any) -> None:
                 """Quiet: this is not the app's log."""
 
-        self._server = HTTPServer(("127.0.0.1", self.port), Handler)
+        self._server = _LoopbackHTTPServer(("127.0.0.1", self.port), Handler)
         Thread(target=self._server.serve_forever, daemon=True).start()
 
     async def wait(self) -> tuple[str, str | None]:

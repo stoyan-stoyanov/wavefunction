@@ -30,7 +30,7 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
     from conftest import ScriptedModel, tool_call_message
     from langchain_core.messages import AIMessage, ToolMessage
     from langchain_core.outputs import ChatGeneration, ChatResult
-    from support import create, git, repository
+    from support import create, git, reached, repository
 
     from wavefunction.coding_access import full_access
 
@@ -326,7 +326,7 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
     paths["checkout"] = Path(ws.root(parent["id"]))
     assert paths["checkout"] != folder
     try:
-        await asyncio.wait_for(parent_ready.wait(), 25)
+        await reached(parent_ready, services.runtime, run["id"])
         response = await client.post(f"/api/runs/{run['id']}/cancel")
         assert response.status_code == 200, response.text
         assert (await services.runtime.wait(run["id"]))["status"] == "cancelled"
