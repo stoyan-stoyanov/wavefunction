@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { codingApi, type CodingSnapshot } from "./api";
-import { makeThread } from "@/test/fixtures";
+import { makeProject, makeThread } from "@/test/fixtures";
 import { useThreadActivity } from "./thread-activity";
 import { useCoding } from "./store";
 const snapshot = (finished: string | null): CodingSnapshot => ({
@@ -110,6 +110,50 @@ it("opens the remembered chat after slow startup before polling or focus can rep
   } finally {
     finishLater(workspace);
     hook.unmount();
+    vi.useRealTimers();
+  }
+});
+
+it("leaves startup alone while the chat list from the last launch is showing", async () => {
+  vi.resetModules();
+  const { codingApi: api } = await import("./api");
+  const { useCoding: store } = await import("./store");
+  const { useThreadActivity: activity } = await import("./thread-activity");
+  localStorage.setItem("harness.thread", "chat");
+  localStorage.setItem(
+    "wavefunction.workspace",
+    JSON.stringify({ ...snapshot(null), projects: [makeProject()] }),
+  );
+  let finish!: (value: CodingSnapshot) => void;
+  const answer = new Promise<CodingSnapshot>((resolve) => {
+    finish = resolve;
+  });
+  const fetchWorkspace = vi.spyOn(api, "workspace").mockReturnValue(answer);
+  vi.spyOn(api, "touchThread").mockResolvedValue(undefined);
+  vi.spyOn(api, "thread").mockResolvedValue({
+    ...snapshot(null).threads[0],
+    runs: [],
+    older_cursor: null,
+    attachments: [],
+  });
+  vi.useFakeTimers();
+  try {
+    const starting = store.getState().initialize();
+    expect(store.getState().selected).toBe("chat");
+    renderHook(() =>
+      activity(
+        store((state) => state.workspace),
+        store((state) => state.selected),
+      ),
+    );
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+      vi.advanceTimersByTime(5000);
+    });
+    expect(fetchWorkspace).toHaveBeenCalledOnce();
+    finish({ ...snapshot(null), projects: [makeProject()] });
+    await act(async () => starting);
+  } finally {
     vi.useRealTimers();
   }
 });

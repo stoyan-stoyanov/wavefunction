@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CodingSnapshot } from "./api";
-import { useCoding } from "./store";
+import { startingFromSaved, useCoding } from "./store";
 
 const storageKey = "wavefunction.read-runs";
 type ReadRuns = Record<string, string | null>;
@@ -26,7 +26,7 @@ export function useThreadActivity(workspace: CodingSnapshot | null, viewing: str
       if (document.visibilityState === "visible") {
         const state = useCoding.getState();
         // Startup owns the first snapshot and chat selection; polling must not supersede it.
-        if (state.loading || !state.workspace) return;
+        if (state.loading || !state.workspace || startingFromSaved()) return;
         void (state.selected ? state.sync(state.selected) : state.refresh()).catch(() => undefined);
       }
     };

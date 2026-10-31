@@ -103,6 +103,34 @@ function fitMessage(input: HTMLTextAreaElement) {
   input.style.height = `${input.scrollHeight}px`;
 }
 
+// Each chat's held message, so leaving one doesn't cancel it: it goes when the chat is open again.
+const heldChats = new Map<string, string>();
+
+/** Holds a message sent before the chat's history arrives. History says whether this is a new
+ * chat, and so where its first message starts. If it never arrives, the message stays in the box.
+ * Editing cancels the hold, so nothing goes that wasn't submitted. */
+function useSendOnceLoaded(chat: string, draft: string, ready: boolean, send: () => void) {
+  const [held, setHeld] = useState(() => heldChats.get(chat) ?? null);
+  const done = useRef(false);
+  useEffect(() => {
+    if (held === null || done.current) return;
+    if (held !== draft) {
+      done.current = true;
+      heldChats.delete(chat);
+    } else if (ready) {
+      done.current = true;
+      heldChats.delete(chat);
+      send();
+    }
+  });
+  const hold = () => {
+    done.current = false;
+    heldChats.set(chat, draft);
+    setHeld(draft);
+  };
+  return [held === draft && !ready, hold] as const;
+}
+
 export function Composer(props: Parameters<typeof ComposerBody>[0]) {
   return (
     <ComposerBody
@@ -297,17 +325,12 @@ function ComposerBody({
       attachRef.current = null;
     };
   });
+  const settling = sending || restoring || uploading || baseUnavailable;
+  const blocked = (!draft.trim() && !context.command) || settling || helper || thread.archived;
+  const [held, hold] = useSendOnceLoaded(thread.id, draft, Boolean(detail) && !settling, () => void submit());
   async function submit() {
-    if (
-      (!draft.trim() && !context.command) ||
-      sending ||
-      restoring ||
-      uploading ||
-      helper ||
-      thread.archived ||
-      baseUnavailable
-    )
-      return;
+    if (blocked) return;
+    if (!detail) return hold();
     stopListening();
     const text = draft;
     const sentContext = context;
@@ -528,18 +551,14 @@ function ComposerBody({
             className="send-button"
             aria-label={action}
             title={action}
-            disabled={
-              (!draft.trim() && !context.command) ||
-              sending ||
-              restoring ||
-              uploading ||
-              helper ||
-              thread.archived ||
-              baseUnavailable
-            }
+            disabled={blocked || held}
             onClick={() => void submit()}
           >
-            {sending ? <LoaderCircle className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+            {sending || held ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <ArrowUp className="size-4" />
+            )}
           </button>
         </div>
       </div>

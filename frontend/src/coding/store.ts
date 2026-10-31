@@ -80,6 +80,41 @@ function withProjectOrder(workspace: CodingSnapshot, ids: string[]) {
   return { ...workspace, projects };
 }
 let initialization: Promise<void> | undefined;
+// The chat list from the last launch, shown while the engine starts. The engine's answer replaces it.
+const SAVED_WORKSPACE = "wavefunction.workspace";
+const SAVED_CHATS = 500;
+function savedWorkspace(): CodingSnapshot | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SAVED_WORKSPACE) ?? "null") as CodingSnapshot | null;
+    return saved?.projects?.length && Array.isArray(saved.threads) ? saved : null;
+  } catch {
+    return null;
+  }
+}
+let lastSaved = "";
+// Until the engine answers. If it can't, a saved list isn't a workspace the app can use.
+let showingSaved = false;
+function saveWorkspace(workspace: CodingSnapshot) {
+  showingSaved = false;
+  try {
+    const threads = workspace.threads.filter((thread) => !thread.archived).slice(0, SAVED_CHATS);
+    const text = JSON.stringify({ ...workspace, threads });
+    if (text !== lastSaved) localStorage.setItem(SAVED_WORKSPACE, text);
+    lastSaved = text;
+  } catch {
+    /* The next launch waits for the engine, as a first launch does. */
+  }
+  return workspace;
+}
+export const startingFromSaved = () => showingSaved;
+function startingState() {
+  const saved = savedWorkspace();
+  const last = saved?.threads.find((thread) => thread.id === remembered() && !thread.archived);
+  showingSaved = Boolean(saved && last);
+  return saved && last
+    ? { workspace: saved, selected: last.id, loading: false, error: null }
+    : { loading: true, error: null };
+}
 const historyOrder = (a: CodingRun, b: CodingRun) =>
   a.history_order !== undefined && b.history_order !== undefined
     ? a.history_order - b.history_order
@@ -254,7 +289,7 @@ export const useCoding = create<CodingState>((set, get) => {
         if (projectOrder && (projectOrder.saved === null || sequence <= projectOrder.saved))
           workspace = withProjectOrder(workspace, projectOrder.ids);
         else projectOrder = null;
-        workspace = listed(workspace);
+        workspace = saveWorkspace(listed(workspace));
         const previous = get().workspace;
         set({ workspace });
         const selected = get().selected;
@@ -284,7 +319,7 @@ export const useCoding = create<CodingState>((set, get) => {
     initialize: async () => {
       if (initialization) return initialization;
       initialization = (async () => {
-        set({ loading: true, error: null });
+        set(startingState());
         try {
           await get().refresh();
           const threads = get().workspace!.threads;
@@ -300,13 +335,13 @@ export const useCoding = create<CodingState>((set, get) => {
             await get().newThread();
           } // Without a project there is nothing to start a chat in: setup asks for one first.
         } catch (error) {
+          if (showingSaved) set({ workspace: null, selected: null });
           fail(error);
           initialization = undefined;
         } finally {
           set({ loading: false });
-          // Done once a chat is open. A start that could not open one, because creating it was
-          // refused (the first project's folder was moved, say), runs again from Try again
-          // instead of handing back this finished attempt.
+          // Done once a chat is open. A start that could not open one (the first project's folder
+          // was moved, say) runs again from Try again instead of handing back this attempt.
           if (!get().selected) initialization = undefined;
         }
       })();

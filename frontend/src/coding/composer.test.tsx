@@ -691,3 +691,90 @@ it("keeps a helper read-only while allowing stop and navigation to its parent", 
   expect(select).toHaveBeenCalledWith("parent");
   expect(send).not.toHaveBeenCalled();
 });
+
+it("sends a message written while the chat's history loads once it arrives, as a new chat", async () => {
+  const gitThread = { ...thread, worktree_available: true };
+  useCoding.setState({ details: {} });
+  render(composer(gitThread));
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(box, { target: { value: "First message" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(send).not.toHaveBeenCalled();
+  expect(box).toHaveValue("First message");
+
+  act(() => useCoding.setState({ details: { [thread.id]: { ...gitThread, runs: [], attachments: [] } } }));
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+  expect(send.mock.calls[0][1]).toBe("First message");
+  expect(send.mock.calls[0][3]).toMatchObject({ worktree: true });
+  expect(screen.getByRole("textbox", { name: "Message Wavefunction" })).toBe(box);
+});
+
+it("sends a held message when its chat is opened again", async () => {
+  const away = { ...thread, id: "left-while-loading" };
+  useCoding.setState({ details: {} });
+  const first = render(composer(away));
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(box, { target: { value: "Not lost" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  first.unmount();
+
+  useCoding.setState({ details: { [away.id]: { ...away, runs: [], attachments: [] } } });
+  expect(send).not.toHaveBeenCalled();
+  render(composer(away));
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+  expect(send.mock.calls[0][1]).toBe("Not lost");
+});
+
+it("holds a message through an upload, and drops the hold if the box is cleared", async () => {
+  const busy = { ...thread, id: "uploading-while-loading" };
+  useCoding.setState({ details: {} });
+  render(composer(busy));
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(box, { target: { value: "After the upload" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  const loaded = { [busy.id]: { ...busy, runs: [], attachments: [] } };
+  act(() => useCoding.setState({ uploading: { [busy.id]: true }, details: loaded }));
+  expect(send).not.toHaveBeenCalled();
+
+  act(() => useCoding.setState({ uploading: {} }));
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+  expect(send.mock.calls[0][1]).toBe("After the upload");
+  cleanup();
+
+  const cleared = { ...thread, id: "cleared-while-loading" };
+  useCoding.setState({ details: {} });
+  render(composer(cleared));
+  const next = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(next, { target: { value: "Changed my mind" } });
+  fireEvent.keyDown(next, { key: "Enter" });
+  fireEvent.change(next, { target: { value: "" } });
+  act(() => useCoding.setState({ details: { [cleared.id]: { ...cleared, runs: [], attachments: [] } } }));
+  fireEvent.change(next, { target: { value: "N" } });
+  await act(async () => {});
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
+it("cancels a held message as soon as it is edited, so only what was submitted is sent", async () => {
+  const edited = { ...thread, id: "edited-while-loading" };
+  useCoding.setState({ details: {} });
+  render(composer(edited));
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(box, { target: { value: "First thought" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  fireEvent.change(box, { target: { value: "" } });
+  fireEvent.change(box, { target: { value: "Not ready to send this" } });
+  act(() => useCoding.setState({ details: { [edited.id]: { ...edited, runs: [], attachments: [] } } }));
+  await act(async () => {});
+  expect(send).not.toHaveBeenCalled();
+  expect(box).toHaveValue("Not ready to send this");
+});
+
+it("keeps a message written while history loads if the history never arrives", () => {
+  useCoding.setState({ details: {} });
+  render(composer({ ...thread, id: "never-loaded" }));
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(box, { target: { value: "Still here" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  expect(send).not.toHaveBeenCalled();
+  expect(box).toHaveValue("Still here");
+});
