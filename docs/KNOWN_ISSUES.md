@@ -80,6 +80,9 @@ Accepted limitations. A review reports one of these again only if a change makes
 
 - A finished run keeps only its conversation's latest LangGraph checkpoint and those message points recorded, and drops the other checkpoints' writes with them. That is safe for `langgraph-checkpoint-sqlite` 3.x, whose `aget_tuple` reads only the returned checkpoint's own writes, and for the agent's plain-reducer channels. A saver that rebuilds state from ancestors' writes (`DeltaChannel`, or pending sends read from a parent) would need those ancestors kept; check this before adopting either.
 
+- Chats saved before checkpoints kept each message once stay the size they were: their rows are never rewritten, so an old long chat frees space only when it's deleted. `checkpoints.sqlite` doesn't shrink on its own, but new writes reuse the free space inside it.
+- A release that writes shared messages can't be followed by one that only reads rows saved in full. Keep the reader, and revert only by shipping forward.
+
 ## API responses
 
 - A route answers 500 rather than passing through saved data in a shape its response model doesn't allow, for example a provider removed from the model list. Migrate such data in the change that invalidates it.
