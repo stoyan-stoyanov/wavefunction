@@ -27,7 +27,7 @@ dependencies = [
   "langchain-mcp-adapters>=0.3.2",
   "langchain-ollama>=1.0.0",
   "ripgrep==14.1.0",
-  "langchain-anthropic>=1.6.1,<1.7",
+  "langchain-anthropic>=1.6.1,<1.8",
   "langchain-google-genai>=4.4.0,<4.5",
 ]
 

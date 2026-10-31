@@ -46,8 +46,8 @@ async def test_gemini_replays_thought_signatures_reads_cache_and_explains_failur
             },
             # Newer than LangChain's profiles: thinks, but which levels it takes is left to its default.
             {
-                "name": "models/gemini-4-argon",
-                "display_name": "Gemini 4 Argon",
+                "name": "models/gemini-unreleased-test",
+                "display_name": "Gemini Unreleased Test",
                 "input_token_limit": 1_000_000,
                 "output_token_limit": 65_536,
                 "supported_actions": ["generateContent"],
@@ -67,9 +67,9 @@ async def test_gemini_replays_thought_signatures_reads_cache_and_explains_failur
         ]
     )
     options = {option.id: option.model_dump() for option in catalogue}
-    assert list(options) == ["gemini-2.0-flash", "gemini-3.6-flash", "gemini-4-argon"]
+    assert list(options) == ["gemini-2.0-flash", "gemini-3.6-flash", "gemini-unreleased-test"]
     assert options["gemini-3.6-flash"]["reasoning_efforts"] == ["minimal", "low", "medium", "high"]
-    assert options["gemini-4-argon"]["reasoning_efforts"] is None
+    assert options["gemini-unreleased-test"]["reasoning_efforts"] is None
     assert options["gemini-2.0-flash"]["reasoning_efforts"] == []
 
     secrets = MemorySecretStore()
