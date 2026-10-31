@@ -236,7 +236,12 @@ class Checkpoints:
             action="checkpoint_capture",
             owner=target_thread_id,
             point=f"{target_thread_id}-populated",
+            matching={"tree": code["tree"], "modes": code.get("modes")},
         )
+        branched = {"folder": worktree["folder"], "base_commit": code["commit"], "base_tree": code["tree"]}
+        # Usually the checkout is already exact: nothing uncommitted came with it.
+        if populated.get("matches"):
+            return branched
         try:
             plan = await self.git(
                 folder,
@@ -255,7 +260,7 @@ class Checkpoints:
         await self.ws.recovery.apply(
             worktree["folder"], self.files(plan["files"]), code_history=True, resume=True
         )
-        return {"folder": worktree["folder"], "base_commit": code["commit"], "base_tree": code["tree"]}
+        return branched
 
     async def child_diff(self, thread_id, run_id):
         worktree = self.ws.delivery.worktree(thread_id)
