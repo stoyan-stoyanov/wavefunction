@@ -51,7 +51,7 @@ async def test_startup_health_does_not_wait_for_optional_services_and_shutdown_c
             await asyncio.sleep(0)
             assert started == set()
             assert services.optional_warmup is None
-            services.model_registry.refresh.assert_not_awaited()
+            services.model_registry.refresh.assert_not_awaited()  # pyright: ignore[reportAttributeAccessIssue]
             async with httpx.AsyncClient(
                 transport=httpx.ASGITransport(app=main.app), base_url="http://test"
             ) as client:
@@ -60,7 +60,7 @@ async def test_startup_health_does_not_wait_for_optional_services_and_shutdown_c
                 assert (await client.get("/api/coding/workspace")).status_code == 200
                 await discovery_started.wait()
                 assert started == {"connectors", "computer"}
-                assert services.optional_warmup.done()
+                assert services.optional_warmup is not None and services.optional_warmup.done()
                 assert (await client.get("/health")).status_code == 200
                 thread = (await client.post("/api/coding/threads", json={})).json()
                 response = await client.post(
@@ -157,11 +157,14 @@ async def test_startup_serves_workspace_before_optional_warmup_and_restores_home
         from wavefunction import main
         from wavefunction.spec_common import ModelSpec
         from wavefunction.coding_workspace import ThreadInput
+        from wavefunction.connectors import McpServer
         optional = ('openai', 'langchain_openai', 'langchain_ollama', 'mcp', 'pypdf')
         assert not any(module in sys.modules for module in optional)
         original = main.services
-        # Warm-up loads the SDKs of these providers only.
+        # Warm-up loads the default model's SDK only, and connector code only with a connector.
         original.repository.set_setting('enabled_models', ['openai::synthetic-model', 'ollama::synthetic:8b'])
+        original.repository.set_setting('default_model', {'provider': 'openai', 'model': 'synthetic-model'})
+        original.connectors.save([McpServer(name='synthetic', command='synthetic')])
         thread = original.coding_workspace.create_thread(ThreadInput())
         main.services = services = main.Services(original.settings)
         assert {thread['id'], services.coding_workspace.agent_id} <= set(main.agent_copies())
@@ -176,7 +179,7 @@ async def test_startup_serves_workspace_before_optional_warmup_and_restores_home
             if len(imports) == 1:
                 entered.set()
                 assert release.wait(5), 'test did not release warm-up'
-            if module == 'langchain_ollama':
+            if module == 'wavefunction.connector_oauth':
                 raise ImportError('synthetic optional warm-up failure')
             return importer(module)
         main.import_module = warm_import
@@ -209,11 +212,11 @@ async def test_startup_serves_workspace_before_optional_warmup_and_restores_home
                 finally:
                     release.set()
                     await services.finish_optional_warmup()
-            assert len(imports) == len(set(imports)) == 4
+            assert len(imports) == len(set(imports)) == 3
             assert all(module in sys.modules for module in ('openai', 'langchain_openai', 'mcp'))
-            # Providers without enabled models stay unloaded, and PDFs load their reader on first use.
+            # Other providers stay unloaded, and PDFs load their reader on first use.
             assert not any(module in sys.modules for module in ('langchain_anthropic', 'langchain_google_genai', 'pypdf'))
-            # Warm-up failures do not become a prerequisite for a provider's first use.
+            # A provider left unwarmed still works on first use.
             assert 'langchain_ollama' not in sys.modules
             model = services.models.chat_model(ModelSpec(provider='ollama', model='synthetic:8b'))
             assert model.model == 'synthetic:8b'

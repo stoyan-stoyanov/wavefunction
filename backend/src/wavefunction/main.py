@@ -143,24 +143,14 @@ class Services:
     def _warm_optional_code(self) -> None:
         # Import only: no clients, credentials, network discovery, or model calls. Ordinary
         # local imports at each use site also work if a user gets there before this finishes,
-        # or uses a provider enabled later. Each provider SDK costs tens of MB, so only those
-        # of the providers the model picker offers; PDFs load their reader when one is read.
-        stored = self.repository.get_settings({"enabled_models": None, "default_model": DEMO_MODEL})
-        enabled = stored["enabled_models"] if isinstance(stored["enabled_models"], list) else []
-        providers: set[str | None] = {str(key).partition("::")[0] for key in enabled}
-        if isinstance(stored["default_model"], dict):
-            providers.add(stored["default_model"].get("provider"))
-        for module in (
-            *sorted(
-                {
-                    PROVIDER_MODULES[provider]
-                    for provider in providers
-                    if provider is not None and provider in PROVIDER_MODULES
-                }
-            ),
-            "wavefunction.connector_oauth",
-            "langchain_mcp_adapters.client",
-        ):
+        # or uses another provider. Each provider SDK costs tens of MB, so only the default
+        # model's, and connector code only with a connector; PDFs load their reader when read.
+        default = self.repository.get_settings({"default_model": DEMO_MODEL})["default_model"]
+        provider = default.get("provider") if isinstance(default, dict) else None
+        modules = [PROVIDER_MODULES[provider]] if provider in PROVIDER_MODULES else []
+        if self.connectors.servers():
+            modules += ["wavefunction.connector_oauth", "langchain_mcp_adapters.client"]
+        for module in modules:
             try:
                 import_module(module)
             except Exception:
@@ -1056,7 +1046,7 @@ async def run_events(request: Request, run_id: str, _: Auth, after: int = 0) -> 
 async def decide_approval(run_id: str, payload: ApprovalDecision, _: Auth) -> dict[str, Any]:
     try:
         return _run_response(
-            await services.runtime.resume(
+            await services.runtime.resume(  # pyright: ignore[reportArgumentType]
                 run_id, payload.decision, payload.feedback, expected_approval=payload.expected_approval
             )
         )
@@ -1069,7 +1059,7 @@ async def decide_approval(run_id: str, payload: ApprovalDecision, _: Auth) -> di
 @app.post("/api/runs/{run_id}/cancel", response_model=api.Run)
 async def cancel_run(run_id: str, _: Auth) -> dict[str, Any]:
     try:
-        return _run_response(await services.runtime.cancel(run_id))
+        return _run_response(await services.runtime.cancel(run_id))  # pyright: ignore[reportArgumentType]
     except KeyError as error:
         raise not_found(error) from error
 
