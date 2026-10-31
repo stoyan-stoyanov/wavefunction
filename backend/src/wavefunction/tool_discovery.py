@@ -14,6 +14,7 @@ from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.tools import BaseTool, tool
 
 from .execution_policy import _is_user_message, context_window, emit_policy, tool_schema_tokens
+from .tool_schemas import tool_tokens
 
 SEARCH_TOOL = "search_available_tools"
 PAGE_SIZE = 5
@@ -107,7 +108,7 @@ class ToolDiscoveryMiddleware(AgentMiddleware):
         self.catalogue = {item.name: item for item in tools}
         if SEARCH_TOOL in self.catalogue:
             raise ValueError(f"{SEARCH_TOOL} is reserved for the harness")
-        self.costs = {name: tool_schema_tokens([item]) for name, item in self.catalogue.items()}
+        self.costs = {name: tool_tokens(item, tool_schema_tokens) for name, item in self.catalogue.items()}
         self.index = {}
         for name, item in self.catalogue.items():
             group = BUILTIN_GROUP.get(name, "")
@@ -210,7 +211,8 @@ class ToolDiscoveryMiddleware(AgentMiddleware):
         offered = self._offered(request, set(everyday), picked, loaded)
         emit_policy("tools_selected", tools=[_name(item) for item in offered], available=len(ordinary))
         return request.override(
-            tools=offered, system_prompt=(request.system_prompt or "") + self._on_demand_note(on_demand)
+            tools=offered,
+            system_prompt=(request.system_prompt or "") + self._on_demand_note(on_demand),  # pyright: ignore[reportCallIssue]
         )
 
     @staticmethod
@@ -305,7 +307,7 @@ class ToolDiscoveryMiddleware(AgentMiddleware):
             [name for name in self.catalogue if name in available and _on_demand(name)]
         )
         emit_policy("tools_selected", tools=[_name(item) for item in offered], available=len(ordinary))
-        return request.override(tools=offered, system_prompt=prompt)
+        return request.override(tools=offered, system_prompt=prompt)  # pyright: ignore[reportCallIssue]
 
     async def awrap_model_call(self, request, handler):
         return await handler(self.prepare(request))

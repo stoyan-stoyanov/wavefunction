@@ -34,6 +34,10 @@ async def reachable(context, terminal_id, *, writable=False):
 
 
 def build_terminal_tool(context, name):
+    return next(tool for tool in build_terminal_tools(context) if tool.name == name)
+
+
+def build_terminal_tools(context):
     @tool
     async def start_terminal(command: str, title: str = "Agent terminal") -> str:
         """Start an interactive command or a background server in a managed PTY.
@@ -119,8 +123,4 @@ def build_terminal_tool(context, name):
         await ws.terminals.remove(thread_id, terminal_id)
         return "Terminal and its child processes stopped."
 
-    return next(
-        t
-        for t in (start_terminal, list_terminals, read_terminal, write_terminal, close_terminal)
-        if t.name == name
-    )
+    return start_terminal, list_terminals, read_terminal, write_terminal, close_terminal
