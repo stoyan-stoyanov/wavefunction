@@ -15,16 +15,16 @@ from wavefunction.spec_common import ModelSpec
 def test_the_gateway_takes_the_provider_figure_then_the_registry_then_the_bundled_profile() -> None:
     secrets = MemorySecretStore()
     secrets.set("openai_api_key", "test-key")
-    live = {"openai": {"gpt-6-astra": {"context_length": 111}}}
+    live = {"openai": {"gpt-unreleased-test": {"context_length": 111}}}
     gateway = ModelGateway(secrets, capabilities=lambda: live, context_lengths=lambda _p, _m: 222)
     assert (
-        gateway.chat_model(ModelSpec(provider="openai", model="gpt-6-astra")).profile["max_input_tokens"]
+        gateway.chat_model(ModelSpec(provider="openai", model="gpt-unreleased-test")).profile["max_input_tokens"]
         == 111
     )
 
     gateway = ModelGateway(secrets, context_lengths=lambda _p, _m: 222)
     assert (
-        gateway.chat_model(ModelSpec(provider="openai", model="gpt-6-astra")).profile["max_input_tokens"]
+        gateway.chat_model(ModelSpec(provider="openai", model="gpt-unreleased-test")).profile["max_input_tokens"]
         == 222
     )
 
@@ -35,7 +35,7 @@ def test_the_gateway_takes_the_provider_figure_then_the_registry_then_the_bundle
         == bundled
     )
     # Nobody has a figure: the window is assumed to be what current models take, not 32k.
-    unknown = gateway.chat_model(ModelSpec(provider="openai", model="gpt-6-astra"))
+    unknown = gateway.chat_model(ModelSpec(provider="openai", model="gpt-unreleased-test"))
     assert "max_input_tokens" not in (unknown.profile or {})
     assert context_window(unknown) == 128_000
     assert context_window(SimpleNamespace(profile=None)) == 128_000
