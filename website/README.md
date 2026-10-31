@@ -7,7 +7,7 @@ npm install
 npm run dev
 ```
 
-Outbound links (GitHub, download) live in `src/lib/site.ts`. Open Graph URLs use the production domain, `https://www.wavefunction.si`; set `NEXT_PUBLIC_SITE_URL` to use another.
+Outbound links (GitHub, download) live in `src/lib/site.ts`. Open Graph URLs, the canonical URL, the sitemap and `robots.txt` use the production domain, `https://www.wavefunction.si`; set `NEXT_PUBLIC_SITE_URL` to use another.
 
 The light hero blends into `public/wavefunction-desktop.png`, the supplied desktop screenshot. Next.js serves responsive, optimized versions through its Image component. The open-source section links directly to GitHub.
 

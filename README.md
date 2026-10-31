@@ -11,6 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/stoyan-stoyanov/wavefunction/releases/latest">Download for macOS</a> ·
+  <a href="https://www.wavefunction.si">Website</a> ·
   <a href="#build-from-source">Build from source</a> ·
   <a href="CONTRIBUTING.md">Contribute</a>
 </p>

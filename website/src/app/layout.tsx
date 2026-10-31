@@ -8,7 +8,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
-  title: `Wavefunction: ${site.headline}`,
+  title: site.title,
   description: site.description,
   openGraph: {
     title: "Wavefunction",
