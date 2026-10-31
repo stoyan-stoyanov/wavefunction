@@ -656,17 +656,21 @@ pub fn run() {
                 eprintln!("[wavefunction] quit check: no app delegate; Cmd+Q will not ask");
             }
 
-            let backend = start_backend(app.handle())?;
+            let backend = app.state::<BackendState>();
             notifications::start(
                 app.handle(),
                 backend.info.base_url.clone(),
                 backend.info.token.clone(),
             );
-            app.manage(backend);
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("failed to build Wavefunction desktop app");
+
+    // Before any window: the build above ran the single-instance check, so a second launch
+    // has exited by now and never starts a second engine on the same data.
+    let backend = start_backend(app.handle()).expect("failed to start the Wavefunction engine");
+    app.manage(backend);
 
     app.run(|app, event| {
         match &event {
