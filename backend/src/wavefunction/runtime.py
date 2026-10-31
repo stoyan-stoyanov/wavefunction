@@ -21,11 +21,11 @@ from typing import TYPE_CHECKING, Any
 
 import aiosqlite
 from langchain_core.messages import AIMessage, HumanMessage, RemoveMessage, ToolMessage
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 from langgraph.types import Command, Interrupt
 
 from .agent_factory import build_agent
+from .checkpoint_messages import MessageSaver
 from .computer import find_sentinel
 from .connector_setup import connector_status
 from .execution_policy import COMPACT_KEY, LIMIT_MARK, _is_user_message
@@ -33,6 +33,7 @@ from .folder_setup import REPOSITORY, picked_folder, record_folder, setup_status
 from .local_coding import REPOSITORY_FOLDERS_SETTING
 from .models import NESTED_USAGE, ModelGateway, describe_provider_error, message_usage
 from .models import merge_usage as _merge_usage
+from .records import Run, RunEvent
 from .repository import Repository
 from .sandbox import GRANTS_SETTING, load_grants
 from .setup_rows import setup_row_status
@@ -303,7 +304,7 @@ class RuntimeManager:
         self.active: dict[str, ActiveRun] = {}
         self.tasks: dict[str, asyncio.Task] = {}
         self.conditions: dict[str, asyncio.Condition] = {}
-        self._checkpointer: AsyncSqliteSaver | None = None
+        self._checkpointer: MessageSaver | None = None
         self._checkpointer_lock = asyncio.Lock()
         # One answer at a time per run. Per run, so a resume waiting on its own run's stream
         # does not hold up every other run's approval.
@@ -312,13 +313,13 @@ class RuntimeManager:
         self._recovered_connector_waits = False
         self._resuming_connectors: set[str] = set()
 
-    async def checkpointer(self) -> AsyncSqliteSaver:
+    async def checkpointer(self) -> MessageSaver:
         """One shared saver for the process. Durable, so interrupts outlive the session."""
         async with self._checkpointer_lock:
             if self._checkpointer is None:
                 self.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
                 connection = await aiosqlite.connect(str(self.checkpoint_path))
-                saver = AsyncSqliteSaver(connection)
+                saver = MessageSaver(connection)
                 await saver.setup()
                 self._checkpointer = saver
             return self._checkpointer
@@ -477,7 +478,7 @@ class RuntimeManager:
             rows += self._captured_connector_rows(run, {row["id"] for row in rows})
         return {"status": run["status"], "project_id": run["project_id"], "connectors": rows}
 
-    def _captured_connector_rows(self, run: dict[str, Any], listed: set[str]) -> list[dict[str, Any]]:
+    def _captured_connector_rows(self, run: Run, listed: set[str]) -> list[dict[str, Any]]:
         """The task's other connectors whose tools are unavailable now. Continuing rebuilds the
         agent with every tool it captured, so each of them has to be ready, not only the one it
         paused for: the card asks for those too rather than the resume failing."""
@@ -486,7 +487,7 @@ class RuntimeManager:
         connected = self.connectors.tools()
         servers = {
             binding.name.split("__", 1)[0]
-            for binding in load_spec(run["spec"]).enabled_tools()
+            for binding in load_spec(run["spec"]).enabled_tools()  # pyright: ignore[reportArgumentType]
             if CONNECTOR_TOOL.match(binding.name) and binding.name not in connected
         }
         return [connector_status(self.connectors, server) for server in sorted(servers - listed)]
@@ -528,7 +529,7 @@ class RuntimeManager:
             )
         self.repository.save_run_connector_setup(run_id, pending)
 
-    def _github_row(self, run: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    def _github_row(self, run: Run) -> tuple[dict[str, Any], dict[str, Any]] | None:
         pending = run["input"].get("connector_setup") or {}
         row = next((row for row in pending.get("connectors", []) if row.get("local_kind") == "github"), None)
         return (pending, row) if run["status"] == "waiting_connector" and row is not None else None
@@ -659,7 +660,7 @@ class RuntimeManager:
             brief = {"agent_id": child_id, "title": child["title"], "run_id": run["id"], "status": status}
             # A helper paused for the user's approval, setup or takeover cannot be resolved by
             # its parent, so it does not hold the parent's turn open.
-            if released and self.needs_user(run):
+            if released and self.needs_user(run):  # pyright: ignore[reportArgumentType]
                 user_waits.append(run["id"])
             elif status not in TERMINAL_STATUSES or not released:
                 pending_count += 1
@@ -827,7 +828,7 @@ class RuntimeManager:
                 and not run.get("parent_run_id")
                 and (copy := run["input"].get("desktop_copy"))
             ):
-                await self._adopt_helpers(run["project_id"], run["conversation_id"], run_id, copy)
+                await self._adopt_helpers(run["project_id"], run["conversation_id"], run_id, copy)  # pyright: ignore[reportArgumentType]
             self.active[run_id].started_at = time.monotonic()
             # A compaction adds nothing to the conversation; its text is only what the chat shows.
             message = [] if self.active[run_id].compact else [{"role": "user", "content": input_text}]
@@ -863,7 +864,7 @@ class RuntimeManager:
             async with condition:
                 await asyncio.wait_for(condition.wait(), timeout)
 
-    async def _settled(self, run_id: str, statuses: set[str]) -> dict[str, Any]:
+    async def _settled(self, run_id: str, statuses: set[str]) -> Run:
         """Until the run is in one of `statuses` and its execution has let go of the thread.
 
         The persisted status can precede the checkpoint flush and stream cleanup, so a caller
@@ -949,7 +950,7 @@ class RuntimeManager:
             # Read only this attempt's deltas, once on interruption. Finished tool results
             # and earlier answers stay in their checkpoints; incomplete calls never enter it.
             deltas = self.repository.list_run_events(run_id, partial_after, event_types=("assistant_delta",))
-            pieces: dict[str | None, list[dict[str, Any]]] = {}
+            pieces: dict[str | None, list[RunEvent]] = {}
             for event in deltas:
                 payload = event["payload"]
                 pieces.setdefault(payload.get("message_id"), []).append(event)
@@ -1404,16 +1405,14 @@ class RuntimeManager:
         self.repository.update_run(run_id, status=status, duration_ms=duration_ms, usage=active.usage)
         self.active.pop(run_id, None)
 
-    async def _rehydrate(
-        self, run_id: str, run: dict[str, Any], *, connector_setup: bool = False
-    ) -> ActiveRun:
+    async def _rehydrate(self, run_id: str, run: Run, *, connector_setup: bool = False) -> ActiveRun:
         """Rebuild a paused run from its checkpoint after the app restarted.
 
         The checkpointer stores the graph's state under the run id as thread id, so the pause
         itself survives a restart. What does not survive is the in-memory `ActiveRun`, and
         without it every approval was rejected — which made the durable checkpointer pointless.
         """
-        spec = load_spec(run["spec"])
+        spec = load_spec(run["spec"])  # pyright: ignore[reportArgumentType]
         # The stored project_id is the agent package owner, not the coding project group.
         agent_id = run["project_id"]
         reference_files = run["input"].get("reference_files")
@@ -1474,17 +1473,17 @@ class RuntimeManager:
         self.conditions.setdefault(run_id, asyncio.Condition())
         return active
 
-    def _helper_owner(self, run: dict[str, Any]) -> str | None:
+    def _helper_owner(self, run: Run) -> str | None:
         """The main task a helper run now answers to: a later task in its chat can take it over."""
         if not run.get("parent_run_id"):
             return None
         try:
             return (
                 self.coding_workspace.thread(run["input"].get("desktop_copy") or "").get("parent_run_id")
-                or run["parent_run_id"]
+                or run["parent_run_id"]  # pyright: ignore[reportTypedDictNotRequiredAccess, reportGeneralTypeIssues]
             )
         except KeyError:
-            return run["parent_run_id"]
+            return run["parent_run_id"]  # pyright: ignore[reportTypedDictNotRequiredAccess, reportGeneralTypeIssues]
 
     async def _adopt_helpers(self, agent_id: str, conversation_id: str, run_id: str, thread_id: str) -> None:
         """A task started after one that failed or was stopped takes over that task's helpers.
@@ -1519,7 +1518,7 @@ class RuntimeManager:
             if helper["status"] in WAITING_STATUSES:
                 await self._mirror_helper(helper["id"], "helper_waiting")
 
-    async def _require_live_parent(self, run: dict[str, Any]) -> None:
+    async def _require_live_parent(self, run: Run) -> None:
         parent_id = self._helper_owner(run)
         if not parent_id:
             return
@@ -1531,7 +1530,7 @@ class RuntimeManager:
             await self.cancel(run["id"])
             raise ValueError("This helper's parent task has ended. Start a new helper from the current task.")
 
-    async def resume_computer(self, run_id: str) -> dict[str, Any]:
+    async def resume_computer(self, run_id: str) -> Run:
         async with self._run_lock(run_id):
             run = self.repository.get_run(run_id)
             if run["status"] != "waiting_computer":
@@ -1572,7 +1571,7 @@ class RuntimeManager:
         closed: str | None,
         *,
         source: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> Run:
         """With this run's lock held. `closed` is "dismissed" or "replied" when no form answers come."""
         run = self.repository.get_run(run_id)
         pause = self._latest_pause(run_id)
@@ -1627,17 +1626,17 @@ class RuntimeManager:
         )
         return self.repository.get_run(run_id)
 
-    def _latest_pause(self, run_id: str) -> dict[str, Any] | None:
+    def _latest_pause(self, run_id: str) -> RunEvent | None:
         events = self.repository.list_run_events(
             run_id, limit=1, tail=True, event_types=("run_questions", "run_waiting_for_approval")
         )
         return events[-1] if events else None
 
-    def _asks_questions(self, run: dict[str, Any]) -> bool:
+    def _asks_questions(self, run: Run) -> bool:
         pause = self._latest_pause(run["id"])
         return run["status"] == "waiting_approval" and bool(pause) and pause["event_type"] == "run_questions"
 
-    def needs_user(self, run: dict[str, Any]) -> bool:
+    def needs_user(self, run: Run) -> bool:
         """Paused for an approval, setup or takeover: only the user can resume it, not a parent."""
         return run["status"] in WAITING_STATUSES and not self._asks_questions(run)
 
@@ -1650,7 +1649,7 @@ class RuntimeManager:
         coding_context: dict[str, Any] | None = None,
         reference_files: list[dict[str, Any]] | None = None,
         parent_run_id: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> Run:
         """A chat message for a task waiting on the user, rather than a follow-up queued behind it.
 
         It reaches the agent as steering at the task's next model call. Open questions take it as
@@ -1662,7 +1661,7 @@ class RuntimeManager:
             run = self.repository.get_run(run_id)
             if run["status"] not in WAITING_STATUSES:
                 raise ValueError("This task is no longer waiting for you. Queue a follow-up instead.")
-            pause = self._latest_pause(run_id)
+            pause: Any = self._latest_pause(run_id)
             questions = (
                 run["status"] == "waiting_approval" and pause and pause["event_type"] == "run_questions"
             )
@@ -1702,7 +1701,7 @@ class RuntimeManager:
 
     async def resume(
         self, run_id: str, decision: str, feedback: str = "", *, expected_approval: int | None = None
-    ) -> dict[str, Any]:
+    ) -> Run:
         # Decisions share this run's lock. A stale card must not approve the next request merely
         # because the same run has paused for approval again.
         async with self._run_lock(run_id):
@@ -1716,7 +1715,7 @@ class RuntimeManager:
                     raise ValueError("This approval has changed. Review the current action.")
             return await self._resume(run_id, decision, feedback)
 
-    async def _resume(self, run_id: str, decision: str, feedback: str = "") -> dict[str, Any]:
+    async def _resume(self, run_id: str, decision: str, feedback: str = "") -> Run:
         """Answer what a paused run asked, and let it carry on."""
         run = self.repository.get_run(run_id)
         if run["status"] != "waiting_approval":
@@ -1809,7 +1808,7 @@ class RuntimeManager:
         )
         return self.repository.get_run(run_id)
 
-    async def cancel(self, run_id: str, reason: str | None = None) -> dict[str, Any]:
+    async def cancel(self, run_id: str, reason: str | None = None) -> Run:
         """Stop a run, saying why where its answer would be: stopped by the user unless told."""
         self._waiting_connector_ids.discard(run_id)
         task = self.tasks.get(run_id)
@@ -1851,7 +1850,7 @@ class RuntimeManager:
                 await self.computer.close_session(key)
         return self.repository.get_run(run_id)
 
-    async def wait(self, run_id: str, timeout: float = WAIT_CEILING) -> dict[str, Any]:
+    async def wait(self, run_id: str, timeout: float = WAIT_CEILING) -> Run:
         """Until the run settles, or pauses for an approval.
 
         The run's own idle limit is what ends a stuck one; `timeout` is how long this caller is
