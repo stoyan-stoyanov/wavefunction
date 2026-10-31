@@ -33,6 +33,7 @@ Accepted limitations. A review reports one of these again only if a change makes
 
 ## Composer
 
+- A message sent while a chat's history loads waits for that history. If you leave the chat first, it stays in the box and goes when you open the chat again, not while you're away, because how it starts depends on that chat's message box.
 - A sent message leaves the box, and its saved draft, as soon as it is sent. If the window reloads or the app stops before the backend accepts it, usually within a second or two, the message is gone: it is neither a run nor a draft. Keeping the saved draft until acceptance would put the sent message back in a composer that remounts while it is sent.
 
 ## Full access

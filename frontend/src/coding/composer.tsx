@@ -103,18 +103,23 @@ function fitMessage(input: HTMLTextAreaElement) {
   input.style.height = `${input.scrollHeight}px`;
 }
 
+// Chats with a message held, so leaving one doesn't cancel it: it goes when the chat is open again.
+const heldChats = new Set<string>();
+
 /** Holds a message sent before the chat's history arrives. History says whether this is a new
  * chat, and so where its first message starts. If it never arrives, the message stays in the box. */
-function useSendOnceLoaded(ready: boolean, send: () => void) {
-  const [waiting, setWaiting] = useState(false);
+function useSendOnceLoaded(chat: string, ready: boolean, send: () => void) {
+  const [waiting, setWaiting] = useState(() => heldChats.has(chat));
   const sent = useRef(false);
   useEffect(() => {
     if (!waiting || !ready || sent.current) return;
     sent.current = true;
+    heldChats.delete(chat);
     send();
   });
   const hold = () => {
     sent.current = false;
+    heldChats.add(chat);
     setWaiting(true);
   };
   return [waiting && !ready, hold] as const;
@@ -322,7 +327,7 @@ function ComposerBody({
     helper ||
     thread.archived ||
     baseUnavailable;
-  const [held, hold] = useSendOnceLoaded(Boolean(detail) && !baseUnavailable, () => void submit());
+  const [held, hold] = useSendOnceLoaded(thread.id, Boolean(detail) && !baseUnavailable, () => void submit());
   async function submit() {
     if (blocked) return;
     if (!detail) return hold();

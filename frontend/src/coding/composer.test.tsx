@@ -709,9 +709,25 @@ it("sends a message written while the chat's history loads once it arrives, as a
   expect(screen.getByRole("textbox", { name: "Message Wavefunction" })).toBe(box);
 });
 
+it("sends a held message when its chat is opened again", async () => {
+  const away = { ...thread, id: "left-while-loading" };
+  useCoding.setState({ details: {} });
+  const first = render(composer(away));
+  const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
+  fireEvent.change(box, { target: { value: "Not lost" } });
+  fireEvent.keyDown(box, { key: "Enter" });
+  first.unmount();
+
+  useCoding.setState({ details: { [away.id]: { ...away, runs: [], attachments: [] } } });
+  expect(send).not.toHaveBeenCalled();
+  render(composer(away));
+  await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+  expect(send.mock.calls[0][1]).toBe("Not lost");
+});
+
 it("keeps a message written while history loads if the history never arrives", () => {
   useCoding.setState({ details: {} });
-  render(composer());
+  render(composer({ ...thread, id: "never-loaded" }));
   const box = screen.getByRole("textbox", { name: "Message Wavefunction" });
   fireEvent.change(box, { target: { value: "Still here" } });
   fireEvent.keyDown(box, { key: "Enter" });
