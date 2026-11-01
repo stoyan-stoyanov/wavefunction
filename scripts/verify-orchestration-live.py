@@ -272,6 +272,7 @@ class ReportTests(unittest.TestCase):
 }
 SOURCE_NAMES = {"billing.py", "usage.py", "exporting.py", "report.py", "returns.py"}
 IMPORTS = {
+    "__future__",
     "billing",
     "usage",
     "exporting",
@@ -354,7 +355,11 @@ def written_files(events):
 def inspect_python(folder):
     """Allow only the tiny pure-Python fixture domain before executing model-written code."""
     for path in folder.glob("*.py"):
-        tree = ast.parse(path.read_text(), filename=path.name)
+        try:
+            tree = ast.parse(path.read_text(), filename=path.name)
+        except SyntaxError:
+            # Nothing in a file Python cannot parse runs; the agent's test will say what is wrong.
+            continue
         for node in ast.walk(tree):
             if isinstance(node, ast.Import) and any(
                 item.name.split(".")[0] not in IMPORTS for item in node.names
