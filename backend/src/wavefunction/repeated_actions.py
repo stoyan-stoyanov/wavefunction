@@ -24,8 +24,10 @@ def _last_action(messages: list) -> list[tuple[Any, ToolMessage]]:
     for message in reversed(messages):
         if isinstance(message, ToolMessage):
             results[message.tool_call_id] = message
-        elif isinstance(message, AIMessage) and any(c["name"] not in SAFE_READS for c in message.tool_calls):
-            return [(call, results[call["id"]]) for call in message.tool_calls if call["id"] in results]
+        elif isinstance(message, AIMessage):
+            action = [call for call in message.tool_calls if call["name"] not in SAFE_READS]
+            if action:
+                return [(call, results[call["id"]]) for call in action if call["id"] in results]
     return []
 
 

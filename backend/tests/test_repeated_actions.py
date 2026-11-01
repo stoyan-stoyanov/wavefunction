@@ -77,3 +77,16 @@ async def test_reading_is_never_held_back() -> None:
     reads = [tool_call_message("read_file", {"path": "a"}, f"read{n}") for n in range(3)]
     offered, _ = await offered_tools(*reads)
     assert offered == [EVERY] * 4
+
+    batches = [
+        AIMessage(
+            content="",
+            tool_calls=[
+                *tool_call_message("read_file", {"path": "a"}, f"read{n}").tool_calls,
+                *tool_call_message("save", {"name": "email"}, f"save{n}").tool_calls,
+            ],
+        )
+        for n in range(3)
+    ]
+    offered, _ = await offered_tools(*batches)
+    assert offered == [EVERY, EVERY, EVERY, EVERY - {"save"}]
