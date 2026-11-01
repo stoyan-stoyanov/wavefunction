@@ -20,6 +20,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Fixed
 
+- The agent and its helpers get stuck far less often on an action that keeps returning the same result, such as an edit that fails, because the action is held back until they try something else. ([#34](https://github.com/stoyan-stoyanov/wavefunction/pull/34))
 - Messages send faster in repositories too large for code history, because each one no longer scans every file before giving up. ([#23](https://github.com/stoyan-stoyanov/wavefunction/pull/23))
 - Signing in to a connector no longer freezes the app for half a minute on a network whose DNS doesn't answer. ([#21](https://github.com/stoyan-stoyanov/wavefunction/pull/21))
 

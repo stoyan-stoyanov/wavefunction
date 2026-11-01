@@ -75,6 +75,7 @@ Accepted limitations. A review reports one of these again only if a change makes
 ## Gemini on a Google AI Studio key
 
 - Google's Models API says whether a model thinks, not which thinking levels it takes. Those come from the model profiles LangChain ships, so a model newer than them offers Low, Medium and High, and Google refuses a level that model lacks. Choose Default for it.
+- On OpenRouter, Default sends no reasoning setting, so hosts of a model that makes thinking optional behave differently: Wafer's DeepSeek V4 Pro does not think unless asked, while CoreWeave's and Together's do. Asking for it every time doubled the cost and duration of the orchestration check without passing more of it, so Default stays as it is. Choose an effort to get thinking on every host.
 
 ## Model checkpoints
 
