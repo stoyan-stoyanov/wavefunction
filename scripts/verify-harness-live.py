@@ -10,7 +10,6 @@ scenario that ran passed.
 
 import argparse
 import asyncio
-import base64
 import io
 import json
 import os
@@ -305,9 +304,9 @@ async def verify(args):
     with TemporaryDirectory(prefix="wavefunction-harness-live-") as temporary:
         root = Path(temporary).resolve()
         os.environ["WAVEFUNCTION_DATA_DIR"] = str(root / "data")
+        from codex_signin import read_only_auth
         from langchain.agents.middleware import AgentMiddleware
         from wavefunction import agent_factory, coding_workspace, github_cli, main
-        from wavefunction.codex import CodexAuth, CodexAuthError, CodexAuthStore, CodexCredentials
         from wavefunction.config import Settings
         from wavefunction.models import ModelGateway
         from wavefunction.secrets import EnvFileSecretStore, MemorySecretStore
@@ -317,36 +316,7 @@ async def verify(args):
         services.secrets = MemorySecretStore()
         secret_values = []
         if args.provider == "codex":
-
-            class ReadOnlyAuth(CodexAuth):
-                def access_token(self):
-                    credentials = self.credentials()
-                    if credentials is None or credentials.expiring():
-                        raise CodexAuthError(
-                            "A current sign-in is needed. This check never refreshes credentials."
-                        )
-                    return credentials.access
-
-            class ReadOnlyStore(CodexAuthStore):
-                """The app's sign-in file, or the Codex CLI's `~/.codex/auth.json`; never written."""
-
-                def load(self):
-                    tokens = json.loads(self.path.read_text(encoding="utf-8")).get("tokens")
-                    if not tokens:
-                        return super().load()
-                    claims = tokens["access_token"].split(".")[1]
-                    claims = json.loads(base64.urlsafe_b64decode(claims + "=" * (-len(claims) % 4)))
-                    return CodexCredentials(
-                        tokens["access_token"],
-                        tokens["refresh_token"],
-                        float(claims["exp"]),
-                        tokens["account_id"],
-                    )
-
-                def save(self, credentials):
-                    raise CodexAuthError("This check never writes the sign-in")
-
-            auth = ReadOnlyAuth(ReadOnlyStore(args.auth_file.expanduser()))
+            auth = read_only_auth(args.auth_file)
             secret_values.append(auth.access_token())
             services.codex = auth
             services.models = ModelGateway(services.secrets, codex=auth)

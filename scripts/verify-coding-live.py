@@ -372,22 +372,13 @@ async def verify(args):
     with TemporaryDirectory(prefix="harness-api-live-") as temporary:
         root = Path(temporary).resolve()
         os.environ["WAVEFUNCTION_DATA_DIR"] = str(root / "data")
+        from codex_signin import read_only_auth
         from wavefunction import main
-        from wavefunction.codex import CodexAuth, CodexAuthError, CodexAuthStore
         from wavefunction.config import Settings
         from wavefunction.models import ModelGateway
         from wavefunction.secrets import MemorySecretStore
 
-        class ReadOnlyAuth(CodexAuth):
-            def access_token(self):
-                credentials = self.credentials()
-                if credentials is None or credentials.expiring():
-                    raise CodexAuthError(
-                        "A current sign-in is needed. This check never refreshes credentials."
-                    )
-                return credentials.access
-
-        auth = ReadOnlyAuth(CodexAuthStore(args.auth_file.expanduser()))
+        auth = read_only_auth(args.auth_file)
         auth.access_token()
         services = main.Services(Settings(data_dir=root / "data", development_auth_bypass=True))
         main.services = services
