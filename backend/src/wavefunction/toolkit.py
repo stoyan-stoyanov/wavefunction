@@ -77,6 +77,10 @@ class ToolContext:
     # The chats, checkouts, terminals and reviews every task belongs to.
     coding_workspace: CodingWorkspace = field(kw_only=True)
 
+    # Building one of a group's tools builds them all, so each context builds a group once.
+    # Not copied by `dataclasses.replace`, so a changed context never reuses another's tools.
+    tool_groups: dict[str, dict[str, BaseTool]] = field(default_factory=dict, init=False, repr=False)
+
     def local_grants(self):
         from .sandbox import Grant
 
@@ -728,6 +732,8 @@ def _build_local_tool(context: ToolContext, name: str) -> BaseTool:
             )
         ensure_path_access(ws, context.local_scratch, path, writable)
 
+    if "local" in context.tool_groups:
+        return context.tool_groups["local"][name]
     tools = build_hands(
         context.local_scratch,
         context.local_grants,
@@ -745,13 +751,16 @@ def _build_local_tool(context: ToolContext, name: str) -> BaseTool:
         if (context.choose_folder and context.folder_grants is None) or context.parent_run_id
         else None,
     )
-    return next(tool for tool in tools if tool.name == name)
+    context.tool_groups["local"] = {tool.name: tool for tool in tools}
+    return context.tool_groups["local"][name]
 
 
 def _build_terminal_tool(context: ToolContext, name: str) -> BaseTool:
-    from .terminal_tools import build_terminal_tool
+    from .terminal_tools import build_terminal_tools
 
-    return build_terminal_tool(context, name)
+    if "terminal" not in context.tool_groups:
+        context.tool_groups["terminal"] = {tool.name: tool for tool in build_terminal_tools(context)}
+    return context.tool_groups["terminal"][name]
 
 
 TOOL_REGISTRY: dict[str, ToolDefinition] = {

@@ -174,6 +174,21 @@ async def test_owned_worktree_gitfile_cannot_redirect_backend_or_captured_access
 
 
 @pytest.mark.sandbox
+async def test_a_helper_starts_with_its_parents_uncommitted_work(coding, tmp_path):
+    client, ws, _ = coding
+    source = repository(tmp_path)
+    (source / "a.txt").write_text("edited\n")
+    (source / "uncommitted.txt").write_text("synthetic\n")
+    parent = await create(client, folder=str(source))
+    child = ws.create_thread(
+        ThreadInput(folder=str(source)), parent_thread_id=parent["id"], parent_run_id="synthetic-parent"
+    )
+    branched = await ws.checkpoints.branch(parent["id"], child["id"], live=True)
+    assert (Path(branched["folder"]) / "a.txt").read_text() == "edited\n"
+    assert (Path(branched["folder"]) / "uncommitted.txt").read_text() == "synthetic\n"
+
+
+@pytest.mark.sandbox
 async def test_helper_stopped_while_its_checkout_is_prepared_still_expires(coding, tmp_path, monkeypatch):
     client, ws, _ = coding
     source = repository(tmp_path)
@@ -183,12 +198,16 @@ async def test_helper_stopped_while_its_checkout_is_prepared_still_expires(codin
     )
     preparing = asyncio.Event()
 
-    async def slow_copy(*_args, **_kwargs):
-        # Copying the parent's uncommitted work into the new checkout: slow in a large repository.
-        preparing.set()
-        await asyncio.Event().wait()
+    git_operation = ws.checkpoints.git
 
-    monkeypatch.setattr(ws.recovery, "apply", slow_copy)
+    async def slow_read(folder, **request):
+        # Reading the new checkout back: slow in a large repository.
+        if request.get("point", "").endswith("-populated"):
+            preparing.set()
+            await asyncio.Event().wait()
+        return await git_operation(folder, **request)
+
+    monkeypatch.setattr(ws.checkpoints, "git", slow_read)
     setup = asyncio.create_task(ws.checkpoints.branch(parent["id"], child["id"], live=True))
     await asyncio.wait_for(preparing.wait(), 15)
     setup.cancel()  # Stop lands here: the helper never runs.
