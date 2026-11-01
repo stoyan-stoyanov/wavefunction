@@ -5,8 +5,8 @@
 <h1 align="center">Wavefunction</h1>
 
 <p align="center">
-  <strong>Minimal by design. Built to keep up.</strong><br>
-  A fast, open-source coding agent for your Mac. Keep the conversation going while it works on several tasks at once.
+  <strong>Minimal by design. Open source down to the prompt.</strong><br>
+  A coding agent for your Mac. Keep talking while it works on several tasks at once.
 </p>
 
 <p align="center">

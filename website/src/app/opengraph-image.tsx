@@ -30,8 +30,11 @@ export default async function OpenGraphImage() {
           Wavefunction
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          <div style={{ fontSize: 62, fontWeight: 600, lineHeight: 1.05, letterSpacing: -2, maxWidth: 1000 }}>
-            {site.headline}
+          <div style={{ display: "flex", flexDirection: "column", fontSize: 62, fontWeight: 600, lineHeight: 1.05, letterSpacing: -2 }}>
+            {/* One sentence per line, so "open source" never splits. */}
+            {site.headline.split(/(?<=\.) /).map((line) => (
+              <div key={line}>{line}</div>
+            ))}
           </div>
           <div style={{ fontSize: 30, color: "#586578" }}>An open-source Mac app with parallel subagents and local models.</div>
         </div>
