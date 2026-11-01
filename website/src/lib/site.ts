@@ -5,9 +5,9 @@ export const site = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.wavefunction.si",
   // Says what the product is: "wavefunction" alone is a physics term in search results.
   title: "Wavefunction: open-source coding agent for Mac",
-  headline: "Minimal by design. Built to keep up.",
+  headline: "Minimal by design. Open source down to the prompt.",
   description:
-    "A fast, open-source coding agent for your Mac. It works on several tasks at once, while you keep the conversation going.",
+    "A coding agent for your Mac. Keep talking while it works on several tasks at once.",
   github,
   // Redirects to the latest release's DMG (app/download/route.ts).
   download: "/download",

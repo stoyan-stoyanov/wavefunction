@@ -9,7 +9,7 @@ npm run dev
 
 Outbound links (GitHub, download) live in `src/lib/site.ts`. Open Graph URLs, the canonical URL, the sitemap and `robots.txt` use the production domain, `https://www.wavefunction.si`; set `NEXT_PUBLIC_SITE_URL` to use another.
 
-The light hero blends into `public/wavefunction-desktop.png`, the supplied desktop screenshot. Next.js serves responsive, optimized versions through its Image component. The open-source section links directly to GitHub.
+The light hero blends into `public/wavefunction-hero.mp4`, which plays once with `public/wavefunction-hero-poster.jpg` fading out over it. Next.js serves responsive, optimized versions of the images through its Image component. The open-source section links directly to GitHub.
 
 The page and social preview use the selected script W mark at `public/wavefunction-mark.svg`, copied from `assets/branding/wavefunction-mark.svg` in the repository root. Site favicons use the same mark on a transparent background.
 

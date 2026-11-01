@@ -121,7 +121,7 @@ function Scene({ replayed, onFinished }: { replayed: boolean; onFinished: () => 
   });
 
   return (
-    <div ref={ref} className="overflow-hidden rounded-2xl border border-text/15 bg-white shadow-[0_20px_60px_-30px_rgb(27_38_56/0.3)] [zoom:0.6] min-[400px]:[zoom:0.75] sm:[zoom:1]" role="img" aria-label="Wavefunction desktop example: Billing dashboard is selected in the sidebar, with Billing API, Dashboard UI, and Integration tests nested beneath it as subagents, each on its own branch. The conversation stays open: you ask for a usage chart and a fourth subagent starts, then you ask for Stripe invoices and the message goes to the Billing API subagent while it works. All four complete for review.">
+    <div ref={ref} className="app-dark overflow-hidden rounded-2xl border border-text/15 bg-bg shadow-[0_24px_60px_-28px_rgb(27_38_56/0.6)] [zoom:0.6] min-[400px]:[zoom:0.75] sm:[zoom:1]" role="img" aria-label="Wavefunction desktop example: Billing dashboard is selected in the sidebar, with Billing API, Dashboard UI, and Integration tests nested beneath it as subagents, each on its own branch. The conversation stays open: you ask for a usage chart and a fourth subagent starts, then you ask for Stripe invoices and the message goes to the Billing API subagent while it works. All four complete for review.">
       {/* Keep the app window in one row; scale the whole illustration to fit phones. */}
       <div aria-hidden className="grid grid-cols-[210px_minmax(0,1fr)] lg:grid-cols-[248px_minmax(0,1fr)]">
         <div className="flex min-h-[570px] min-w-0 flex-col border-r border-text/10 bg-panel">
@@ -188,13 +188,13 @@ function Scene({ replayed, onFinished }: { replayed: boolean; onFinished: () => 
             <p className="max-w-[40ch] text-[13px] leading-relaxed text-soft sm:text-sm" style={shown(FIRST_SENT + 350)}>
               Starting three subagents for the API, interface, and tests, each in its own worktree.
             </p>
-            <div className="ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-accent/10 px-4 py-2.5 text-[13px] leading-relaxed sm:text-sm" style={shown(SECOND_SENT)}>
+            <div className="ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-accent/25 px-4 py-2.5 text-[13px] leading-relaxed sm:text-sm" style={shown(SECOND_SENT)}>
               {SECOND}
             </div>
             <p className="text-[13px] leading-relaxed text-soft sm:text-sm" style={shown(SECOND_SENT + 500)}>
               On it. A fourth subagent takes the chart; the rest keep moving.
             </p>
-            <div className="ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-accent/10 px-4 py-2.5 text-[13px] leading-relaxed sm:text-sm" style={shown(THIRD_SENT)}>
+            <div className="ml-auto max-w-[90%] rounded-2xl rounded-br-md bg-accent/25 px-4 py-2.5 text-[13px] leading-relaxed sm:text-sm" style={shown(THIRD_SENT)}>
               {THIRD}
             </div>
             <p className="text-[13px] leading-relaxed text-soft sm:text-sm" style={shown(THIRD_SENT + 500)}>
@@ -203,7 +203,7 @@ function Scene({ replayed, onFinished }: { replayed: boolean; onFinished: () => 
             <div className="flex items-center gap-2 text-xs text-done sm:text-[13px]" style={shown(FINISH)}>
               <Check /> All four tasks are ready to review.
             </div>
-            <div className="mt-auto flex items-center justify-between gap-3 rounded-xl border border-text/10 bg-panel/50 px-3 py-3 text-xs text-faint sm:text-[13px]">
+            <div className="mt-auto flex items-center justify-between gap-3 rounded-xl border border-text/15 bg-panel px-3 py-3 text-xs text-faint sm:text-[13px]">
               {draft ? (
                 <span className="min-w-0 truncate text-text">
                   {draft}
@@ -212,7 +212,7 @@ function Scene({ replayed, onFinished }: { replayed: boolean; onFinished: () => 
               ) : (
                 "Ask anything, anytime"
               )}
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-text text-white">
+              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-text text-bg">
                 <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 12V4m-4 4 4-4 4 4" /></svg>
               </span>
             </div>
