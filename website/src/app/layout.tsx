@@ -11,8 +11,9 @@ export const metadata: Metadata = {
   title: site.title,
   description: site.description,
   openGraph: {
-    title: "Wavefunction",
+    title: site.title,
     description: site.description,
+    siteName: "Wavefunction",
     type: "website",
   },
   twitter: { card: "summary_large_image" },
