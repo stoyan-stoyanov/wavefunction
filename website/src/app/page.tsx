@@ -12,6 +12,7 @@ import {
 } from "@/components/feature-visuals";
 import { ComputerVisual } from "@/components/computer-visual";
 import { HeroVideo } from "@/components/hero-video";
+import { DownloadLink } from "@/components/download-link";
 import { AppleIcon, GitHubIcon } from "@/components/icons";
 import { Timeline } from "@/components/timeline";
 import { WaveField } from "@/components/wave-field";
@@ -124,13 +125,12 @@ function Download({ size = "lg" }: { size?: "sm" | "lg" }) {
       ? "h-12 gap-2.5 rounded-xl px-5 text-[15px]"
       : "h-9 gap-2 rounded-[10px] px-3.5 text-sm";
   return (
-    <a
-      href={site.download}
+    <DownloadLink
       className={`inline-flex items-center bg-text font-medium text-white transition-colors hover:bg-text/85 ${shape}`}
     >
       <AppleIcon />
       {size === "lg" ? "Download for macOS" : "Download"}
-    </a>
+    </DownloadLink>
   );
 }
 
