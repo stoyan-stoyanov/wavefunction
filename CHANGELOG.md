@@ -4,6 +4,8 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+## 0.3.0 - 2026-11-04
+
 ### Added
 
 - Model lists show when each model was released, where that's known. ([#18](https://github.com/stoyan-stoyanov/wavefunction/pull/18))
