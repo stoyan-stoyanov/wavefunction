@@ -38,6 +38,14 @@ const APPLICATION_JSON_LD = {
   offers: { "@type": "Offer", price: 0, priceCurrency: "USD" },
 };
 
+// Google shows this name above the result instead of the bare domain.
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Wavefunction",
+  url: site.url,
+};
+
 // Fade the hero waves into the page below and soften them behind the headline.
 const HERO_MASK = {
   maskImage:
@@ -53,7 +61,9 @@ export default function Home() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(APPLICATION_JSON_LD).replace(/</g, "\\u003c") }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([WEBSITE_JSON_LD, APPLICATION_JSON_LD]).replace(/</g, "\\u003c"),
+        }}
       />
       <Nav />
       <main>
@@ -238,7 +248,7 @@ function Hero() {
           ))}
         </h1>
         <p className="enter mt-6 max-w-[30rem] text-lg leading-relaxed text-soft [animation-delay:160ms] sm:text-xl">
-          {site.description}
+          {site.subtitle}
         </p>
         <div className="enter mt-10 flex flex-wrap gap-3 [animation-delay:240ms]">
           <Download />
