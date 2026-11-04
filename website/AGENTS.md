@@ -9,3 +9,5 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 <!-- END:nextjs-agent-rules -->
 
 `next dev` can keep serving an old `globals.css`, and old `/_next/image` copies of a replaced file. If a change doesn't show, stop the server, delete `.next/dev` and start it again.
+
+Web Analytics is on through `<Analytics />` in the root layout. On the Pro plan every page view is a billed event, and UTM breakdowns need the Web Analytics Plus add-on.
