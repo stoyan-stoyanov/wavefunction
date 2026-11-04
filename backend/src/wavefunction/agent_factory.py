@@ -26,6 +26,7 @@ from .execution_policy import (
 )
 from .execution_policy import RetryingSummarizationMiddleware as SummarizationMiddleware
 from .models import ModelGateway, is_retryable_provider_error
+from .repeated_actions import RepeatHoldMiddleware
 from .skills import SkillsMiddleware, load_skills
 from .spec_v2 import AgentSpecV2
 from .tool_discovery import ToolDiscoveryMiddleware
@@ -133,7 +134,7 @@ def assemble_middleware(
     whether the task has local tools, which bring the local environment, its repository's
     instructions and a checklist. Every task is told the date in its environment.
     """
-    middleware: list[AgentMiddleware] = [truncation_guard]
+    middleware: list[AgentMiddleware[Any, Any, Any]] = [truncation_guard]
     if screenshots is not None and document_context is not None and document_context.computer is not None:
         from .computer_control import ComputerControlMiddleware
 
@@ -175,6 +176,7 @@ def assemble_middleware(
         middleware.append(TodoListMiddleware(system_prompt=TODO_GUIDANCE, tool_description=TODO_DESCRIPTION))
         middleware.append(PlanReminderMiddleware())
     middleware.append(ProgressMiddleware())
+    middleware.append(RepeatHoldMiddleware())
     if discovery:
         middleware.append(ToolDiscoveryMiddleware(discovery))
     if store is not None:

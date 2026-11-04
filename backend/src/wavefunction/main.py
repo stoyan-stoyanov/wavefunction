@@ -143,24 +143,14 @@ class Services:
     def _warm_optional_code(self) -> None:
         # Import only: no clients, credentials, network discovery, or model calls. Ordinary
         # local imports at each use site also work if a user gets there before this finishes,
-        # or uses a provider enabled later. Each provider SDK costs tens of MB, so only those
-        # of the providers the model picker offers; PDFs load their reader when one is read.
-        stored = self.repository.get_settings({"enabled_models": None, "default_model": DEMO_MODEL})
-        enabled = stored["enabled_models"] if isinstance(stored["enabled_models"], list) else []
-        providers: set[str | None] = {str(key).partition("::")[0] for key in enabled}
-        if isinstance(stored["default_model"], dict):
-            providers.add(stored["default_model"].get("provider"))
-        for module in (
-            *sorted(
-                {
-                    PROVIDER_MODULES[provider]
-                    for provider in providers
-                    if provider is not None and provider in PROVIDER_MODULES
-                }
-            ),
-            "wavefunction.connector_oauth",
-            "langchain_mcp_adapters.client",
-        ):
+        # or uses another provider. Each provider SDK costs tens of MB, so only the default
+        # model's, and connector code only with a connector; PDFs load their reader when read.
+        default = self.repository.get_settings({"default_model": DEMO_MODEL})["default_model"]
+        provider = default.get("provider") if isinstance(default, dict) else None
+        modules = [PROVIDER_MODULES[provider]] if provider in PROVIDER_MODULES else []
+        if self.connectors.servers():
+            modules += ["wavefunction.connector_oauth", "langchain_mcp_adapters.client"]
+        for module in modules:
             try:
                 import_module(module)
             except Exception:

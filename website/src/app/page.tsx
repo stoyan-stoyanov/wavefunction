@@ -9,9 +9,9 @@ import {
   PrivacyVisual,
   RepositoryVisual,
   SetupVisual,
-  StatsVisual,
 } from "@/components/feature-visuals";
 import { ComputerVisual } from "@/components/computer-visual";
+import { HeroVideo } from "@/components/hero-video";
 import { AppleIcon, GitHubIcon } from "@/components/icons";
 import { Timeline } from "@/components/timeline";
 import { WaveField } from "@/components/wave-field";
@@ -38,6 +38,14 @@ const APPLICATION_JSON_LD = {
   offers: { "@type": "Offer", price: 0, priceCurrency: "USD" },
 };
 
+// Google shows this name above the result instead of the bare domain.
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Wavefunction",
+  url: site.url,
+};
+
 // Fade the hero waves into the page below and soften them behind the headline.
 const HERO_MASK = {
   maskImage:
@@ -53,7 +61,9 @@ export default function Home() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(APPLICATION_JSON_LD).replace(/</g, "\\u003c") }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([WEBSITE_JSON_LD, APPLICATION_JSON_LD]).replace(/</g, "\\u003c"),
+        }}
       />
       <Nav />
       <main>
@@ -158,6 +168,29 @@ function Card({
   );
 }
 
+function Screenshot({
+  src,
+  alt,
+  width,
+  height,
+}: {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+}) {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      sizes="(min-width: 1200px) 1136px, 100vw"
+      className="reveal w-full rounded-[20px] sm:rounded-[28px]"
+    />
+  );
+}
+
 function Nav() {
   return (
     <header className="sticky top-0 z-40 bg-bg/85 backdrop-blur-sm">
@@ -215,7 +248,7 @@ function Hero() {
           ))}
         </h1>
         <p className="enter mt-6 max-w-[30rem] text-lg leading-relaxed text-soft [animation-delay:160ms] sm:text-xl">
-          {site.description}
+          {site.subtitle}
         </p>
         <div className="enter mt-10 flex flex-wrap gap-3 [animation-delay:240ms]">
           <Download />
@@ -227,15 +260,7 @@ function Hero() {
         </p>
       </Container>
       <figure className="hero-desktop relative mt-6 overflow-hidden sm:mt-0">
-        <Image
-          src="/wavefunction-desktop.png"
-          alt="Wavefunction on a Mac desktop, with projects in the sidebar and a new session ready to start."
-          width={3200}
-          height={1735}
-          sizes="(max-width: 639px) 160vw, 100vw"
-          loading="eager"
-          className="hero-desktop-image h-auto"
-        />
+        <HeroVideo />
       </figure>
     </section>
   );
@@ -407,7 +432,15 @@ function Providers() {
           Sign in with ChatGPT, use your own API keys, or run models on your
           Mac. Pick a model for each chat and switch whenever you like.
         </p>
-        <ul className="reveal mt-16 grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-4">
+        <div className="mt-12 sm:mt-16">
+          <Screenshot
+            src="/wavefunction-providers.jpg"
+            alt="Wavefunction setup, step 1: connect a provider, from ChatGPT, Anthropic, Google Gemini, OpenRouter, Vercel AI Gateway, Ollama or an OpenAI-compatible server."
+            width={2841}
+            height={1856}
+          />
+        </div>
+        <ul className="reveal mt-2 grid grid-cols-2 gap-2 sm:mt-4 sm:gap-4 lg:grid-cols-4">
           {PROVIDERS.map(({ logo, name, connect }) => (
             <li
               key={name}
@@ -558,7 +591,15 @@ function Extras() {
         <h2 className="reveal text-[clamp(2rem,4.4vw,3.5rem)] font-medium leading-[1.08] tracking-[-0.035em]">
           Connectors and skills
         </h2>
-        <div className="mt-12 grid gap-4 lg:grid-cols-2 sm:mt-16">
+        <div className="mt-12 sm:mt-16">
+          <Screenshot
+            src="/wavefunction-connectors.jpg"
+            alt="The connector catalog in Wavefunction: Gmail, Outlook, Google, Microsoft 365, Airtable, Asana, Atlassian and more."
+            width={2841}
+            height={1855}
+          />
+        </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <Card visual={<ConnectorsVisual />} title="MCP connectors">
             70+ ready-made connectors, plus any MCP server you add.
           </Card>
@@ -575,19 +616,21 @@ function Extras() {
 function Stats() {
   return (
     <section id="stats" className="scroll-mt-16 pt-44 sm:pt-64">
-      <Container className="grid items-center gap-14 lg:grid-cols-[1.1fr_0.9fr] lg:gap-24">
-        <div className="lg:col-start-2 lg:row-start-1">
-          <h2 className="reveal max-w-[12ch] text-[clamp(2.5rem,6vw,4.75rem)] font-semibold leading-none tracking-[-0.045em]">
-            Track every token and every dollar
-          </h2>
-          <p className="reveal mt-7 max-w-[32ch] text-lg leading-relaxed text-soft sm:text-xl">
-            Track token usage, cache usage, and provider-reported costs in one
-            place. See what you use, what you spend, and how it changes over
-            time.
-          </p>
-        </div>
-        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
-          <StatsVisual />
+      <Container>
+        <h2 className="reveal max-w-[18ch] text-[clamp(2.5rem,6vw,4.75rem)] font-semibold leading-none tracking-[-0.045em]">
+          Track every token and every dollar
+        </h2>
+        <p className="reveal mt-7 max-w-[40rem] text-lg leading-relaxed text-soft sm:text-xl">
+          Track token usage, cache usage, and provider-reported costs in one
+          place. See what you use, what you spend, and how it changes over time.
+        </p>
+        <div className="mt-12 sm:mt-16">
+          <Screenshot
+            src="/wavefunction-analytics.jpg"
+            alt="Settings, Analytics: token totals, runs, working time, reported cost and daily activity."
+            width={1480}
+            height={966}
+          />
         </div>
       </Container>
     </section>

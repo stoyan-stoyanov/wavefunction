@@ -82,9 +82,9 @@ export function ComputerVisual() {
       aria-label="Wavefunction's own isolated desktop: Firefox open on a billing portal. The agent's pointer clicks Download report and the report downloads, while the dock below shows each step and a Take control button."
     >
       <div aria-hidden>
-        <div className="overflow-hidden rounded-2xl border border-text/15 bg-[linear-gradient(160deg,#e3e9f1,#c7d3e2)] shadow-[0_20px_60px_-30px_rgb(27_38_56/0.35)]">
+        <div className="overflow-hidden rounded-2xl border border-text/15 bg-[linear-gradient(160deg,#55719a,#1b2638)] shadow-[0_24px_60px_-28px_rgb(27_38_56/0.6)]">
           {/* The desktop's top bar. */}
-          <div className="flex h-7 items-center gap-2 bg-text/85 px-3 text-[10px] font-medium text-white/85">
+          <div className="flex h-7 items-center gap-2 bg-[#0f1622] px-3 text-[10px] font-medium text-white/85">
             <SandboxIcon className="size-3 text-white/80" />
             <span>Isolated desktop</span>
             <span className="ml-auto tabular-nums">10:42</span>
@@ -92,11 +92,11 @@ export function ComputerVisual() {
           <div className="relative p-3 sm:p-6">
             {/* Firefox. */}
             <div className="overflow-hidden rounded-lg bg-white shadow-[0_12px_30px_-14px_rgb(27_38_56/0.45)] ring-1 ring-text/10">
-              <div className="flex items-center gap-2 border-b border-text/10 bg-panel/60 px-3 py-2">
+              <div className="flex items-center gap-2 border-b border-text/10 bg-panel px-3 py-2">
                 <span className="flex gap-1">
-                  <span className="size-2 rounded-full bg-text/20" />
-                  <span className="size-2 rounded-full bg-text/20" />
-                  <span className="size-2 rounded-full bg-text/20" />
+                  <span className="size-2 rounded-full bg-text/35" />
+                  <span className="size-2 rounded-full bg-text/35" />
+                  <span className="size-2 rounded-full bg-text/35" />
                 </span>
                 <span className="min-w-0 flex-1 truncate rounded-md bg-white px-2.5 py-1 font-mono text-[10px] text-soft ring-1 ring-text/10 sm:text-[11px]">
                   billing.example.com/invoices
@@ -106,7 +106,7 @@ export function ComputerVisual() {
                 ref={page}
                 className="relative flex h-[230px] flex-col overflow-hidden p-4 lg:h-[270px]"
               >
-                <span className="block h-2.5 w-2/5 rounded-full bg-text/25" />
+                <span className="block h-2.5 w-2/5 rounded-full bg-text/50" />
                 <div className="mt-5 space-y-2.5">
                   {[
                     ["Mar 2026", "$1,240"],
@@ -115,7 +115,7 @@ export function ComputerVisual() {
                   ].map(([month, amount], index) => (
                     <div
                       key={month}
-                      className={`flex items-center justify-between rounded-md px-2.5 py-2 text-[11px] ${index === 0 ? "bg-accent/10 font-medium" : "bg-panel/70 text-soft"}`}
+                      className={`flex items-center justify-between rounded-md px-2.5 py-2 text-[11px] ${index === 0 ? "bg-accent/20 font-medium" : "bg-panel text-soft"}`}
                     >
                       <span>{month}</span>
                       <span className="tabular-nums">{amount}</span>
@@ -203,7 +203,7 @@ export function ComputerVisual() {
           </div>
         </div>
         {/* The app's desktop dock: the current step, as in the app, and Take control. */}
-        <div className="mt-3 flex items-center gap-3 rounded-xl border border-text/10 bg-white px-3.5 py-2.5 sm:mt-4">
+        <div className="app-dark mt-3 flex items-center gap-3 rounded-xl border border-text/15 bg-bg px-3.5 py-2.5 sm:mt-4">
           {step ? (
             <span className="flex min-w-0 items-center gap-2 text-xs font-medium">
               <span className="size-1.5 shrink-0 rounded-full bg-[#ef4444]" />
@@ -217,7 +217,7 @@ export function ComputerVisual() {
               </span>
             </span>
           )}
-          <span className="ml-auto shrink-0 rounded-full bg-text px-3 py-1.5 text-[11px] font-medium text-white">
+          <span className="ml-auto shrink-0 rounded-full bg-text px-3 py-1.5 text-[11px] font-medium text-bg">
             Take control
           </span>
         </div>

@@ -35,7 +35,9 @@ The tests drive the HTTP API, so find a behavior's tests by its route or name, n
 
 - Find callers with `rg` before changing shared runtime code.
 - Keep each run's captured spec and guidance, checkpoints and file versions intact.
+- `tool_schemas.py` replaces LangChain's `create_schema_from_function`, which an upgrade can move: `test_tool_schemas.py` fails if the replacement stops taking effect.
 - Real accounts, the Keychain, credentials and user repositories stay out of ordinary tests.
 - Live connector checks (`npm run test:connectors:live`) are opt-in and never use real account mutations as fixtures.
 - `http.server`'s `HTTPServer` looks up its own address when it binds. Nothing reads the answer, and where the resolver doesn't answer (GitHub's macOS 15 and 26 runners) that takes 35 s, so `conftest.py` stubs `socket.getfqdn`, a program a test starts in its own process uses a plain `socketserver` server, and the OAuth callback server skips the lookup.
 - Git on macOS writes paths precomposed (NFC), while a folder made in Finder keeps its accents decomposed (NFD) on disk: compare such paths normalized.
+- Compare builds on Python 3.12, as CI and the app do: 3.13 strips docstring indentation, which changes `tools_sha256`.

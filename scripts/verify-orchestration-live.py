@@ -272,6 +272,7 @@ class ReportTests(unittest.TestCase):
 }
 SOURCE_NAMES = {"billing.py", "usage.py", "exporting.py", "report.py", "returns.py"}
 IMPORTS = {
+    "__future__",
     "billing",
     "usage",
     "exporting",
@@ -339,10 +340,26 @@ def git(folder, *args):
     ).stdout.strip()
 
 
+def written_files(events):
+    """What a run's file tools finished writing."""
+    finished = {event["payload"]["id"] for event in events if event["event_type"] == "tool_completed"}
+    return {
+        Path(event["payload"]["args"]["path"]).name
+        for event in events
+        if event["event_type"] == "tool_started"
+        and event["payload"].get("tool") in {"write_file", "edit_file"}
+        and event["payload"]["id"] in finished
+    }
+
+
 def inspect_python(folder):
     """Allow only the tiny pure-Python fixture domain before executing model-written code."""
     for path in folder.glob("*.py"):
-        tree = ast.parse(path.read_text(), filename=path.name)
+        try:
+            tree = ast.parse(path.read_text(), filename=path.name)
+        except SyntaxError:
+            # Nothing in a file Python cannot parse runs; the agent's test will say what is wrong.
+            continue
         for node in ast.walk(tree):
             if isinstance(node, ast.Import) and any(
                 item.name.split(".")[0] not in IMPORTS for item in node.names
@@ -829,11 +846,22 @@ async def verify(args):
                         run["id"] != identifier and marker in run["input"]["text"].lower() for run in history
                     ):
                         correction_mode = "followup_after_completion"
+                tip, names = saved.get("result_commit"), saved.get("files", [])
+                if not payload["isolated"]:
+                    # A shared helper has no result to collect: its edits are already in this
+                    # folder, so what must survive is what the folder held when it finished.
+                    checkpoints = services.coding_workspace.checkpoints
+                    finished = [
+                        point["id"]
+                        for point in checkpoints.points(payload["thread_id"], child["id"])
+                        if point["kind"] == "after_assistant" and point["available"]
+                    ]
+                    names = written_files(child_events)
+                    tip = finished and checkpoints.point(payload["thread_id"], finished[-1])["code"]["commit"]
                 matches = []
-                for name in saved.get("files", []):
+                for name in names:
                     if name not in SOURCE_NAMES or not (folder / name).is_file():
                         continue
-                    tip = saved.get("result_commit")
                     if tip:
                         contents = git(folder, "show", f"{tip}:{name}")
                         if contents == (folder / name).read_text().strip():
@@ -844,6 +872,7 @@ async def verify(args):
                         "initial_run_id": identifier,
                         "thread_id": payload["thread_id"],
                         "title": payload["agent_name"],
+                        "isolated": payload["isolated"],
                         "status": child["status"],
                         "run_durations_ms": [run["duration_ms"] for run in history],
                         "files": saved.get("files"),
@@ -863,7 +892,8 @@ async def verify(args):
             report["checks"].update(
                 helper_correction_applied=any(item["correction_applied"] for item in child_results),
                 useful_saved_results_integrated=sum(
-                    bool(item["parent_matching_saved_files"]) and item["parent_collected_saved_result"]
+                    bool(item["parent_matching_saved_files"])
+                    and (item["parent_collected_saved_result"] or not item["isolated"])
                     for item in child_results
                 )
                 >= 2,

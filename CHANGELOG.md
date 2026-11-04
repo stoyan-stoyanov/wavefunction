@@ -10,11 +10,17 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Changed
 
+- Messages reach the model sooner, and helpers start sooner, because each task spends less time setting up its tools. ([#29](https://github.com/stoyan-stoyanov/wavefunction/pull/29))
+- The app uses less memory after it starts: it loads only your default model's provider, and connector code only if you have a connector. ([#25](https://github.com/stoyan-stoyanov/wavefunction/pull/25))
+- The engine is ready sooner after you open the app. ([#26](https://github.com/stoyan-stoyanov/wavefunction/pull/26))
 - The app opens to your last chat straight away, so you can start typing before the engine has finished starting. A message sent early goes as soon as the chat has loaded. ([#24](https://github.com/stoyan-stoyanov/wavefunction/pull/24))
+- File and search tools start faster in the desktop app. ([#27](https://github.com/stoyan-stoyanov/wavefunction/pull/27))
 - Adding a provider in Settings lists all its models with checkboxes, so you can pick several at once, instead of one from a dropdown. ([#18](https://github.com/stoyan-stoyanov/wavefunction/pull/18))
+- Helpers with their own worktree start sooner. ([#28](https://github.com/stoyan-stoyanov/wavefunction/pull/28))
 
 ### Fixed
 
+- The agent and its helpers get stuck far less often on an action that keeps returning the same result, such as an edit that fails, because the action is held back until they try something else. ([#34](https://github.com/stoyan-stoyanov/wavefunction/pull/34))
 - Long chats take far less disk space, because each message is saved once instead of with every checkpoint. Chats saved earlier stay the size they were. ([#31](https://github.com/stoyan-stoyanov/wavefunction/pull/31))
 - Messages send faster in repositories too large for code history, because each one no longer scans every file before giving up. ([#23](https://github.com/stoyan-stoyanov/wavefunction/pull/23))
 - Signing in to a connector no longer freezes the app for half a minute on a network whose DNS doesn't answer. ([#21](https://github.com/stoyan-stoyanov/wavefunction/pull/21))

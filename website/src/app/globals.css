@@ -3,15 +3,28 @@
 /* White space, soft blue waves, and slate text echo the desktop photograph. */
 :root {
   --bg: #ffffff;
-  --panel: #f5f7fa;
-  --panel-raised: #e9edf3;
+  --panel: #eef2f7;
+  --panel-raised: #e1e7ef;
   --text: #1b2638;
   --text-soft: #586578;
-  --text-faint: #68758a;
+  --text-faint: #5f6b80;
   --accent: #486d9c;
   --running: #4b76ae;
   --done: #2e775b;
   color-scheme: light;
+}
+
+/* The app's own dark theme (frontend/src/index.css), so mockups match the screenshots. */
+.app-dark {
+  --bg: oklch(0.201 0.004 286);
+  --panel: oklch(0.253 0.004 286);
+  --panel-raised: oklch(0.316 0.004 286);
+  --text: oklch(0.958 0.003 286);
+  --text-soft: oklch(0.76 0.008 286);
+  --text-faint: oklch(0.676 0.008 286);
+  --accent: #8fb0dc;
+  --done: oklch(0.756 0.18 147);
+  color: var(--text);
 }
 
 @theme inline {
@@ -40,37 +53,20 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Fade through the sky, eased so that its end draws no line, while the app window stays fully
-   visible: the second layer is the window's own rectangle (18.75%–81.28% across, from 19.07%
-   down in the image). Measure it again whenever the screenshot changes: a window that starts
-   above it shows the page through the fade as a light band along its top. The sky keeps getting
-   lighter down to about a quarter of the way, so the fade ends where it has evened out, below
-   the window's top. On the image, not the figure, so the percentages hold when the image is
-   wider than the screen. */
-.hero-desktop-image {
+/* The video fades to white by itself, so this only softens its top edge over the wave field. It
+   ends above the app window, whose top rises to about 11% as the video zooms in. On the video,
+   not the figure, so the percentage holds when the video is wider than the screen. */
+.hero-desktop-video {
   width: 100%;
-  mask-image:
-    linear-gradient(
-      to bottom,
-      transparent 3%,
-      rgb(0 0 0 / 0.07) 7%,
-      rgb(0 0 0 / 0.26) 11%,
-      rgb(0 0 0 / 0.50) 15%,
-      rgb(0 0 0 / 0.74) 19%,
-      rgb(0 0 0 / 0.93) 23%,
-      black 27%
-    ),
-    linear-gradient(black, black);
-  mask-size: 100% 100%, 62.6% 80.93%;
-  mask-position: 0 0, 50% 100%;
-  mask-repeat: no-repeat;
+  mask-image: linear-gradient(to bottom, transparent, black 6%);
 }
 
+/* Just wide enough that the app window still fits when the video zooms in. */
 @media (max-width: 639px) {
-  .hero-desktop-image {
-    width: 160%;
+  .hero-desktop-video {
+    width: 125%;
     max-width: none;
-    margin-left: -26%;
+    margin-left: -12.5%;
   }
 }
 
