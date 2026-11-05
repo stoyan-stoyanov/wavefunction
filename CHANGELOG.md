@@ -4,6 +4,8 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+## 0.3.0 - 2026-11-04
+
 ### Added
 
 - Model lists show when each model was released, where that's known. ([#18](https://github.com/stoyan-stoyanov/wavefunction/pull/18))
@@ -21,6 +23,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 ### Fixed
 
 - The agent and its helpers get stuck far less often on an action that keeps returning the same result, such as an edit that fails, because the action is held back until they try something else. ([#34](https://github.com/stoyan-stoyanov/wavefunction/pull/34))
+- Long chats take far less disk space, because each message is saved once instead of with every checkpoint. Chats saved earlier stay the size they were. ([#31](https://github.com/stoyan-stoyanov/wavefunction/pull/31))
 - Messages send faster in repositories too large for code history, because each one no longer scans every file before giving up. ([#23](https://github.com/stoyan-stoyanov/wavefunction/pull/23))
 - Signing in to a connector no longer freezes the app for half a minute on a network whose DNS doesn't answer. ([#21](https://github.com/stoyan-stoyanov/wavefunction/pull/21))
 

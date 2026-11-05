@@ -12,6 +12,7 @@ import {
 } from "@/components/feature-visuals";
 import { ComputerVisual } from "@/components/computer-visual";
 import { HeroVideo } from "@/components/hero-video";
+import { DownloadLink } from "@/components/download-link";
 import { AppleIcon, GitHubIcon } from "@/components/icons";
 import { Timeline } from "@/components/timeline";
 import { WaveField } from "@/components/wave-field";
@@ -38,6 +39,14 @@ const APPLICATION_JSON_LD = {
   offers: { "@type": "Offer", price: 0, priceCurrency: "USD" },
 };
 
+// Google shows this name above the result instead of the bare domain.
+const WEBSITE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Wavefunction",
+  url: site.url,
+};
+
 // Fade the hero waves into the page below and soften them behind the headline.
 const HERO_MASK = {
   maskImage:
@@ -53,7 +62,9 @@ export default function Home() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(APPLICATION_JSON_LD).replace(/</g, "\\u003c") }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([WEBSITE_JSON_LD, APPLICATION_JSON_LD]).replace(/</g, "\\u003c"),
+        }}
       />
       <Nav />
       <main>
@@ -114,13 +125,12 @@ function Download({ size = "lg" }: { size?: "sm" | "lg" }) {
       ? "h-12 gap-2.5 rounded-xl px-5 text-[15px]"
       : "h-9 gap-2 rounded-[10px] px-3.5 text-sm";
   return (
-    <a
-      href={site.download}
+    <DownloadLink
       className={`inline-flex items-center bg-text font-medium text-white transition-colors hover:bg-text/85 ${shape}`}
     >
       <AppleIcon />
       {size === "lg" ? "Download for macOS" : "Download"}
-    </a>
+    </DownloadLink>
   );
 }
 
@@ -238,7 +248,7 @@ function Hero() {
           ))}
         </h1>
         <p className="enter mt-6 max-w-[30rem] text-lg leading-relaxed text-soft [animation-delay:160ms] sm:text-xl">
-          {site.description}
+          {site.subtitle}
         </p>
         <div className="enter mt-10 flex flex-wrap gap-3 [animation-delay:240ms]">
           <Download />

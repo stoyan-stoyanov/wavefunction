@@ -52,7 +52,7 @@ async def latest(saver, thread):
 @pytest.mark.asyncio
 async def test_a_saved_conversation_comes_back_exactly(tmp_path):
     connection = await aiosqlite.connect(tmp_path / "checkpoints.sqlite")
-    saver = AsyncSqliteSaver(connection)
+    saver = MessageSaver(connection)
     await saver.setup()
     saved = state(conversation(3))
     await put(saver, "chat", saved)
@@ -72,11 +72,6 @@ async def saver(tmp_path):
     await connection.close()
 
 
-async def put_shared(saver, thread, checkpoint):
-    shared = await saver.share(thread, checkpoint)
-    return await put(saver, thread, shared)
-
-
 @pytest.mark.asyncio
 async def test_a_chat_saved_in_full_opens_and_carries_on(tmp_path):
     path = tmp_path / "checkpoints.sqlite"
@@ -92,7 +87,7 @@ async def test_a_chat_saved_in_full_opens_and_carries_on(tmp_path):
     await saver.setup()
     assert await latest(saver, "chat") == before
     after = state(conversation(5))
-    await put_shared(saver, "chat", after)
+    await put(saver, "chat", after)
     assert await latest(saver, "chat") == after
     assert (await saver.aget_tuple(point)).checkpoint == before
     assert [item.checkpoint async for item in saver.alist({"configurable": {"thread_id": "chat"}})] == [
@@ -107,14 +102,14 @@ async def test_each_point_stays_exact_and_each_message_is_stored_once(saver):
     points = []
     for exchanges in (1, 2, 3, 4):
         saved = state(conversation(exchanges))
-        points.append((await put_shared(saver, "chat", saved), saved))
+        points.append((await put(saver, "chat", saved), saved))
     for config, saved in points:
         assert (await saver.aget_tuple(config)).checkpoint == saved
     async with saver.conn.execute("SELECT count(*) FROM checkpoint_messages") as cursor:
         assert (await cursor.fetchone())[0] == len(conversation(4))
     # Compaction replaces the conversation; the states before it keep theirs.
     compacted = state([SystemMessage(content="Shorter", id="compacted"), *conversation(4)[-2:]])
-    await put_shared(saver, "chat", compacted)
+    await put(saver, "chat", compacted)
     assert await latest(saver, "chat") == compacted
     assert (await saver.aget_tuple(points[0][0])).checkpoint == points[0][1]
 
@@ -122,8 +117,8 @@ async def test_each_point_stays_exact_and_each_message_is_stored_once(saver):
 @pytest.mark.asyncio
 async def test_deleting_a_chat_leaves_its_fork_whole(saver):
     saved = state(conversation(2))
-    await put_shared(saver, "chat", saved)
-    await put_shared(saver, "fork", await latest(saver, "chat"))
+    await put(saver, "chat", saved)
+    await put(saver, "fork", await latest(saver, "chat"))
     await saver.adelete_thread("chat")
     assert await saver.aget_tuple({"configurable": {"thread_id": "chat"}}) is None
     assert await latest(saver, "fork") == saved
@@ -135,7 +130,7 @@ async def test_deleting_a_chat_leaves_its_fork_whole(saver):
 @pytest.mark.asyncio
 async def test_a_crash_before_the_checkpoint_keeps_the_last_state_and_a_lost_message_is_refused(saver):
     saved = state(conversation(2))
-    await put_shared(saver, "chat", saved)
+    await put(saver, "chat", saved)
     await saver.share("chat", state(conversation(3)))  # Its row never arrived.
     await saver.conn.rollback()
     assert await latest(saver, "chat") == saved

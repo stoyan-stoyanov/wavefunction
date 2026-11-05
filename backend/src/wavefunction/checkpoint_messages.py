@@ -2,9 +2,8 @@
 
 LangGraph saves the whole state at every step, and a chat keeps one state per message point, so
 the file grew with the square of a chat's length and each message rewrote the whole conversation
-dozens of times. Here a checkpoint can name its messages by id, in ranges, with each message stored
-once per conversation. This reads that form; nothing writes it yet, so a release that does can be
-reverted without stranding chats. Everything that reads a checkpoint goes through this saver, so it sees the
+dozens of times. Here a checkpoint names its messages by id, in ranges, and each message is stored
+once per conversation. Everything that reads a checkpoint goes through this saver, so it sees the
 same state as before. Rows saved in full stay as they are and read as they always did.
 """
 
@@ -12,7 +11,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, cast
 
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
@@ -102,6 +101,10 @@ class MessageSaver(AsyncSqliteSaver):
         found = [saved async for saved in super().alist(config, filter=filter, before=before, limit=limit)]
         for saved in found:
             yield await self.restored(saved)
+
+    async def aput(self, config: Any, checkpoint: Any, metadata: Any, new_versions: Any) -> Any:
+        shared = await self.share(str(config["configurable"]["thread_id"]), checkpoint)
+        return await super().aput(config, cast(Any, shared), metadata, new_versions)
 
     async def adelete_thread(self, thread_id: str) -> None:
         await super().adelete_thread(thread_id)
