@@ -1,6 +1,7 @@
 import { api } from "@/lib/api";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { invoke } from "@tauri-apps/api/core";
+import { toast } from "sonner";
 import { beforeEach, expect, it, vi } from "vitest";
 import { codingApi, type CodingRun, type CodingThread, type GitBranches, type TaskContext } from "./api";
 import { makeThread } from "@/test/fixtures";
@@ -143,6 +144,33 @@ it("previews attached images and shows other files by type and size", async () =
   expect(screen.getByRole("button", { name: "Send message" })).toBeDisabled();
   await act(async () => uploaded.resolve());
   await waitFor(() => expect(screen.getByRole("button", { name: "Send message" })).toBeEnabled());
+});
+
+it("attaches the rest of a drop when one file fails, and names the one that did", async () => {
+  const load = useCoding.getState().load;
+  const loaded = vi.fn().mockResolvedValue(undefined);
+  const failed = vi.spyOn(toast, "error");
+  vi.mocked(codingApi.upload)
+    .mockResolvedValueOnce({} as never)
+    .mockRejectedValueOnce(new Error("Unable to read PDF. Upload a valid, unencrypted PDF."))
+    .mockResolvedValueOnce({} as never);
+  useCoding.setState({ load: loaded });
+  try {
+    render(composer());
+    const files = ["terms.pdf", "scan.pdf", "amendments.pdf"].map((name) => new File(["%PDF"], name));
+    fireEvent.paste(screen.getByRole("textbox", { name: "Message Wavefunction" }), {
+      clipboardData: { items: files.map((file) => ({ kind: "file", getAsFile: () => file })) },
+    });
+    await waitFor(() => expect(loaded).toHaveBeenCalledWith(thread.id));
+    expect(vi.mocked(codingApi.upload).mock.calls.map(([, file]) => file.name)).toEqual([
+      "terms.pdf",
+      "scan.pdf",
+      "amendments.pdf",
+    ]);
+    expect(failed).toHaveBeenCalledWith("scan.pdf: Unable to read PDF. Upload a valid, unencrypted PDF.");
+  } finally {
+    useCoding.setState({ load });
+  }
 });
 
 it("keeps reasoning effort accessible in the model menu", async () => {
