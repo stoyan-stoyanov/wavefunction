@@ -18,6 +18,24 @@ PARALLEL_HINT = (
     "User requests override this hint.)"
 )
 
+# The IDs of the files a user message sent, kept on the message: document_images shows the model
+# those images right after it at every request, and tells it the other files are there.
+ATTACHED_FILES = "attached_files"
+
+
+def user_message(text: str, files: list[dict] | None, **kwargs) -> HumanMessage:
+    """What the user wrote, with the IDs of the files it sent."""
+    extra = {ATTACHED_FILES: [row["id"] for row in files]} if files else {}
+    return HumanMessage(content=text, additional_kwargs=extra, **kwargs)
+
+
+def steering_messages(repository, run_id: str) -> list[dict]:
+    """The messages sent to a run while it worked or waited, oldest first."""
+    return [
+        {**event["payload"], "id": event["id"]}
+        for event in repository.list_run_events(run_id, event_types=("steering_requested",))
+    ]
+
 
 class SteeringState(AgentState):
     last_steering_id: NotRequired[str]
@@ -55,10 +73,10 @@ class SteeringMiddleware(AgentMiddleware):
         delegates = self.helper_updates is not None
         return {
             "messages": [
-                HumanMessage(
+                user_message(
+                    item["text"] + (PARALLEL_HINT if delegates and not item.get("pause_reply") else ""),
+                    item.get("reference_files"),
                     id=f"steering-{item['id']}",
-                    content=item["text"]
-                    + (PARALLEL_HINT if delegates and not item.get("pause_reply") else ""),
                 )
                 for item in fresh
             ],
@@ -75,6 +93,7 @@ class SteeringMiddleware(AgentMiddleware):
             for item in fresh:
                 await self.apply(item, before)
                 update = self._updates([item])
+                assert update is not None  # One message makes one update.
                 before["messages"] = [*before["messages"], *update["messages"]]
                 before["last_steering_id"] = item["id"]
         update = self._updates(fresh) or {}
