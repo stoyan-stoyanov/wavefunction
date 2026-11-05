@@ -144,7 +144,9 @@ jobs:
       - run: mkdir -p backend/dist/wavefunction-backend
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
       - run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
-  # The one check to require in branch protection: it passes when every job passed or was skipped.
+  # The one check to require in branch protection: it passes only when every job passed or was
+  # skipped. Any other result fails it, including "abandoned", which a job gets when GitHub never
+  # finds it a runner and so runs none of its steps.
   all-checks:
     if: always()
     needs: [changes, frontend, backend, backend-macos, native]
@@ -155,4 +157,4 @@ jobs:
           RESULTS: ${{ toJSON(needs.*.result) }}
         run: |
           echo "$RESULTS"
-          if echo "$RESULTS" | grep -qE '"(failure|cancelled)"'; then exit 1; fi
+          echo "$RESULTS" | jq -e 'all(. == "success" or . == "skipped")' > /dev/null

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -11,8 +12,9 @@ export const metadata: Metadata = {
   title: site.title,
   description: site.description,
   openGraph: {
-    title: "Wavefunction",
+    title: site.title,
     description: site.description,
+    siteName: "Wavefunction",
     type: "website",
   },
   twitter: { card: "summary_large_image" },
@@ -26,7 +28,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
-      <body className="min-h-dvh font-sans">{children}</body>
+      <body className="min-h-dvh font-sans">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }
