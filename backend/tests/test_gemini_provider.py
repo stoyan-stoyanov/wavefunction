@@ -46,8 +46,8 @@ async def test_gemini_replays_thought_signatures_reads_cache_and_explains_failur
             },
             # Newer than LangChain's profiles: thinks, but which levels it takes is left to its default.
             {
-                "name": "models/gemini-4-argon",
-                "display_name": "Gemini 4 Argon",
+                "name": "models/gemini-9-nova",
+                "display_name": "Gemini 9 Nova",
                 "input_token_limit": 1_000_000,
                 "output_token_limit": 65_536,
                 "supported_actions": ["generateContent"],
@@ -67,9 +67,9 @@ async def test_gemini_replays_thought_signatures_reads_cache_and_explains_failur
         ]
     )
     options = {option.id: option.model_dump() for option in catalogue}
-    assert list(options) == ["gemini-2.0-flash", "gemini-3.6-flash", "gemini-4-argon"]
+    assert list(options) == ["gemini-2.0-flash", "gemini-3.6-flash", "gemini-9-nova"]
     assert options["gemini-3.6-flash"]["reasoning_efforts"] == ["minimal", "low", "medium", "high"]
-    assert options["gemini-4-argon"]["reasoning_efforts"] is None
+    assert options["gemini-9-nova"]["reasoning_efforts"] is None
     assert options["gemini-2.0-flash"]["reasoning_efforts"] == []
 
     secrets = MemorySecretStore()
@@ -112,7 +112,7 @@ async def test_gemini_replays_thought_signatures_reads_cache_and_explains_failur
     model = gateway.chat_model(
         ModelSpec(provider="gemini", model="gemini-3.6-flash", reasoning_effort="high")
     )
-    assert model.profile["max_input_tokens"] == 1_048_576
+    assert (model.profile or {}).get("max_input_tokens") == 1_048_576
     history = [SystemMessage("Stable instructions"), HumanMessage("Double 21")]
     first = await model.bind_tools(tools).ainvoke(history)
     history += [first, ToolMessage("42", tool_call_id=first.tool_calls[0]["id"])]
@@ -138,7 +138,8 @@ async def test_gemini_replays_thought_signatures_reads_cache_and_explains_failur
     assert (
         seen[1][2]["systemInstruction"] == body["systemInstruction"] and seen[1][2]["tools"] == body["tools"]
     )
-    assert second.text == "42" and second.usage_metadata["input_token_details"]["cache_read"] == 4000
+    usage = second.usage_metadata or {}
+    assert second.text == "42" and usage.get("input_token_details", {}).get("cache_read") == 4000
 
     # Out of quota on the user's own key: not retried, and named for what it is.
     with pytest.raises(Exception) as failure:
