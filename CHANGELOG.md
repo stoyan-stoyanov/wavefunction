@@ -8,6 +8,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 - The agent sees screenshots and files you attach to a message. It used to say no image was attached unless it went looking for the file by name. ([#48](https://github.com/stoyan-stoyanov/wavefunction/pull/48))
 - Dropping several files where one can't be read attaches the rest and names the one that failed. It used to attach nothing you could see, and the files reappeared with the next upload. ([#50](https://github.com/stoyan-stoyanov/wavefunction/pull/50))
+- A helper sees a screenshot when the agent passes it along. Helpers start from the agent's brief, not the chat, and had no way to get an image. ([#49](https://github.com/stoyan-stoyanov/wavefunction/pull/49))
 
 ## 0.3.0 - 2026-11-04
 

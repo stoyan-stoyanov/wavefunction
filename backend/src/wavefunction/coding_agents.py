@@ -32,6 +32,48 @@ def helper_cursor(run, events, released):
     return f"{run['id']}:{run['status']}:{events[-1]['sequence'] if events else 0}:{released}"
 
 
+def attached_files(available, names):
+    """The user's attachments, by name, that a helper sees with its task."""
+    shown = []
+    for name in names:
+        matches = [row for row in available if name in (row["name"], row["id"])]
+        if not matches:
+            listed = ", ".join(row["name"] for row in available) or "none"
+            raise ToolCallRejected(f"No attached file is named {name}. Attached files: {listed}.")
+        shown.extend(row for row in matches if row not in shown)
+    return shown
+
+
+def helper_models(repository):
+    """The models a helper can run on instead of its task's, the ones the user enabled, and
+    how to choose one."""
+    enabled = [
+        key
+        for key in repository.get_setting("enabled_models", []) or []
+        if isinstance(key, str) and "::" in key
+    ]
+    saved = {
+        f"{spec.get('provider')}::{spec.get('model')}": spec
+        for spec in repository.get_setting("coding_models", []) or []
+        if isinstance(spec, dict)
+    }
+
+    def chosen_model(key, current):
+        if key not in enabled:
+            raise ToolCallRejected(
+                f"Choose one of the user's enabled models: {', '.join(enabled) or 'none'}."
+            )
+        provider, _, name = key.partition("::")
+        spec = saved.get(key) or {"provider": provider, "model": name}
+        if provider == "openai-compatible" and not spec.get("base_url"):
+            raise ToolCallRejected(f"{key} has no server address saved; use another model.")
+        return ModelSpec.model_validate(
+            {**current.model_dump(), "base_url": None, "reasoning_effort": None, **spec}
+        )
+
+    return enabled, chosen_model
+
+
 def build_agent_tools(context):
     workspace = context.coding_workspace
     repository = context.repository
@@ -107,7 +149,7 @@ def build_agent_tools(context):
                     result["diff_error"] = str(error)
         return result
 
-    async def start(child, spec, text, *, read_only, grants, references):
+    async def start(child, spec, text, *, read_only, grants, references, shown=None):
         async with workspace.checkpoints.locks.setdefault(child["id"], asyncio.Lock()):
             child = owned(child["id"])
             # A follow-up to a helper whose checkout cleanup removed after inactivity would run in
@@ -123,34 +165,12 @@ def build_agent_tools(context):
                 parent_run_id=parent_id,
                 desktop_copy=child["id"],
                 reference_files=list(references or []),
+                message_files=shown,
                 local_read_only=read_only,
                 folder_grants=grants,
             )
 
-    # The models a helper can run on instead of this task's: the ones the user enabled.
-    enabled = [
-        key
-        for key in repository.get_setting("enabled_models", []) or []
-        if isinstance(key, str) and "::" in key
-    ]
-    saved = {
-        f"{spec.get('provider')}::{spec.get('model')}": spec
-        for spec in repository.get_setting("coding_models", []) or []
-        if isinstance(spec, dict)
-    }
-
-    def chosen_model(key, current):
-        if key not in enabled:
-            raise ToolCallRejected(
-                f"Choose one of the user's enabled models: {', '.join(enabled) or 'none'}."
-            )
-        provider, _, name = key.partition("::")
-        spec = saved.get(key) or {"provider": provider, "model": name}
-        if provider == "openai-compatible" and not spec.get("base_url"):
-            raise ToolCallRejected(f"{key} has no server address saved; use another model.")
-        return ModelSpec.model_validate(
-            {**current.model_dump(), "base_url": None, "reasoning_effort": None, **spec}
-        )
+    enabled, chosen_model = helper_models(repository)
 
     @tool
     async def spawn_agent(
@@ -159,11 +179,14 @@ def build_agent_tools(context):
         read_only: bool = False,
         isolated: bool = False,
         model: str | None = None,
+        files: list[str] | None = None,
     ) -> str:
         """Start a helper for a focused independent task; returns its id immediately.
 
         There is no fixed limit on active direct helpers.
-        Helpers inherit this task's model, tools, skills, attachments and permitted access.
+        Helpers inherit this task's model, tools, skills, attachments and permitted access, but
+        not this conversation: write everything a helper needs in its task, and name in files
+        the attached files it should see with it, such as a screenshot.
         By default a helper works in your checkout alongside you and other helpers: its edits
         appear there directly, so give each helper files no one else edits. Set isolated=true
         for work that could interfere, such as broad refactors or changes to shared files: the
@@ -177,6 +200,7 @@ def build_agent_tools(context):
 
         if not task.strip() or len(task) > 30000 or not 1 <= len(title.strip()) <= 160:
             raise ToolCallRejected("Provide a task up to 30000 characters and a short title.")
+        shown = attached_files(context.reference_files or [], files or [])
         async with runtime._run_lock(parent_id):
             parent = parent_running()
             spec = load_spec(parent["spec"])
@@ -228,6 +252,7 @@ def build_agent_tools(context):
                     read_only=read_only,
                     grants=grants,
                     references=context.reference_files,
+                    shown=shown,
                 )
                 await runtime._note(
                     parent_id,

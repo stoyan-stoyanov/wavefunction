@@ -575,7 +575,9 @@ Ask 1–3 concise questions when a decision or missing input is required. Offer
 Start a helper for a focused independent task; returns its id immediately.
 
         There is no fixed limit on active direct helpers.
-        Helpers inherit this task's model, tools, skills, attachments and permitted access.
+        Helpers inherit this task's model, tools, skills, attachments and permitted access, but
+        not this conversation: write everything a helper needs in its task, and name in files
+        the attached files it should see with it, such as a screenshot.
         By default a helper works in your checkout alongside you and other helpers: its edits
         appear there directly, so give each helper files no one else edits. Set isolated=true
         for work that could interfere, such as broad refactors or changes to shared files: the
@@ -607,6 +609,20 @@ Start a helper for a focused independent task; returns its id immediately.
       "anyOf": [
         {
           "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "files": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
         {
           "type": "null"

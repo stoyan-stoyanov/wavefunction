@@ -25,11 +25,13 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
     import os
     import shlex
     import shutil
+    from io import BytesIO
     from pathlib import Path
 
     from conftest import ScriptedModel, tool_call_message
     from langchain_core.messages import AIMessage, ToolMessage
     from langchain_core.outputs import ChatGeneration, ChatResult
+    from PIL import Image
     from support import create, git, reached, repository
 
     from wavefunction.coding_access import full_access
@@ -101,6 +103,13 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
             readonly_tools.update(tool.name for tool in tools)
             return self
 
+        async def _agenerate(self, messages, **kwargs):
+            # A helper never sees its parent's conversation, but sees the screenshot it was given.
+            asked = next(i for i, m in enumerate(messages) if m.content == "Inspect without making changes")
+            note = messages[asked + 1].content
+            assert [block["type"] for block in note] == ["text", "image"] and "keys.png" in note[0]["text"]
+            return await super()._agenerate(messages, **kwargs)
+
     class Shared(ScriptedModel):
         async def _agenerate(self, messages, **kwargs):
             assert "working in the parent's checkout alongside other agents" in str(
@@ -166,21 +175,29 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
                         "title": "Reader",
                         "read_only": True,
                         "model": "openai::gpt-helper",
+                        "files": ["keys.png"],
                     },
                     "reader",
                 )
-                message.tool_calls.append(
-                    {
-                        "name": "spawn_agent",
-                        "args": {"task": "Inspect", "model": "openai::not-enabled"},
-                        "id": "unlisted",
-                        "type": "tool_call",
-                    }
-                )
+                for args, call in [
+                    ({"model": "openai::not-enabled"}, "unlisted"),
+                    ({"files": ["missing.png"]}, "unattached"),
+                ]:
+                    message.tool_calls.append(
+                        {
+                            "name": "spawn_agent",
+                            "args": {"task": "Inspect", **args},
+                            "id": call,
+                            "type": "tool_call",
+                        }
+                    )
             elif self._cursor == 4:
                 assert (
                     "Choose one of the user's enabled models: demo::demo-reliable, openai::gpt-helper"
                     in tools["unlisted"].content
+                )
+                assert "No attached file is named missing.png. Attached files: keys.png." in str(
+                    tools["unattached"].content
                 )
                 reader = json.loads(str(tools["reader"].content))
                 assert ws.thread(reader["agent_id"])["model"]["model"] == "gpt-helper"
@@ -321,6 +338,12 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
     ]
     services.models.chat_model = lambda *_args, **_kwargs: models.pop(0)
     services.repository.set_setting("enabled_models", ["demo::demo-reliable", "openai::gpt-helper"])
+    png = BytesIO()
+    Image.new("RGB", (16, 12), "red").save(png, format="PNG")
+    shot = await client.post(
+        f"/api/coding/threads/{parent['id']}/attachments", files={"file": ("keys.png", png.getvalue())}
+    )
+    assert shot.status_code == 201, shot.text
     # The parent runs in its own managed worktree, the app's default; shared helpers join it.
     run = await ws.send(parent["id"], "Exercise helper lifecycle", worktree=True)
     paths["checkout"] = Path(ws.root(parent["id"]))
