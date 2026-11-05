@@ -11,10 +11,12 @@ import asyncio
 import base64
 import json
 import time
+from typing import cast
 
 import httpx
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
+from pydantic import SecretStr
 
 from wavefunction.codex import CodexAuth, CodexAuthError, CodexAuthStore, CodexCredentials, PendingLogin
 
@@ -89,7 +91,7 @@ async def test_provider_payloads_keep_stable_prefixes_and_conversation_cache_key
         HumanMessage(content="Implement the task"),
     ]
     for provider in (ChatCodex, ChatOpenAIDirect):
-        model = provider(model="gpt-5", api_key="synthetic", use_responses_api=True)
+        model = provider(model="gpt-5", api_key=SecretStr("synthetic"), use_responses_api=True)
         with set_config_context({"configurable": {"thread_id": "chat-a"}}) as context:
             first = context.run(model._get_request_payload, messages)
             steered = context.run(
@@ -118,6 +120,32 @@ async def test_provider_payloads_keep_stable_prefixes_and_conversation_cache_key
             assert context.run(model._get_request_payload, messages)["prompt_cache_key"] == long_key
         model.root_client.close()
         await model.root_async_client.close()
+
+    # Each model stays on the API it is built for: LangChain would otherwise switch gpt-6 calls
+    # with tools to the Responses API by itself, without the settings that keep them stored
+    # nowhere, and on a compatible server to a path it may not have.
+    from langchain_openai import ChatOpenAI
+
+    from wavefunction.models import ModelGateway
+    from wavefunction.secrets import MemorySecretStore
+    from wavefunction.spec_common import ModelSpec
+
+    secrets = MemorySecretStore()
+    secrets.set("openai_api_key", "synthetic")
+    tools = [{"type": "function", "function": {"name": "read_file", "parameters": {"type": "object"}}}]
+    local = "http://127.0.0.1:9/v1"
+    for spec, responses in (
+        (ModelSpec(provider="openai", model="gpt-6-luna", reasoning_effort="none"), False),
+        (ModelSpec(provider="openai", model="gpt-6-luna", reasoning_effort="high"), True),
+        (ModelSpec(provider="openai-compatible", model="gpt-6-luna", base_url=local), False),
+        (ModelSpec(provider="openai-compatible", model="gpt-5.3-codex", base_url=local), True),
+    ):
+        model = ModelGateway(secrets).chat_model(spec)
+        assert isinstance(model, ChatOpenAI)
+        payload = model._get_request_payload(messages, tools=tools)
+        assert ("input" in payload) is responses and ("messages" in payload) is not responses
+        if spec.reasoning_effort == "high":
+            assert payload["store"] is False and payload["include"] == ["reasoning.encrypted_content"]
 
 
 def test_the_model_menu_offers_only_reasoning_levels_the_api_takes():
@@ -164,7 +192,7 @@ async def page_for(auth: CodexAuth, target: str) -> str:
     reader.feed_data(f"GET {target} HTTP/1.1\r\n".encode())
     reader.feed_eof()
     writer = FakeWriter()
-    await auth._handle_request(reader, writer)
+    await auth._handle_request(reader, cast(asyncio.StreamWriter, writer))
     return writer.sent.decode()
 
 
@@ -191,6 +219,7 @@ async def test_the_callback_page_agrees_with_the_sign_in_decision(tmp_path):
     matching = waiting()
     page = await page_for(matching, "/auth/callback?code=abc&state=expected")
     assert "Signed in to ChatGPT" in page
+    assert matching._callback is not None
     assert matching._callback.result() == ("abc", "expected", "")
 
 
@@ -334,10 +363,10 @@ async def test_codex_cache_routing_and_streamed_history_survive_tool_retry_and_n
     models = []
 
     def build():
-        sync, async_ = codex_http_clients(auth)
+        sync, async_ = codex_http_clients(cast(CodexAuth, auth))
         model = ChatCodex(
             model="gpt-6.1-sol",
-            api_key="synthetic",
+            api_key=SecretStr("synthetic"),
             base_url=CODEX_BASE_URL,
             http_client=sync,
             http_async_client=async_,
@@ -435,12 +464,13 @@ async def test_expired_auth_is_not_retried_or_masked(asynchronous):
     with pytest.raises(AuthenticationError) as caught:
         if asynchronous:
             async with AsyncOpenAI(
-                api_key="test", http_client=httpx.AsyncClient(transport=AsyncCodexTransport(auth=auth))
+                api_key="test",
+                http_client=httpx.AsyncClient(transport=AsyncCodexTransport(auth=cast(CodexAuth, auth))),
             ) as client:
                 await client.responses.create(model="test", input="test")
         else:
             with OpenAI(
-                api_key="test", http_client=httpx.Client(transport=CodexTransport(auth=auth))
+                api_key="test", http_client=httpx.Client(transport=CodexTransport(auth=cast(CodexAuth, auth)))
             ) as client:
                 client.responses.create(model="test", input="test")
     assert auth.calls == 1
