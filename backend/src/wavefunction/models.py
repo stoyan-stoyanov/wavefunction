@@ -669,6 +669,10 @@ class ModelGateway:
                     store=False,
                     output_version="responses/v1",
                 )
+            else:
+                # LangChain picks the Responses API on its own for some models (gpt-6 with tools),
+                # without the settings above. Chat Completions takes their tool calls.
+                kwargs["use_responses_api"] = False
             return ChatOpenAIDirect(**kwargs)
         if model.provider in {"openrouter", "vercel"}:
             from .gateway_chat import ChatGateway
