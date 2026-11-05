@@ -8,6 +8,7 @@ import os
 import subprocess
 import tempfile
 import unicodedata
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -15,6 +16,7 @@ import httpx
 import pytest
 from conftest import script_gateway, tool_call_message
 from langchain_core.messages import AIMessage, ToolMessage
+from PIL import Image
 from support import create, git, repository
 
 from wavefunction.github_proxy import GitHubProxy, pkt, ref_updates
@@ -458,15 +460,24 @@ async def test_a_chat_message_answers_open_questions_and_closing_them_lets_the_t
             }
         ]
     }
+    seen = []
     script_gateway(
         services.models,
         [
             tool_call_message("ask_user", question, "first"),
             AIMessage(content="Using the project from your message"),
         ],
+        seen=seen,
     )
     run = await ws.send(thread["id"], "Set up the app")
     assert (await services.runtime.wait(run["id"]))["status"] == "waiting_approval"
+    # The answer comes with a screenshot, which the model sees with it.
+    png = BytesIO()
+    Image.new("RGB", (16, 12), "red").save(png, format="PNG")
+    shot = await client.post(
+        f"/api/coding/threads/{thread['id']}/attachments", files={"file": ("keys.png", png.getvalue())}
+    )
+    assert shot.status_code == 201, shot.text
     reply = await client.post(
         f"/api/coding/threads/{thread['id']}/messages",
         json={"content": "Use the staging project, it has the keys"},
@@ -494,6 +505,13 @@ async def test_a_chat_message_answers_open_questions_and_closing_them_lets_the_t
     answered = max(i for i, m in enumerate(history) if isinstance(m, ToolMessage) and m.name == "ask_user")
     assert json.loads(history[answered].content)["answered_in_chat"] is True
     assert history[answered + 1].content == "Use the staging project, it has the keys"
+    assert history[answered + 1].additional_kwargs["attached_files"] == [shot.json()["id"]]
+    assert any(
+        isinstance(block, dict) and block.get("type") == "image"
+        for message in seen[-1]
+        if isinstance(message.content, list)
+        for block in message.content
+    )
 
     script_gateway(
         services.models,

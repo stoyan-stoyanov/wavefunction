@@ -47,6 +47,7 @@ async def test_threads_isolate_context_folders_models_and_attachments(coding, tm
     assert [f["name"] for f in ws.attachments(a["id"])] == ["private.txt", "shot.png"] and not ws.attachments(
         b["id"]
     )
+    seen = []
     script_gateway(
         services.models,
         [
@@ -59,6 +60,7 @@ async def test_threads_isolate_context_folders_models_and_attachments(coding, tm
             tool_call_message("read_file", {"path": "marker.txt"}, "read-two"),
             AIMessage(content="Second finished"),
         ],
+        seen=seen,
     )
     first = await ws.send(a["id"], "Read the marker")
     await services.runtime.wait(first["id"])
@@ -82,6 +84,18 @@ async def test_threads_isolate_context_folders_models_and_attachments(coding, tm
         assert expected in str(output)
         assert f"{excluded}/marker" not in str(output)
     assert len(ws.runs(a["id"])) == len(ws.runs(b["id"])) == 1
+    # The model is shown what the message sent, right after it: a pasted screenshot reached it
+    # only if it thought to search for read_documents and guess the file's name.
+    asked = next(i for i, m in enumerate(seen[0]) if m.content == "Read the marker")
+    note = seen[0][asked + 1]
+    assert "shot.png" in note.content[0]["text"] and "private.txt (read it with read_documents)" in str(
+        note.content
+    )
+    assert [block["type"] for block in note.content] == ["text", "image"]
+    # It stays where it was for the rest of the conversation, so the provider's cache still matches,
+    # and the other chat is shown nothing.
+    assert seen[2][: asked + 2] == seen[0][: asked + 2]
+    assert not any(isinstance(m.content, list) for m in seen[3])
 
 
 async def test_private_data_and_relative_folders_rejected(coding):

@@ -38,6 +38,7 @@ from .repository import Repository
 from .sandbox import GRANTS_SETTING, load_grants
 from .setup_rows import setup_row_status
 from .spec_v2 import CONNECTOR_TOOL, AgentSpecV2, load_spec
+from .steering import steering_messages, user_message
 from .toolkit import ToolContext
 
 if TYPE_CHECKING:
@@ -421,7 +422,7 @@ class RuntimeManager:
                     conversation_id=conversation["id"],
                     desktop_copy=desktop_copy or agent_id,
                     reference_files=reference_files,
-                    steering=lambda: self._steering_messages(run["id"]),
+                    steering=lambda: steering_messages(self.repository, run["id"]),
                     close_steering=lambda: self._close_steering(run["id"]),
                     apply_steering=lambda item, state: self._apply_steering(run["id"], item, state),
                     helper_updates=(lambda seen: self._helper_updates(run["id"], seen))
@@ -622,12 +623,6 @@ class RuntimeManager:
                     await self._note(run_id, "run_failed", {"message": describe_provider_error(error)})
             finally:
                 self._resuming_connectors.discard(run_id)
-
-    def _steering_messages(self, run_id):
-        return [
-            {**event["payload"], "id": event["id"]}
-            for event in self.repository.list_run_events(run_id, event_types=("steering_requested",))
-        ]
 
     def _helper_updates(self, run_id: str, seen: dict) -> dict:
         """Compact direct-child changes at the parent's model boundary, with durable cursors.
@@ -831,7 +826,8 @@ class RuntimeManager:
                 await self._adopt_helpers(run["project_id"], run["conversation_id"], run_id, copy)  # pyright: ignore[reportArgumentType]
             self.active[run_id].started_at = time.monotonic()
             # A compaction adds nothing to the conversation; its text is only what the chat shows.
-            message = [] if self.active[run_id].compact else [{"role": "user", "content": input_text}]
+            files = run["input"].get("initial_reference_files")
+            message = [] if self.active[run_id].compact else [user_message(input_text, files)]
             await self._execute(run_id, {"messages": message}, emit)
         except asyncio.CancelledError:
             if active := self.active.get(run_id):
@@ -1434,7 +1430,7 @@ class RuntimeManager:
                 conversation_id=run.get("conversation_id") or run_id,
                 desktop_copy=run["input"].get("desktop_copy") or run["project_id"],
                 reference_files=reference_files,
-                steering=lambda: self._steering_messages(run_id),
+                steering=lambda: steering_messages(self.repository, run_id),
                 close_steering=lambda: self._close_steering(run_id),
                 apply_steering=lambda item, state: self._apply_steering(run_id, item, state),
                 helper_updates=(lambda seen: self._helper_updates(run_id, seen))
