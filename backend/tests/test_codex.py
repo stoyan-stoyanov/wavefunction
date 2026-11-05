@@ -121,8 +121,11 @@ async def test_provider_payloads_keep_stable_prefixes_and_conversation_cache_key
         model.root_client.close()
         await model.root_async_client.close()
 
-    # On the user's OpenAI key, the Responses API only with the settings that keep it stored
-    # nowhere: LangChain would otherwise switch gpt-6 calls with tools to it by itself.
+    # Each model stays on the API it is built for: LangChain would otherwise switch gpt-6 calls
+    # with tools to the Responses API by itself, without the settings that keep them stored
+    # nowhere, and on a compatible server to a path it may not have.
+    from langchain_openai import ChatOpenAI
+
     from wavefunction.models import ModelGateway
     from wavefunction.secrets import MemorySecretStore
     from wavefunction.spec_common import ModelSpec
@@ -130,15 +133,18 @@ async def test_provider_payloads_keep_stable_prefixes_and_conversation_cache_key
     secrets = MemorySecretStore()
     secrets.set("openai_api_key", "synthetic")
     tools = [{"type": "function", "function": {"name": "read_file", "parameters": {"type": "object"}}}]
-    for effort in ("none", "high"):
-        model = ModelGateway(secrets).chat_model(
-            ModelSpec(provider="openai", model="gpt-6-luna", reasoning_effort=effort)
-        )
-        assert isinstance(model, ChatOpenAIDirect)
+    local = "http://127.0.0.1:9/v1"
+    for spec, responses in (
+        (ModelSpec(provider="openai", model="gpt-6-luna", reasoning_effort="none"), False),
+        (ModelSpec(provider="openai", model="gpt-6-luna", reasoning_effort="high"), True),
+        (ModelSpec(provider="openai-compatible", model="gpt-6-luna", base_url=local), False),
+        (ModelSpec(provider="openai-compatible", model="gpt-5.3-codex", base_url=local), True),
+    ):
+        model = ModelGateway(secrets).chat_model(spec)
+        assert isinstance(model, ChatOpenAI)
         payload = model._get_request_payload(messages, tools=tools)
-        if effort == "none":
-            assert "messages" in payload and "input" not in payload
-        else:
+        assert ("input" in payload) is responses and ("messages" in payload) is not responses
+        if spec.reasoning_effort == "high":
             assert payload["store"] is False and payload["include"] == ["reasoning.encrypted_content"]
 
 

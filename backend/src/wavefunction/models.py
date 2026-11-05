@@ -120,6 +120,18 @@ def reasons(model: ModelSpec) -> bool:
     return bool(re.match(r"o\d|gpt-[5-9]", model.model)) and "chat" not in model.model
 
 
+def one_api(chat: Any) -> Any:
+    """Keep a model on the API it is built for, chosen from its name and settings.
+
+    LangChain also moves single requests to the Responses API, gpt-6 calls with tools among them,
+    without the settings `reasons` brings there (nothing stored, retryable failures), and to a path
+    an OpenAI-compatible server may not have.
+    """
+    if chat.use_responses_api is None:
+        chat.use_responses_api = False
+    return chat
+
+
 def _provider_metadata(error: BaseException) -> dict[str, Any]:
     body = getattr(error, "body", None)
     metadata = body.get("metadata") if isinstance(body, dict) else None
@@ -669,11 +681,7 @@ class ModelGateway:
                     store=False,
                     output_version="responses/v1",
                 )
-            else:
-                # LangChain picks the Responses API on its own for some models (gpt-6 with tools),
-                # without the settings above. Chat Completions takes their tool calls.
-                kwargs["use_responses_api"] = False
-            return ChatOpenAIDirect(**kwargs)
+            return one_api(ChatOpenAIDirect(**kwargs))
         if model.provider in {"openrouter", "vercel"}:
             from .gateway_chat import ChatGateway
 
@@ -685,7 +693,7 @@ class ModelGateway:
             return ChatGateway(**kwargs, zero_data_retention=self.zero_data_retention())
         from langchain_openai import ChatOpenAI
 
-        return ChatOpenAI(**kwargs)
+        return one_api(ChatOpenAI(**kwargs))
 
     def _anthropic_model(
         self, model: ModelSpec, *, max_tokens: int | None, max_retries: int
