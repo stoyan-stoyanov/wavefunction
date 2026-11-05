@@ -35,6 +35,21 @@ import { WorktreeBranchPicker } from "./worktree-branch-picker";
 import { contextDraftKey, emptyContext, readContextDraft } from "./context-draft";
 import "./composer-ui.css";
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+/** Uploads each file to the chat, shows what arrived, and names any file that did not.
+ *
+ * One unreadable file used to stop the rest and skip the reload, so the files before it were
+ * attached but not shown until a later upload succeeded. */
+async function attach(threadId: string, files: File[]) {
+  const failed: string[] = [];
+  for (const file of files) {
+    await codingApi
+      .upload(threadId, file)
+      .catch((e: unknown) => failed.push(`${file.name}: ${errorText(e)}`));
+  }
+  await useCoding.getState().load(threadId);
+  if (failed.length) toast.error(failed.join(" "));
+  else toast.success("Files attached");
+}
 // macOS dictation is the desktop app's; a browser tab has its own.
 const canDictate = () => "__TAURI_INTERNALS__" in window;
 // Managed worktrees are named `<repository>-<chat id>`; four characters of the id tell them apart.
@@ -308,9 +323,7 @@ function ComposerBody({
     if (helper || thread.archived || restoring || sending || uploading) return;
     setUploading(true);
     try {
-      for (const file of Array.from(list)) await codingApi.upload(thread.id, file);
-      await useCoding.getState().load(thread.id);
-      toast.success("Files attached");
+      await attach(thread.id, Array.from(list));
     } catch (e) {
       toast.error(errorText(e));
     } finally {
