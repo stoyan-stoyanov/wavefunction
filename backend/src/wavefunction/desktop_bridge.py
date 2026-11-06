@@ -88,8 +88,7 @@ class DesktopBridge:
     def __init__(self, port: int, token: str):
         # The desktop's action server, on the Mac's loopback.
         self.port, self.token = port, token
-        # The chat's servers by port, with the address each listens on (served_ports).
-        self.wanted: dict[int, str] = {}
+        # The chat's servers the desktop mirrors, by port, with the address each listens on.
         self.mirrored: dict[int, str] = {}
         self.idle: set[asyncio.Task] = set()
         self.tasks: set[asyncio.Task] = set()
@@ -97,10 +96,12 @@ class DesktopBridge:
 
     async def mirror(self, client: httpx.AsyncClient, ports: dict[int, str]) -> None:
         """Mirror exactly these ports into the desktop. A desktop that can't is left as it was:
-        the action the agent asked for matters more than the pages it may open later."""
+        the action the agent asked for matters more than the pages it may open later. A port it
+        refused is asked for again at the next action, as when a restarted server's port is
+        still being released."""
         if self.closed:
             return
-        if ports != self.wanted:
+        if ports != self.mirrored:
             try:
                 response = await client.post("/bridge/ports", json={"ports": sorted(ports)})
                 response.raise_for_status()
@@ -109,7 +110,6 @@ class DesktopBridge:
                 self.mirrored = {port: address for port, address in ports.items() if port in listening}
             except (httpx.HTTPError, ValueError, KeyError, TypeError):
                 return
-            self.wanted = dict(ports)
         self._top_up()
 
     def _top_up(self) -> None:

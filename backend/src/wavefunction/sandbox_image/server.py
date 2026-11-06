@@ -273,6 +273,10 @@ class Bridge:
         with self.lock:
             for port in set(self.listeners) - set(ports):
                 for listener in self.listeners.pop(port):
+                    # Wakes the thread blocked in accept() first: on Linux, closing the socket
+                    # under it keeps the port bound, so the same port could not be mirrored again.
+                    with contextlib.suppress(OSError):
+                        listener.shutdown(socket.SHUT_RDWR)
                     listener.close()
             for port in sorted(set(ports) - set(self.listeners)):
                 opened, error = self._listen(port)

@@ -364,7 +364,8 @@ async def test_the_desktop_opens_the_chats_servers_at_their_address_on_the_mac(
     desktop is the container itself, so its browser showed "Unable to connect". The desktop now
     mirrors the ports the chat's terminals serve, and the app carries each connection to the
     same port on the Mac, Host header and all. A port no terminal of the chat serves is not
-    mirrored, and one stops being mirrored when its terminal stops."""
+    mirrored, and one stops being mirrored when its terminal stops, and opens again when it
+    starts again."""
     from wavefunction.desktop_bridge import DesktopBridge
 
     # One machine plays both sides: the Mac's server is on 127.0.0.1, the desktop mirrors on ::1.
@@ -402,6 +403,10 @@ async def test_the_desktop_opens_the_chats_servers_at_their_address_on_the_mac(
         await tools["computer_screenshot"].coroutine()
         with pytest.raises(ConnectionRefusedError):
             await asyncio.to_thread(_browse, port)
+        # Started again on the same port, it opens again: the old mirror released the port.
+        terminal.status = "running"
+        await tools["computer_screenshot"].coroutine()
+        assert "from the mac" in await asyncio.to_thread(_browse, port)
     finally:
         await bridge.close()
         await desktop.client.aclose()
