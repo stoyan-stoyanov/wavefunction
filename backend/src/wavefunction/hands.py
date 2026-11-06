@@ -109,7 +109,9 @@ def existing_folder(folder: Path) -> Path:
 
 RUN_COMMAND = (
     "Run /bin/sh -c on macOS; returns exit code/output. No stdin: use noninteractive flags. "
-    "Background children stop on return; start/use servers in one call. Long output returns "
+    "Background children stop on return: start and use a test server in one call, or keep one "
+    "running with start_terminal. An app opened with open (outside the sandbox) keeps running; "
+    "open apps or pages on the user's Mac only when they ask. Long output returns "
     "a tail and file path; read_file with offsets retrieves the rest. A command stopped at its "
     "timeout returns what it printed so far: do not pipe through tail or head, which hides it. "
     "Read and search files with read_file, find_files and search_files, not cat, sed, head or "

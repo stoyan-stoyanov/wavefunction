@@ -16,7 +16,7 @@ Accepted limitations. A review reports one of these again only if a change makes
 
 ## Terminals
 
-- Closing a terminal, or its shell exiting, stops every process in the terminal's session or below its shell, and those whose environment carries the terminal's tag. A process that starts a session of its own and loses its parent before the terminal next records its processes, every 5 s, is found only by that tag, which `ps` cannot read for some system programs; such a process can outlive the terminal. Recording every half second cost a few percent of a core per open terminal.
+- Closing a terminal, or its shell exiting, stops every process in the terminal's session or below its shell, and those whose environment carries the terminal's tag, except an app macOS opened for it, which stays open like one opened from the Dock. A process that starts a session of its own and loses its parent before the terminal next records its processes, every 5 s, is found only by that tag, which `ps` cannot read for some system programs; such a process can outlive the terminal. Recording every half second cost a few percent of a core per open terminal.
 
 ## Worktrees made outside Wavefunction
 
