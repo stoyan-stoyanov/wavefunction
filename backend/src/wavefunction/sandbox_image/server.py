@@ -29,7 +29,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-PORT = int(os.environ.get("ACTION_PORT", "8765"))
+PORT = int(os.environ.get("ACTION_PORT", "28173"))
 TOKEN = os.environ.get("ACTION_TOKEN", "")
 SCREEN_WIDTH = int(os.environ.get("SCREEN_WIDTH", "1280"))
 SCREEN_HEIGHT = int(os.environ.get("SCREEN_HEIGHT", "800"))
