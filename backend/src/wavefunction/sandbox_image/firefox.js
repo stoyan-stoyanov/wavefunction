@@ -13,3 +13,10 @@ pref("browser.startup.couldRestoreSession.count", -1);
 pref("signon.rememberSignons", false);
 // The page cache lives outside the kept home, which it would otherwise grow toward a gigabyte.
 pref("browser.cache.disk.parent_directory", "/tmp/firefox-cache");
+// A page from the internet can't reach the chat's servers, which appear on 127.0.0.1 here
+// (server.py's Bridge), or the private network. Firefox refuses without asking, since a page could
+// talk the agent into clicking Allow. A page on 127.0.0.1 still reaches its own server.
+pref("network.lna.enabled", true);
+pref("network.lna.blocking", true);
+pref("permissions.default.loopback-network", 2);
+pref("permissions.default.local-network", 2);

@@ -382,6 +382,30 @@ def _build_web_search(context: ToolContext) -> BaseTool:
 
 
 async def _desktop(context: ToolContext, setup: bool = False) -> Any:
+    """The conversation's desktop (`_started_desktop`), with the servers this chat runs open in
+    its browser at their address on the Mac. Looked up at every action, since the agent starts
+    a server and opens it in the browser in consecutive steps."""
+    session = await _started_desktop(context, setup)
+    workspace, bridge = context.coding_workspace, getattr(session, "bridge", None)
+    if workspace is not None and bridge is not None and context.desktop_copy:
+        import asyncio
+
+        from .desktop_bridge import served_ports
+
+        # The chat's terminals and, for a main task, its helpers', as list_terminals shows them.
+        chats = {context.desktop_copy}
+        if context.run_id and not context.parent_run_id:
+            chats.update(workspace.helper_threads(context.run_id))
+        running = [
+            terminal
+            for terminal in list(workspace.terminals.sessions.values())
+            if terminal.thread_id in chats and terminal.status == "running"
+        ]
+        await bridge.mirror(session.client, await asyncio.to_thread(served_ports, running))
+    return session
+
+
+async def _started_desktop(context: ToolContext, setup: bool) -> Any:
     """The conversation's desktop, started on first use with this chat's kept home.
 
     With `setup`, a task whose desktop cannot start because computer use is not set up on this
@@ -506,8 +530,10 @@ def _build_computer_screenshot(context: ToolContext) -> BaseTool:
         """Look at the computer's screen without doing anything.
 
         Returns a screenshot of the sandboxed desktop. Firefox is already open when the
-        desktop starts — click its address bar, type a URL, and press Return to browse. Take
-        one before your first action. Every action already returns the screen as it looks
+        desktop starts — click its address bar, type a URL, and press Return to browse. It
+        opens a server this chat runs in a terminal at its address on the Mac, such as
+        http://127.0.0.1:3000; nothing else on the Mac is reachable. Take one before your
+        first action. Every action already returns the screen as it looks
         afterwards, so look again only when something may have changed on its own, such as a
         page that was still loading. The screen is 1280x800 with the origin at the top left.
         """

@@ -11,6 +11,9 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import os
+import socket
+import subprocess
+import sys
 import threading
 from functools import partial
 from http.server import ThreadingHTTPServer
@@ -55,8 +58,12 @@ def server(monkeypatch):
 
     calls: list[list[str]] = []
     inputs = []
+    # The module's `subprocess` is the process's: fake only the desktop's own programs.
+    real_run = module.subprocess.run
 
     def fake_run(args, **_kwargs):
+        if args[0] not in ("xdotool", "scrot"):
+            return real_run(args, **_kwargs)
         calls.append(list(args))
         inputs.append(_kwargs.get("input"))
         if args[0] == "scrot":
@@ -85,7 +92,8 @@ def test_server_refuses_a_missing_or_wrong_token(server) -> None:
 AUTH = {"Authorization": "Bearer secret-token"}
 
 
-def test_server_rejects_keys_outside_the_whitelist(server) -> None:
+def test_model_text_never_reaches_xdotool_as_options(server) -> None:
+    """Keys outside the whitelist are refused, and typed text goes in on stdin, not argv."""
     refused = httpx.post(f"{server.base}/key", headers=AUTH, json={"keys": "Return; rm -rf /"})
     assert refused.status_code == 400
     assert "unsupported key" in refused.json()["error"]
@@ -94,8 +102,6 @@ def test_server_rejects_keys_outside_the_whitelist(server) -> None:
     accepted = httpx.post(f"{server.base}/key", headers=AUTH, json={"keys": "ctrl+a Return"})
     assert accepted.status_code == 200
 
-
-def test_server_types_via_stdin_without_exposing_text_in_argv(server) -> None:
     httpx.post(f"{server.base}/type", headers=AUTH, json={"text": "--delay 0 $(reboot)"})
     typed = next(call for call in server.calls if call[1] == "type")
     assert typed[-2:] == ["--file", "-"]
@@ -292,11 +298,12 @@ async def test_shutdown_drops_own_sessions_and_preserves_unknown_owners() -> Non
 class FakeDesktop:
     """A manager whose one session talks to the fake action server over real HTTP."""
 
-    def __init__(self, base: str):
+    def __init__(self, base: str, bridge: Any = None):
         self.client = httpx.AsyncClient(base_url=base, headers={"Authorization": "Bearer secret-token"})
+        self.bridge = bridge
 
     async def session(self, conversation_id: str, copy: str | None = None):
-        return SimpleNamespace(conversation_id=conversation_id, client=self.client)
+        return SimpleNamespace(conversation_id=conversation_id, client=self.client, bridge=self.bridge)
 
 
 async def test_every_action_returns_the_screen_afterwards(server, tmp_path) -> None:
@@ -327,6 +334,81 @@ async def test_every_action_returns_the_screen_afterwards(server, tmp_path) -> N
         assert find_sentinel(await tools[name].coroutine(**kwargs)), name
 
 
+# A server the chat runs on the Mac. A plain socketserver: http.server looks up its own name.
+MAC_SERVER = """
+import socketserver
+class Reply(socketserver.StreamRequestHandler):
+    def handle(self):
+        head = b""
+        while (line := self.rfile.readline()) not in (b"\\r\\n", b""):
+            head += line
+        self.wfile.write(b"HTTP/1.0 200 OK\\r\\n\\r\\nfrom the mac\\n" + head)
+server = socketserver.TCPServer(("127.0.0.1", 0), Reply)
+print(server.server_address[1], flush=True)
+server.serve_forever()
+"""
+
+
+def _browse(port: int) -> str:
+    """What the desktop's browser gets for http://127.0.0.1:PORT/ (here on ::1, see below)."""
+    with socket.create_connection(("::1", port), timeout=10) as browser:
+        browser.sendall(f"GET / HTTP/1.0\r\nHost: 127.0.0.1:{port}\r\n\r\n".encode())
+        return b"".join(iter(lambda: browser.recv(65536), b"")).decode()
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="Finds the chat's servers with macOS lsof")
+async def test_the_desktop_opens_the_chats_servers_at_their_address_on_the_mac(
+    server, monkeypatch, tmp_path
+) -> None:
+    """A dev server the agent starts in a terminal listens on the Mac's 127.0.0.1, which in the
+    desktop is the container itself, so its browser showed "Unable to connect". The desktop now
+    mirrors the ports the chat's terminals serve, and the app carries each connection to the
+    same port on the Mac, Host header and all. A port no terminal of the chat serves is not
+    mirrored, and one stops being mirrored when its terminal stops."""
+    from wavefunction.desktop_bridge import DesktopBridge
+
+    # One machine plays both sides: the Mac's server is on 127.0.0.1, the desktop mirrors on ::1.
+    monkeypatch.setattr(server.module, "MIRROR_HOSTS", ("::1",))
+    mac = subprocess.Popen([sys.executable, "-c", MAC_SERVER], stdout=subprocess.PIPE, text=True)
+    bridge = DesktopBridge(int(server.base.rsplit(":", 1)[1]), "secret-token")
+    desktop = FakeDesktop(server.base, bridge)
+    try:
+        assert mac.stdout is not None
+        port = int(mac.stdout.readline())
+        terminal = SimpleNamespace(
+            thread_id="chat-1",
+            status="running",
+            process=SimpleNamespace(pid=mac.pid),
+            shell_pid=None,
+            _capture_children=dict,
+        )
+        elsewhere = SimpleNamespace(
+            **{**vars(terminal), "thread_id": "another-chat", "process": SimpleNamespace(pid=os.getpid())}
+        )
+        workspace = SimpleNamespace(
+            terminals=SimpleNamespace(sessions={"t": terminal, "u": elsewhere}), helper_threads=lambda _: {}
+        )
+        tools = desktop_tools(tmp_path, desktop, workspace, chat="chat-1")
+
+        await tools["computer_screenshot"].coroutine()
+        page = await asyncio.to_thread(_browse, port)
+        assert "from the mac" in page and f"Host: 127.0.0.1:{port}" in page
+        # Another chat's server (this test's own action server) is not mirrored.
+        assert bridge.mirrored == {port: "127.0.0.1"}
+        with pytest.raises(ConnectionRefusedError):
+            await asyncio.to_thread(_browse, int(server.base.rsplit(":", 1)[1]))
+
+        terminal.status = "exited"
+        await tools["computer_screenshot"].coroutine()
+        with pytest.raises(ConnectionRefusedError):
+            await asyncio.to_thread(_browse, port)
+    finally:
+        await bridge.close()
+        await desktop.client.aclose()
+        mac.kill()
+        mac.wait()
+
+
 # ---- screenshots ---------------------------------------------------------------------------
 
 
@@ -338,9 +420,12 @@ class FakeFiles:
         return self.root / agent_id
 
 
-def desktop_tools(tmp_path: Path, desktop: Any) -> dict[str, Any]:
+def desktop_tools(
+    tmp_path: Path, desktop: Any, workspace: Any = None, chat: str | None = None
+) -> dict[str, Any]:
     """The desktop tools as a task gets them. They never touch the chats, the repository or keys."""
-    context = ToolContext("agent-1", None, FakeFiles(tmp_path), None, computer=desktop, coding_workspace=None)  # type: ignore[arg-type]
+    fakes: Any = (None, FakeFiles(tmp_path), None)
+    context = ToolContext("agent-1", *fakes, computer=desktop, coding_workspace=workspace, desktop_copy=chat)
     return {tool.name: tool for tool in build_tools(list(COMPUTER_TOOL_NAMES), context)}
 
 

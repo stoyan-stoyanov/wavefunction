@@ -8,6 +8,9 @@ Every action shells out to xdotool with an argv list, never a shell string, so n
 model writes is ever parsed by a shell. Coordinates are clamped to the screen and key names are
 whitelisted — not because the container is precious, but because a request that xdotool cannot
 parse should fail loudly here rather than time out silently.
+
+It also mirrors the servers the chat runs on the Mac (`Bridge`), so the browser here opens them
+at the address they have there.
 """
 
 from __future__ import annotations
@@ -16,9 +19,14 @@ import contextlib
 import hmac
 import json
 import os
+import queue
 import re
+import select
+import socket
 import subprocess
 import tempfile
+import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(os.environ.get("ACTION_PORT", "8765"))
@@ -176,6 +184,161 @@ def do_drag(payload: dict) -> dict:
     return {"ok": True, "from": [x1, y1], "to": [x2, y2]}
 
 
+# -- the chat's servers ----------------------------------------------------------------------
+#
+# A server the chat runs on the Mac listens on the Mac's 127.0.0.1, which in here is this
+# container, and the container cannot connect out to the Mac. So the app tells this server
+# which ports to mirror (POST /bridge/ports) and keeps a few connections open to it
+# (POST /bridge/connect). A browser connection to a mirrored port takes one of them, and the
+# app joins it to the same port on the Mac. The page keeps its address, Host header and all,
+# so a dev server's host check and its live-reload socket work as they do on the Mac.
+
+MIRROR_HOSTS = ("127.0.0.1", "::1")
+MAX_MIRRORED = 32
+# How long a browser connection waits for one of the app's connections before it is dropped.
+HANDOVER_SECONDS = 10
+
+
+def splice(first: socket.socket, second: socket.socket) -> None:
+    """Copy bytes both ways until both sides have finished, passing on each half-close."""
+    reading = {first: second, second: first}
+    try:
+        while reading:
+            ready, _, _ = select.select(list(reading), [], [])
+            for source in ready:
+                data = source.recv(65536)
+                if data:
+                    reading[source].sendall(data)
+                    continue
+                with contextlib.suppress(OSError):
+                    reading[source].shutdown(socket.SHUT_WR)
+                del reading[source]
+    except OSError:
+        pass
+    finally:
+        first.close()
+        second.close()
+
+
+def still_open(connection: socket.socket) -> bool:
+    """Whether the app's end of an idle connection is still there: it sends nothing until used."""
+    try:
+        ready, _, _ = select.select([connection], [], [], 0)
+        return not ready or connection.recv(1, socket.MSG_PEEK) != b""
+    except OSError:
+        return False
+
+
+class Waiting:
+    """One of the app's connections, waiting for a browser connection to carry."""
+
+    def __init__(self, connection: socket.socket):
+        self.connection = connection
+        self.taken = threading.Event()
+        self.lock = threading.Lock()
+        self.closed = False
+        self.browser: socket.socket | None = None
+        self.port = 0
+
+    def take(self, browser: socket.socket, port: int) -> bool:
+        with self.lock:
+            if self.closed or self.taken.is_set() or not still_open(self.connection):
+                self.closed = True
+                return False
+            self.browser, self.port = browser, port
+            self.taken.set()
+            return True
+
+    def give_up(self) -> bool:
+        with self.lock:
+            if self.taken.is_set():
+                return False
+            self.closed = True
+            return True
+
+
+class Bridge:
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.listeners: dict[int, list[socket.socket]] = {}
+        self.waiting: queue.Queue[Waiting] = queue.Queue()
+
+    def mirror(self, payload: dict) -> dict:
+        ports = payload.get("ports")
+        if not isinstance(ports, list) or len(ports) > MAX_MIRRORED:
+            raise ActionError(f"ports must be a list of at most {MAX_MIRRORED} port numbers")
+        if any(not isinstance(port, int) or not 0 < port < 65536 or port == PORT for port in ports):
+            raise ActionError(f"a port must be a number from 1 to 65535, other than {PORT}")
+        refused = []
+        with self.lock:
+            for port in set(self.listeners) - set(ports):
+                for listener in self.listeners.pop(port):
+                    listener.close()
+            for port in sorted(set(ports) - set(self.listeners)):
+                opened, error = self._listen(port)
+                if opened:
+                    self.listeners[port] = opened
+                else:
+                    refused.append({"port": port, "error": error})
+            return {"ports": sorted(self.listeners), "refused": refused}
+
+    def _listen(self, port: int) -> tuple[list[socket.socket], str]:
+        opened, error = [], ""
+        for host in MIRROR_HOSTS:
+            family = socket.AF_INET6 if ":" in host else socket.AF_INET
+            listener = None
+            try:
+                listener = socket.socket(family, socket.SOCK_STREAM)
+                listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                listener.bind((host, port))
+                listener.listen(64)
+            except OSError as failure:
+                if listener is not None:
+                    listener.close()
+                error = str(failure)
+                continue
+            opened.append(listener)
+            threading.Thread(target=self._accept, args=(listener, port), daemon=True).start()
+        return opened, error
+
+    def _accept(self, listener: socket.socket, port: int) -> None:
+        while True:
+            try:
+                browser, _ = listener.accept()
+            except OSError:
+                return  # No longer mirrored.
+            threading.Thread(target=self._hand_over, args=(browser, port), daemon=True).start()
+
+    def _hand_over(self, browser: socket.socket, port: int) -> None:
+        deadline = time.monotonic() + HANDOVER_SECONDS
+        while (left := deadline - time.monotonic()) > 0:
+            try:
+                waiting = self.waiting.get(timeout=left)
+            except queue.Empty:
+                break
+            if waiting.take(browser, port):
+                return
+        browser.close()
+
+    def carry(self, connection: socket.socket) -> None:
+        """Hold one of the app's connections until a browser connection takes it, then join them."""
+        waiting = Waiting(connection)
+        self.waiting.put(waiting)
+        while not waiting.taken.wait(30):
+            if not still_open(connection) and waiting.give_up():
+                return
+        assert waiting.browser is not None
+        try:
+            connection.sendall(f"{waiting.port}\n".encode())
+        except OSError:
+            waiting.browser.close()
+            return
+        splice(waiting.browser, connection)
+
+
+BRIDGE = Bridge()
+
+
 ROUTES = {
     ("GET", "/health"): do_health,
     ("GET", "/screenshot"): do_screenshot,
@@ -186,6 +349,7 @@ ROUTES = {
     ("POST", "/scroll"): do_scroll,
     ("POST", "/move"): do_move,
     ("POST", "/drag"): do_drag,
+    ("POST", "/bridge/ports"): BRIDGE.mirror,
 }
 
 
@@ -215,6 +379,16 @@ class Handler(BaseHTTPRequestHandler):
     def _handle(self, method: str) -> None:
         if not self._authorized():
             self._respond_json(401, {"error": "missing or wrong bearer token"})
+            return
+        if (method, self.path) == ("POST", "/bridge/connect"):
+            # The rest of this connection is raw bytes: the port a browser connection wants,
+            # then that connection's traffic both ways.
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.end_headers()
+            self.wfile.flush()
+            self.close_connection = True
+            BRIDGE.carry(self.connection)
             return
         action = ROUTES.get((method, self.path))
         if action is None:
