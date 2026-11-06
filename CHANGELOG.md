@@ -10,6 +10,8 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Fixed
 
+- A chat on OpenRouter keeps going when OpenRouter moves it to another host of the same model partway through. It used to stop with "The encrypted content … could not be verified". ([#55](https://github.com/stoyan-stoyanov/wavefunction/pull/55))
+- A reply on OpenRouter that runs into the output limit is caught and the agent tries again, as on other providers. OpenRouter repeats the reason a reply ended, and the doubled reason went unrecognised. ([#55](https://github.com/stoyan-stoyanov/wavefunction/pull/55))
 - An app the agent opens on your Mac stays open. It used to close as soon as the command that opened it finished, and so did a browser that opening a link had to start. ([#52](https://github.com/stoyan-stoyanov/wavefunction/pull/52))
 
 ## 0.3.1 - 2026-11-05

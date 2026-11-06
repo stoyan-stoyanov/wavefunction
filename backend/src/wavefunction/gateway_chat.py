@@ -19,7 +19,8 @@ from copy import deepcopy
 from typing import Any
 from urllib.parse import urlparse
 
-from langchain_core.messages import AIMessage
+import openai
+from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.runnables import ensure_config
 from langchain_openai import ChatOpenAI
 
@@ -27,6 +28,10 @@ from .models import gateway_diagnostics, message_usage
 
 REASONING_FIELDS = ("reasoning", "reasoning_content", "reasoning_details")
 CACHE_POINT = {"type": "ephemeral"}
+# What a stream sends with its finish reason. OpenRouter sends them again with the usage that
+# ends the stream, and LangChain's merger joins repeated strings: "length" arrived as
+# "lengthlength" and a reply cut off at its limit was not seen as one.
+ONCE_PER_REPLY = ("finish_reason", "model_name", "system_fingerprint", "service_tier")
 
 
 def _wire_bytes(value) -> bytes:
@@ -163,6 +168,75 @@ def collapse_reasoning(message):
     return message
 
 
+def _encrypted_format(message: dict) -> str | None:
+    """Which host wrote a reply's encrypted reasoning, as in "azure-openai-responses-v1"."""
+    details = message.get("reasoning_details")
+    return next(
+        (
+            detail.get("format")
+            for detail in (details if isinstance(details, list) else [])
+            if isinstance(detail, dict) and detail.get("type") == "reasoning.encrypted"
+        ),
+        None,
+    )
+
+
+def keep_readable_reasoning(messages: list[dict]) -> None:
+    """Send back only the encrypted reasoning the host of the newest reply wrote.
+
+    OpenRouter keeps a chat on one host of its model only while it can: when that host is busy
+    it moves the chat to another. Encrypted reasoning opens only where it was written, and
+    OpenRouter forwards it as it is, so Azure's reasoning sent to OpenAI failed the whole request
+    ("could not be verified"). The newest reply shows where the chat is now; older replies from
+    another host keep their text and tool calls and lose their reasoning.
+    """
+    newest = next(
+        (written for message in reversed(messages) if (written := _encrypted_format(message))), None
+    )
+    for message in messages:
+        if (written := _encrypted_format(message)) and written != newest:
+            for key in REASONING_FIELDS:
+                message.pop(key, None)
+
+
+def _unreadable_reasoning(error: BaseException) -> bool:
+    """The host that took this request could not open encrypted reasoning another host wrote."""
+    if not isinstance(error, openai.BadRequestError):
+        return False
+    text = (json.dumps(error.body, default=str) + str(error)).lower()
+    return "invalid_encrypted_content" in text or (
+        "encrypted content" in text and "could not be verified" in text
+    )
+
+
+def _without_reasoning(messages: list[BaseMessage]) -> list[BaseMessage] | None:
+    """The conversation with no reasoning to send back; None when it had none."""
+    dropped, result = False, []
+    for message in messages:
+        kwargs = message.additional_kwargs
+        if isinstance(message, AIMessage) and any(
+            key in kwargs for key in (*REASONING_FIELDS, "gateway_reasoning_chunks")
+        ):
+            kept = {
+                key: value
+                for key, value in kwargs.items()
+                if key not in REASONING_FIELDS and key != "gateway_reasoning_chunks"
+            }
+            message, dropped = message.model_copy(update={"additional_kwargs": kept}), True
+        result.append(message)
+    return result if dropped else None
+
+
+def _once_per_reply(chunk, seen: set[str]):
+    info = chunk.generation_info
+    for key in ONCE_PER_REPLY:
+        if info and key in info:
+            if key in seen:
+                del info[key]
+            seen.add(key)
+    return chunk
+
+
 def _cost(usage) -> dict:
     """OpenRouter's price for a call, which LangChain's token counts leave out."""
     cost = (usage or {}).get("cost") if isinstance(usage, dict) else None
@@ -226,6 +300,35 @@ class ChatGateway(ChatOpenAI):
             if record is not None and (usage := message_usage(result.message)):
                 record["_stream_usage"] = usage
         return result
+
+    def _stream(self, *args, **kwargs):
+        seen: set[str] = set()
+        for chunk in super()._stream(*args, **kwargs):
+            yield _once_per_reply(chunk, seen)
+
+    async def _astream(self, messages, *args, **kwargs):
+        seen: set[str] = set()
+        started = False
+        try:
+            async for chunk in super()._astream(messages, *args, **kwargs):
+                started = True
+                yield _once_per_reply(chunk, seen)
+        except openai.BadRequestError as error:
+            # Once, before anything arrived: OpenRouter moved this request to a host that cannot
+            # read the reasoning, and which host comes next is not known. The turn goes on
+            # without it; the reply then shows where the chat is (`keep_readable_reasoning`).
+            resend = None
+            if not started and self._is_openrouter() and _unreadable_reasoning(error):
+                resend = _without_reasoning(messages)
+            if resend is None:
+                raise
+            if (record := gateway_diagnostics.get()) is not None:
+                record["reasoning_dropped"] = True
+            async for chunk in super()._astream(resend, *args, **kwargs):
+                yield _once_per_reply(chunk, seen)
+
+    def _is_openrouter(self) -> bool:
+        return urlparse(self.openai_api_base or "").hostname == "openrouter.ai"
 
     async def interrupted_usage(self) -> tuple[dict, dict]:
         """One bounded metadata lookup with this model's captured account, only after failure.
@@ -303,7 +406,7 @@ class ChatGateway(ChatOpenAI):
             # Vercel places Anthropic's cache breakpoints itself when asked, on the newest
             # message and before the newest request, and leaves models that cache on their own
             # untouched. A new dict: the one in the payload is the model's own setting.
-            gateway = {"caching": "auto"}
+            gateway: dict[str, Any] = {"caching": "auto"}
             if self.zero_data_retention:
                 # Only providers with a ZDR agreement; a model with none fails with an error.
                 gateway["zeroDataRetention"] = True
@@ -313,13 +416,14 @@ class ChatGateway(ChatOpenAI):
             }
         elif "claude" in self.model_name.lower() and payload.get("messages"):
             mark_cache_points(payload["messages"])
-        if urlparse(self.openai_api_base or "").hostname == "openrouter.ai":
+        if self._is_openrouter():
+            keep_readable_reasoning(payload.get("messages") or [])
             if self.zero_data_retention:
                 # Only ZDR endpoints; a model with none fails with an error.
                 extra = payload.get("extra_body") or {}
                 payload["extra_body"] = {**extra, "provider": {**(extra.get("provider") or {}), "zdr": True}}
             thread = (ensure_config().get("configurable") or {}).get("thread_id")
-            if thread:
+            if thread and self.openai_api_key:
                 # OpenRouter's sticky route is scoped to a conversation and credential.
                 # Key rotation deliberately starts a new route; neither identity is logged.
                 session = hmac.new(
