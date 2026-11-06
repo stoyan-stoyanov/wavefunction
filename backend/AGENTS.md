@@ -16,7 +16,7 @@ Python 3.12, FastAPI and LangGraph. Read the root [AGENTS.md](../AGENTS.md) firs
 | Connectors (MCP) | `connectors.py`, `connector_catalog.py`, `connector_oauth.py`, `connector_setup.py`, `catalog_setup.py`, `catalog_connections.py`, `local_integrations.py`, `integration_setup.py`, `mail_*.py`, `microsoft_*.py`, `n8n_mcp.py` | `test_connectors.py` |
 | Skills | `skills.py`, `skill_discovery.py`, `skills/` (built in), `coding_skills/` | `test_skill_versions.py`, `test_slash_skills.py`, `test_skill_catalog.py` |
 | Files, documents, images | `files.py`, `documents.py`, `document_images.py`, `local_images.py`, `file_previews.py` | `test_document_uploads.py` |
-| Computer use (Docker desktop) | `computer.py`, `computer_control.py`, `computer_routes.py`, `desktop_files.py`, `setup_rows.py`, `sandbox_image/` | `test_computer.py`, `test_computer_takeover.py` |
+| Computer use (Docker desktop) | `computer.py`, `computer_control.py`, `computer_routes.py`, `desktop_bridge.py`, `desktop_files.py`, `setup_rows.py`, `sandbox_image/` | `test_computer.py`, `test_computer_takeover.py` |
 | Settings and secrets | `config.py`, `secrets.py`, `schemas.py` | `test_secrets.py` |
 | API response shapes | `responses.py` (the `response_model` of each route) | `conftest.py` checks every response against its model |
 | What the model reads | assembled by `agent_factory.py`, `local_coding.py`, `toolkit.py`; committed in `tests/fixtures/prompt_surface/default_chat.md` | `test_prompt_surface.py` |

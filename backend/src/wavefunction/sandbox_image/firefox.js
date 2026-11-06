@@ -13,3 +13,12 @@ pref("browser.startup.couldRestoreSession.count", -1);
 pref("signon.rememberSignons", false);
 // The page cache lives outside the kept home, which it would otherwise grow toward a gigabyte.
 pref("browser.cache.disk.parent_directory", "/tmp/firefox-cache");
+// A page from the internet can't reach the chat's servers, which appear on 127.0.0.1 here
+// (server.py's Bridge), or the private network, by request or WebSocket. Firefox refuses without
+// asking, since a page could talk the agent into clicking Allow. A page on 127.0.0.1 still reaches
+// its own server. Locked: about:config would otherwise keep a change in the chat's kept profile.
+lockPref("network.lna.enabled", true);
+lockPref("network.lna.blocking", true);
+lockPref("network.lna.websocket.enabled", true);
+lockPref("permissions.default.loopback-network", 2);
+lockPref("permissions.default.local-network", 2);

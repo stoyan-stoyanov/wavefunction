@@ -45,7 +45,7 @@ STOP_WORDS = {
 # built-ins stay available; groups never add a tool to the captured spec.
 BUILTIN_GROUPS = {
     "computer": (
-        "Browser/desktop input, screenshots, file transfer and takeover",
+        "A desktop whose browser opens servers this chat runs in terminals; input, screenshots, file transfer and takeover",
         (
             "computer_screenshot",
             "computer_click",

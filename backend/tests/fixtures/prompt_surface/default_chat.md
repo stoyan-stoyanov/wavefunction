@@ -63,7 +63,7 @@ Read relevant skills with read_skill; skip others.
 Use concise write_todos for substantial multi-step work or requested checklists; skip simple tasks. Update at milestones/plan changes, with independent useful calls when appropriate. Complete only confirmed successes; leave unfinished steps pending/in_progress.
 
 Available on demand: search_available_tools
-- computer: Browser/desktop input, screenshots, file transfer and takeover
+- computer: A desktop whose browser opens servers this chat runs in terminals; input, screenshots, file transfer and takeover
 - documents: Uploaded documents and mail attachments
 - terminals: Interactive shell sessions and background servers
 - web: Search the web and fetch pages

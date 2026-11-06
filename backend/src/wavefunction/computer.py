@@ -3,7 +3,9 @@
 The boundary here is the container, not this module — the same division of labour as
 :mod:`wavefunction.sandbox`: making a forbidden action impossible is the container's job, and
 saying what is about to happen belongs to the approval prompt. The agent's clicks land on a
-Linux desktop that can reach the internet but not the user's files, screen, or keychain.
+Linux desktop that can reach the internet but not the user's files, screen, or keychain. The
+servers its chat runs in a terminal open there at their address on the Mac
+(:mod:`wavefunction.desktop_bridge`).
 Docker itself is the user's to install; this module detects it honestly and reports
 "not installed" and "not running" as the different problems they are, because the fix for each
 is different.
@@ -50,6 +52,8 @@ from typing import Any
 import httpx
 from langchain.agents.middleware import AgentMiddleware, ModelRequest
 from langchain_core.messages import HumanMessage, ToolMessage
+
+from .desktop_bridge import DesktopBridge
 
 logger = logging.getLogger(__name__)
 
@@ -308,6 +312,11 @@ class DesktopSession:
     home: str | None = None
     # Why it opened blank, said once with the first screen the agent sees.
     note: str = ""
+    # The chat's servers, opened in its browser at their address on the Mac (desktop_bridge).
+    bridge: DesktopBridge = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.bridge = DesktopBridge(self.port, self.token)
 
     def touch(self) -> None:
         self.last_used = time.monotonic()
@@ -892,6 +901,7 @@ class DesktopManager:
         if session is None:
             return
         try:
+            await session.bridge.close()
             await session.client.aclose()
             docker = self.docker()
             if docker is not None:
