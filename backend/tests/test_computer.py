@@ -394,6 +394,11 @@ async def test_the_desktop_opens_the_chats_servers_at_their_address_on_the_mac(
         await tools["computer_screenshot"].coroutine()
         page = await asyncio.to_thread(_browse, port)
         assert "from the mac" in page and f"Host: 127.0.0.1:{port}" in page
+        # The desktop's own port is refused by itself, and the chat's other servers still open.
+        both = httpx.post(
+            f"{server.base}/bridge/ports", headers=AUTH, json={"ports": [port, server.module.PORT]}
+        )
+        assert both.json()["ports"] == [port] and both.json()["refused"][0]["port"] == server.module.PORT
         # Another chat's server (this test's own action server) is not mirrored.
         assert bridge.mirrored == {port: "127.0.0.1"}
         with pytest.raises(ConnectionRefusedError):

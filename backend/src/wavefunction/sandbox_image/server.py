@@ -267,9 +267,12 @@ class Bridge:
         ports = payload.get("ports")
         if not isinstance(ports, list) or len(ports) > MAX_MIRRORED:
             raise ActionError(f"ports must be a list of at most {MAX_MIRRORED} port numbers")
-        if any(not isinstance(port, int) or not 0 < port < 65536 or port == PORT for port in ports):
-            raise ActionError(f"a port must be a number from 1 to 65535, other than {PORT}")
-        refused = []
+        if any(not isinstance(port, int) or not 0 < port < 65536 for port in ports):
+            raise ActionError("a port must be a number from 1 to 65535")
+        # The action server's own port is refused on its own, so the chat's other servers open.
+        refused = (
+            [{"port": PORT, "error": "the desktop's action server uses this port"}] if PORT in ports else []
+        )
         with self.lock:
             for port in set(self.listeners) - set(ports):
                 for listener in self.listeners.pop(port):
@@ -278,7 +281,7 @@ class Bridge:
                     with contextlib.suppress(OSError):
                         listener.shutdown(socket.SHUT_RDWR)
                     listener.close()
-            for port in sorted(set(ports) - set(self.listeners)):
+            for port in sorted(set(ports) - set(self.listeners) - {PORT}):
                 opened, error = self._listen(port)
                 if opened:
                     self.listeners[port] = opened
