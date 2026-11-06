@@ -61,7 +61,7 @@ IMAGE_REPO = "wavefunction-desktop"
 # On the desktop containers, and on the volumes that keep chats' homes.
 CONTAINER_LABEL = "wavefunction.computer=1"
 INSTALLATION_LABEL = "wavefunction.installation"
-ACTION_PORT = 8765
+ACTION_PORT = 28173
 
 IDLE_TTL_SECONDS = 20 * 60
 REAP_INTERVAL_SECONDS = 60
