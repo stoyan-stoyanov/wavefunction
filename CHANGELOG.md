@@ -6,7 +6,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Fixed
 
-- An app the agent opens on your Mac stays open. It used to close as soon as the command that opened it finished, and so did a browser that opening a link had to start. ([#PR](https://github.com/stoyan-stoyanov/wavefunction/pull/PR))
+- An app the agent opens on your Mac stays open. It used to close as soon as the command that opened it finished, and so did a browser that opening a link had to start. ([#52](https://github.com/stoyan-stoyanov/wavefunction/pull/52))
 
 ## 0.3.1 - 2026-11-05
 
