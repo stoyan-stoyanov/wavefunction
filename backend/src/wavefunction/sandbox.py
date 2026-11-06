@@ -638,8 +638,14 @@ def _end_tagged(command_id: str) -> None:
 
     Killing the process group misses a descendant that started a session of its own (`setsid`,
     `start_new_session`), which would otherwise outlive the command. Such a descendant still
-    inherited the environment, and `ps -E` shows it. Where `ps` cannot show environments this
-    stops nothing, and the group kill is all there is.
+    inherited the environment, and `ps -E` shows it. Where `ps` cannot show environments, as for
+    system programs such as `/bin/sh` and `/bin/sleep`, this stops nothing, and the group kill is
+    all there is.
+
+    An app the command opened is left running. `open` hands the app the caller's environment,
+    tag included, but macOS gives the app, and everything it starts, a launch label of its own
+    (`XPC_SERVICE_NAME=application.<its id>…`). It is the user's to quit, like an app opened from
+    the Dock; stopping it closed the window the user asked for, or the browser `open URL` started.
     """
     try:
         listed = subprocess.run(
@@ -651,11 +657,18 @@ def _end_tagged(command_id: str) -> None:
     except (OSError, subprocess.SubprocessError):
         return
     tag = f"WAVEFUNCTION_COMMAND_ID={command_id}"
+    # A command inherits this process's label, if any, so only a different one marks an app.
+    inherited = f"XPC_SERVICE_NAME={os.environ.get('XPC_SERVICE_NAME', '')}"
     for line in listed.splitlines():
         pid, _, rest = line.strip().partition(" ")
-        if tag in rest and pid.isdigit():
-            with contextlib.suppress(ProcessLookupError, PermissionError):
-                os.kill(int(pid), signal.SIGKILL)
+        if tag not in rest or not pid.isdigit():
+            continue
+        if any(
+            word.startswith("XPC_SERVICE_NAME=application.") and word != inherited for word in rest.split()
+        ):
+            continue
+        with contextlib.suppress(ProcessLookupError, PermissionError):
+            os.kill(int(pid), signal.SIGKILL)
 
 
 def _discard(spools: list[Path]) -> None:

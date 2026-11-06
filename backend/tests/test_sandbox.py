@@ -495,18 +495,28 @@ async def test_background_processes_end_when_the_command_returns(tmp_path: Path)
 @pytest.mark.asyncio
 async def test_detached_processes_end_when_the_command_returns(tmp_path: Path) -> None:
     """A child in a session of its own escapes the process-group kill; it is found by the tag
-    in its environment and stopped before it can write."""
-    marker = tmp_path / "late"
-    child = f"import time; time.sleep(1); open({str(marker)!r}, 'w').close()"
-    parent = (
-        f"import subprocess, sys; subprocess.Popen([sys.executable, '-c', {child!r}], start_new_session=True)"
-    )
-    result = await Sandbox([], scratch=tmp_path / "scratch").run(
+    in its environment and stopped before it can write. An app macOS launched for the command
+    (`open`) carries the tag too, but also a launch label of its own: it is the user's, and
+    keeps running."""
+    scratch = tmp_path / "scratch"
+    left, opened = scratch / "left", scratch / "opened"
+
+    def detached(marker: Path, label: dict[str, str]) -> str:
+        child = f"import time; time.sleep(1); open({str(marker)!r}, 'w').close()"
+        return (
+            f"subprocess.Popen([sys.executable, '-c', {child!r}], start_new_session=True, "
+            f"env={{**os.environ, **{label!r}}})"
+        )
+
+    app = {"XPC_SERVICE_NAME": "application.dev.example.app.1.2.TEST"}
+    parent = f"import os, subprocess, sys; {detached(left, {})}; {detached(opened, app)}"
+    result = await Sandbox([], scratch=scratch).run(
         f"python3 -c {shlex.quote(parent)}; echo started", timeout=20
     )
     assert not result.timed_out and "started" in result.stdout, result.stderr
     await asyncio.sleep(2)
-    assert not marker.exists()
+    assert not left.exists()
+    assert opened.exists()
 
 
 @macos_only
