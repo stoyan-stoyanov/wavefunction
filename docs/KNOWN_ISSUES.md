@@ -66,7 +66,8 @@ Accepted limitations. A review reports one of these again only if a change makes
 ## Computer use
 
 - The desktop's browser opens a server the chat runs only while it runs in one of the chat's terminals, and finds it when the agent next uses the desktop. A server started with `&` in a command stops when the command returns, and one in the user's own Terminal isn't the chat's. A port the desktop itself uses, 8765, can't be opened there.
-- Firefox in the desktop refuses a page from the internet that requests a chat's server, but not a link or redirect to one, which a sign-in flow returning to a local callback needs, and not a page on a private address, such as another device on the network.
+- Firefox in the desktop refuses a page from the internet that requests a chat's server or opens a WebSocket to it, but not a link, redirect or form submission to one, which a sign-in flow returning to a local callback needs, and not a page on a private address, such as another device on the network. A site the agent is talked into allowing in Page Info › Permissions is let through.
+- With Docker Desktop, the desktop also reaches any server on the Mac's 127.0.0.1 at `host.docker.internal`, whether or not the chat runs it, as it did before chats' servers were mirrored. Firefox refuses requests there from pages on the internet, as above, but the agent can open such an address itself.
 - Start Docker and Restart Docker reopen a hung Docker Desktop only when the `docker` the app found is Docker Desktop's own, a link into its app such as `/usr/local/bin/docker`. If a standalone CLI is found first, such as Homebrew's `/opt/homebrew/bin/docker`, a hung Docker Desktop keeps the earlier behavior: the engine error stays until Docker Desktop is quit and opened again by hand.
 
 ## Claude on an Anthropic key

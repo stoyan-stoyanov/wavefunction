@@ -25,6 +25,11 @@ import httpx
 
 # Connections kept open into a desktop that mirrors ports: a page load opens several at once.
 IDLE = 4
+# A page keeps a handful open at a time. Past this a desktop is misbehaving: it waits rather
+# than flooding the engine with connections.
+MOST_CONNECTIONS = 64
+# The most the desktop mirrors (MAX_MIRRORED in sandbox_image/server.py); the lowest ports win.
+MOST_PORTS = 32
 
 
 def served_ports(terminals: Iterable[Any]) -> dict[int, str]:
@@ -101,6 +106,7 @@ class DesktopBridge:
         still being released."""
         if self.closed:
             return
+        ports = dict(sorted(ports.items())[:MOST_PORTS])
         if ports != self.mirrored:
             try:
                 response = await client.post("/bridge/ports", json={"ports": sorted(ports)})
@@ -115,7 +121,9 @@ class DesktopBridge:
     def _top_up(self) -> None:
         """Keep IDLE connections waiting in the desktop while it mirrors any port. One that
         failed is replaced at the next mirror, so a desktop that went away isn't retried in a loop."""
-        while not self.closed and self.mirrored and len(self.idle) < IDLE:
+        while (
+            not self.closed and self.mirrored and len(self.idle) < IDLE and len(self.tasks) < MOST_CONNECTIONS
+        ):
             task = asyncio.get_running_loop().create_task(self._carry())
             self.idle.add(task)
             self.tasks.add(task)
@@ -144,16 +152,16 @@ class DesktopBridge:
             wanted = await reader.readline()  # Nothing comes until a browser connection does.
             if current := asyncio.current_task():
                 self.idle.discard(current)
-            self._top_up()
             port = int(wanted) if wanted.strip().isdigit() else 0
             if (address := self.mirrored.get(port)) is None:
                 return
+            self._top_up()
             mac_reader, mac_writer = await asyncio.open_connection(address, port)
             try:
                 await asyncio.gather(_pipe(reader, mac_writer), _pipe(mac_reader, writer))
             finally:
                 mac_writer.close()
-        except OSError:
+        except (OSError, ValueError):  # ValueError: a line longer than the reader's limit.
             pass
         finally:
             writer.close()

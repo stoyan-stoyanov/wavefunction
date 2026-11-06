@@ -3,8 +3,9 @@
 The boundary here is the container, not this module — the same division of labour as
 :mod:`wavefunction.sandbox`: making a forbidden action impossible is the container's job, and
 saying what is about to happen belongs to the approval prompt. The agent's clicks land on a
-Linux desktop that can reach the internet but not the user's files, screen, or keychain; of the
-Mac's servers it reaches only those its chat runs in a terminal (:mod:`wavefunction.desktop_bridge`).
+Linux desktop that can reach the internet but not the user's files, screen, or keychain. The
+servers its chat runs in a terminal open there at their address on the Mac
+(:mod:`wavefunction.desktop_bridge`).
 Docker itself is the user's to install; this module detects it honestly and reports
 "not installed" and "not running" as the different problems they are, because the fix for each
 is different.

@@ -532,7 +532,7 @@ def _build_computer_screenshot(context: ToolContext) -> BaseTool:
         Returns a screenshot of the sandboxed desktop. Firefox is already open when the
         desktop starts — click its address bar, type a URL, and press Return to browse. It
         opens a server this chat runs in a terminal at its address on the Mac, such as
-        http://127.0.0.1:3000; nothing else on the Mac is reachable. Take one before your
+        http://127.0.0.1:3000. Take one before your
         first action. Every action already returns the screen as it looks
         afterwards, so look again only when something may have changed on its own, such as a
         page that was still loading. The screen is 1280x800 with the origin at the top left.

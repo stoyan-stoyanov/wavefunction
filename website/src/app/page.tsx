@@ -379,7 +379,7 @@ function ComputerUse() {
               {
                 title: "Your Mac stays yours",
                 description:
-                  "It never moves your pointer, types on your keyboard or records your screen. Its desktop is a local Docker container with its own browser and files. A file reaches your Mac only when the agent hands it over, to a folder you allowed, and its browser reaches only the servers your chat runs in the sandbox.",
+                  "It never moves your pointer, types on your keyboard or records your screen. Its desktop is a local Docker container with its own browser and files, and a file reaches your Mac only when the agent hands it over, to a folder you allowed.",
               },
               {
                 title: "Secure sign-ins",

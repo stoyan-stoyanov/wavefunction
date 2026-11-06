@@ -6,7 +6,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Added
 
-- The agent's desktop opens the servers your chat runs in its terminals, at the same address as on your Mac, so it can look at the web app it's building. Pages from the internet can't reach them. ([#53](https://github.com/stoyan-stoyanov/wavefunction/pull/53))
+- The agent's desktop opens the servers your chat runs in its terminals, at the same address as on your Mac, so it can look at the web app it's building. Pages from the internet can't send requests to them. ([#53](https://github.com/stoyan-stoyanov/wavefunction/pull/53))
 
 ## 0.3.1 - 2026-11-05
 
