@@ -1,12 +1,16 @@
 """Terminals: the user's PTY, the agent's terminals and their ownership, and cleanup on close."""
 
 import asyncio
+import re
+import resource
 
 import httpx
 import pytest
 from conftest import script_gateway, tool_call_message
 from langchain_core.messages import AIMessage, ToolMessage
 from support import create
+
+from wavefunction.__main__ import more_open_files
 
 
 @pytest.mark.sandbox
@@ -16,7 +20,15 @@ async def test_interactive_terminal_input_resize_reconnect_and_isolation(coding,
     folder.mkdir()
     first, second = (await create(client, folder=str(folder)), await create(client, folder=str(folder)))
     base = f"/api/coding/threads/{first['id']}/terminals"
-    response = await client.post(base, json={"title": "Shell", "cols": 91, "rows": 31})
+    # macOS starts an app allowing 256 open files, which a dev server's file watcher in a
+    # terminal used up. The engine raises the limit at startup, and its terminals inherit it.
+    limits = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (256, limits[1]))
+    try:
+        more_open_files()
+        response = await client.post(base, json={"title": "Shell", "cols": 91, "rows": 31})
+    finally:
+        resource.setrlimit(resource.RLIMIT_NOFILE, limits)
     assert response.status_code == 201, response.text
     terminal = response.json()
     session = await ws.terminals.get(first["id"], terminal["id"])
@@ -24,7 +36,9 @@ async def test_interactive_terminal_input_resize_reconnect_and_isolation(coding,
     url = base + "/" + terminal["id"]
     try:
         assert (
-            await client.post(url + "/input", json={"text": "printf 'PTY-ready\\n'; stty size\n"})
+            await client.post(
+                url + "/input", json={"text": "printf 'PTY-ready\\n'; stty size; echo FILES=$(ulimit -n)\n"}
+            )
         ).status_code == 204
         cursor, text = 0, ""
         for _ in range(20):
@@ -32,9 +46,9 @@ async def test_interactive_terminal_input_resize_reconnect_and_isolation(coding,
             assert output.status_code == 200, output.text
             body = output.json()
             cursor, text = body["cursor"], text + body["text"]
-            if "31 91" in text:
+            if re.search(r"FILES=\d", text):
                 break
-        assert "PTY-ready" in text and "31 91" in text, text
+        assert "PTY-ready" in text and "31 91" in text and "FILES=10240" in text, text
         assert (await client.get(url + "/output", params={"cursor": 0})).json()["text"]
         assert len((await client.get(base)).json()) == 1
         assert (
