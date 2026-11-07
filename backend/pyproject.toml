@@ -1,6 +1,6 @@
 [project]
 name = "wavefunction-backend"
-version = "0.3.1"
+version = "0.4.0"
 description = "Local-first desktop coding agent backend"
 license = "MIT"
 requires-python = ">=3.12,<3.14"
