@@ -5,11 +5,14 @@ import hashlib
 import json
 from collections import Counter
 from dataclasses import replace
+from itertools import chain, repeat
+from typing import Any, cast
 
 import httpx
 import pytest
 from langchain.agents.middleware import ModelRequest, ModelResponse
 from langchain_core.messages import (
+    AIMessage,
     HumanMessage,
     SystemMessage,
     ToolMessage,
@@ -18,13 +21,14 @@ from langchain_core.messages import (
 )
 from langchain_core.runnables.config import set_config_context
 from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
 
 from wavefunction import execution_policy
 from wavefunction.execution_policy import ProviderPolicyMiddleware
 from wavefunction.gateway_chat import gateway_diagnostics
 from wavefunction.models import ModelGateway, is_retryable_provider_error
 from wavefunction.secrets import MemorySecretStore
-from wavefunction.spec_common import ModelSpec
+from wavefunction.spec_common import ModelSpec, Provider
 from wavefunction.spec_v2 import AgentSpecV2, ToolBinding
 from wavefunction.toolkit import TOOL_REGISTRY, ToolContext, _build_web_search
 
@@ -62,9 +66,61 @@ async def test_openrouter_session_and_prefixes_survive_streamed_history_retries_
                 await asyncio.sleep(0)
                 yield part
 
+    # OpenRouter moves a chat between hosts of its model; each opens only its own reasoning.
+    hosts = chain(["Azure"], repeat("OpenAI"))
+    written = {"Azure": "azure-openai-responses-v1", "OpenAI": "openai-responses-v1"}
+
+    def moving(body):
+        host = next(hosts)
+        sent = [detail for message in body["messages"] for detail in message.get("reasoning_details") or []]
+        if any(detail["format"] != written[host] for detail in sent):
+            raw = {
+                "error": {
+                    "message": f"The encrypted content for item {sent[0]['id']} could not be verified. "
+                    "Reason: Encrypted content could not be decrypted or parsed.",
+                    "type": "invalid_request_error",
+                    "code": "invalid_encrypted_content",
+                }
+            }
+            error = {"message": "Provider returned error", "code": 400, "metadata": {"raw": json.dumps(raw)}}
+            return httpx.Response(400, json={"error": error})
+        step = sum(message["role"] == "tool" for message in body["messages"])
+        base = {
+            "id": f"gen-{len(seen)}",
+            "object": "chat.completion.chunk",
+            "created": 0,
+            "model": body["model"],
+        }
+        if step == 2:
+            delta = {"content": "Done"}
+        else:
+            reasoning = {"index": 0, "id": f"rs_{host}", "type": "reasoning.encrypted", "data": "opaque"}
+            delta = {
+                "reasoning_details": [{**reasoning, "format": written[host]}],
+                "tool_calls": [
+                    {
+                        "index": 0,
+                        "id": f"call_{step}",
+                        "type": "function",
+                        "function": {"name": "calculator", "arguments": '{"a":1}'},
+                    }
+                ],
+            }
+        finish = {"index": 0, "finish_reason": "stop" if step == 2 else "tool_calls", "delta": {}}
+        chunks = [
+            {**base, "provider": host, "choices": [{"index": 0, "delta": {"role": "assistant", **delta}}]},
+            {**base, "provider": host, "choices": [finish]},
+        ]
+        stream = b"".join(b"data: " + json.dumps(chunk).encode() + b"\n\n" for chunk in chunks)
+        return httpx.Response(
+            200, stream=Fragments(stream + b"data: [DONE]\n\n"), headers={"content-type": "text/event-stream"}
+        )
+
     def respond(request):
         body = json.loads(request.content)
         seen.append((dict(request.headers), body))
+        if body["model"] == "vendor/moving-agent":
+            return moving(body)
         index = len(seen)
         if index == 2:
             # A gateway that could not retry its own upstream attempt; the request is retried here.
@@ -145,7 +201,10 @@ async def test_openrouter_session_and_prefixes_survive_streamed_history_retries_
         chunks.append(
             {
                 **base,
-                "choices": [],
+                # OpenRouter repeats the finish reason with the usage that ends the stream.
+                "choices": [
+                    {"index": 0, "finish_reason": "tool_calls" if index == 1 else "stop", "delta": {}}
+                ],
                 "usage": {
                     "prompt_tokens": 5000,
                     "completion_tokens": 20,
@@ -175,23 +234,32 @@ async def test_openrouter_session_and_prefixes_survive_streamed_history_retries_
     # The retry decision the app's agents use, not the summary's.
     policy = ProviderPolicyMiddleware(retry_on=is_retryable_provider_error)
 
-    def build(provider="openrouter", base_url=None):
-        model = gateway.chat_model(
-            ModelSpec(
-                provider=provider,
-                model="vendor/structured-agent",
-                base_url=base_url,
-                reasoning_effort="high" if provider == "openrouter" else None,
+    def build(provider: Provider = "openrouter", base_url=None, name="vendor/structured-agent"):
+        model = cast(
+            ChatOpenAI,
+            gateway.chat_model(
+                ModelSpec(
+                    provider=provider,
+                    model=name,
+                    base_url=base_url,
+                    reasoning_effort="high" if provider == "openrouter" else None,
+                ),
+                max_retries=0,
             ),
-            max_retries=0,
         )
         model.streaming = True
         models.append(model)
         return model
 
     async def invoke(
-        model, messages, chat="chat-a", *, sync=False, instructions="Stable instructions", tool_list=tools
-    ):
+        model,
+        messages: list[Any],
+        chat: str | None = "chat-a",
+        *,
+        sync=False,
+        instructions="Stable instructions",
+        tool_list=tools,
+    ) -> AIMessage:
         async def handler(request):
             bound = request.model.bind_tools(request.tools) if request.tools else request.model
             messages = [request.system_message, *request.messages]
@@ -211,7 +279,8 @@ async def test_openrouter_session_and_prefixes_survive_streamed_history_retries_
                 ),
                 context=context,
             )
-        return result.result[0]
+        assert result is not None
+        return cast(AIMessage, result.result[0])
 
     def finished():
         return [payload for event, payload in events if event == "model_call_finished"]
@@ -221,7 +290,7 @@ async def test_openrouter_session_and_prefixes_survive_streamed_history_retries_
 
     try:
         model = build()
-        original_headers = dict(model.default_headers)
+        original_headers = dict(model.default_headers or {})
         messages = [HumanMessage(content="Calculate 21 + 21")]
         first = await invoke(model, messages)
         # Streamed reasoning is kept as the merged fields replayed on the wire, not per-delta
@@ -239,11 +308,16 @@ async def test_openrouter_session_and_prefixes_survive_streamed_history_retries_
         assert first.tool_calls == [
             {"name": "calculator", "args": {"a": 21}, "id": "call_1", "type": "tool_call"}
         ]
-        assert first.usage_metadata["input_token_details"] == {"cache_read": 4096}
-        assert first.usage_metadata["output_token_details"] == {"reasoning": 10}
+        usage = first.usage_metadata or {}
+        assert usage.get("input_token_details") == {"cache_read": 4096}
+        assert usage.get("output_token_details") == {"reasoning": 10}
         assert first.response_metadata["cost"] == 0.012
+        # Said once, as it was meant: "lengthlength" would not be seen as a reply cut short.
+        assert first.response_metadata["finish_reason"] == "tool_calls"
+        assert first.response_metadata["model_name"] == "vendor/structured-agent"
         messages += [first, ToolMessage(content="42", tool_call_id="call_1")]
         reply = await invoke(model, messages)
+        assert reply.response_metadata["finish_reason"] == "stop"
         assert seen[1] == seen[2]  # Middleware retries the same body and headers, SDK retries disabled.
         assert len([event for event, _ in events if event == "model_retry"]) == 1
         assert seen[0][0]["x-openrouter-title"] == "Wavefunction"
@@ -299,7 +373,8 @@ async def test_openrouter_session_and_prefixes_survive_streamed_history_retries_
         # inherit the same per-attempt context without putting diagnostics into messages.
         restored = messages_from_dict(json.loads(json.dumps(messages_to_dict([*messages, reply]))))
         next_turn = build()
-        await invoke(next_turn, [*restored, HumanMessage(content="Continue")], sync=True)
+        resumed = await invoke(next_turn, [*restored, HumanMessage(content="Continue")], sync=True)
+        assert resumed.response_metadata["finish_reason"] == "stop"
         assert seen[-1][1]["session_id"] == session
         assert seen[-1][1]["messages"][: len(seen[2][1]["messages"])] == seen[2][1]["messages"]
         assert finished()[-1]["cache_diagnostics"]["upstream_provider"] == "Synthetic endpoint"
@@ -353,6 +428,39 @@ async def test_openrouter_session_and_prefixes_survive_streamed_history_retries_
         lookalike.openai_api_base = "https://openrouter.ai.example/v1"
         await invoke(lookalike, restored)
         assert "session_id" not in seen[-1][1] and "cache_diagnostics" not in finished()[-1]
+
+        # Azure answers, then OpenRouter moves the chat to OpenAI, which cannot open Azure's
+        # reasoning. The request goes again without it, and later ones send only OpenAI's.
+        moving_model = build(name="vendor/moving-agent")
+        history = [HumanMessage(content="Add one, twice")]
+        start, retries = len(seen), len([event for event, _ in events if event == "model_retry"])
+        first = await invoke(moving_model, history, chat="moving")
+        history += [first, ToolMessage(content="1", tool_call_id="call_0")]
+        second = await invoke(moving_model, history, chat="moving")
+        refused, resent = seen[start + 1][1], seen[start + 2][1]
+        assert [
+            detail["id"]
+            for message in refused["messages"]
+            for detail in message.get("reasoning_details") or []
+        ] == ["rs_Azure"]
+        assert not any(
+            key in message for message in resent["messages"] for key in ("reasoning_details", "reasoning")
+        )
+        assert resent["session_id"] == refused["session_id"]
+        moved = finished()[-1]["cache_diagnostics"]
+        assert moved["reasoning_dropped"] is True and moved["upstream_provider"] == "OpenAI"
+        history += [second, ToolMessage(content="1", tool_call_id="call_1")]
+        done = await invoke(moving_model, history, chat="moving")
+        assert done.content == "Done" and len(seen) == start + 4
+        replies = [message for message in seen[-1][1]["messages"] if message["role"] == "assistant"]
+        assert [[detail["id"] for detail in reply.get("reasoning_details") or []] for reply in replies] == [
+            [],
+            ["rs_OpenAI"],
+        ]
+        assert [reply["tool_calls"][0]["id"] for reply in replies] == ["call_0", "call_1"]
+        assert "reasoning_dropped" not in finished()[-1]["cache_diagnostics"]
+        # Handled inside the call: no retry of the whole request, and the error never reached the run.
+        assert len([event for event, _ in events if event == "model_retry"]) == retries
         assert gateway_diagnostics.get() is None
     finally:
         for model in models:
@@ -390,8 +498,10 @@ async def test_zero_data_retention_restricts_openrouter_and_vercel_routing_from_
 
     monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", respond)
 
-    def build(provider):
-        model = gateway.chat_model(ModelSpec(provider=provider, model="vendor/model"), max_retries=0)
+    def build(provider: Provider):
+        model = cast(
+            ChatOpenAI, gateway.chat_model(ModelSpec(provider=provider, model="vendor/model"), max_retries=0)
+        )
         # Own the HTTP pool: LangChain shares a cached one that other tests close.
         model.root_async_client._client = httpx.AsyncClient(trust_env=False)
         return model
@@ -400,10 +510,10 @@ async def test_zero_data_retention_restricts_openrouter_and_vercel_routing_from_
         return _build_web_search(
             ToolContext(
                 agent_id="agent",
-                repository=None,
-                files=None,
+                repository=None,  # pyright: ignore[reportArgumentType]
+                files=None,  # pyright: ignore[reportArgumentType]
                 secrets=secrets,
-                coding_workspace=None,
+                coding_workspace=None,  # pyright: ignore[reportArgumentType]
                 models=gateway,
                 model=ModelSpec(provider="openrouter", model="vendor/model"),
             )
@@ -436,7 +546,7 @@ async def test_zero_data_retention_restricts_openrouter_and_vercel_routing_from_
 class SyntheticStream(httpx.AsyncByteStream):
     """Actual SDK SSE parsing, including byte fragmentation and keepalive-only silence."""
 
-    def __init__(self, chunks, streams, *, stall=False, delay=0, stalled=None):
+    def __init__(self, chunks, streams, *, stall=False, delay=0.0, stalled=None):
         self.chunks, self.stall, self.delay, self.stalled = chunks, stall, delay, stalled
         self.closed = False
         streams.append(self)
