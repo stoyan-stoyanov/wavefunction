@@ -14,6 +14,10 @@ Accepted limitations. A review reports one of these again only if a change makes
 
 - With network access on, a server a command starts can be reached from other devices on the network if it listens on all interfaces (`0.0.0.0`, `--host`, or `python3 -m http.server`'s default), just as when it is started in Terminal. The sandbox can't limit incoming connections to this Mac: Seatbelt checks `listen`, not each connection, names hosts only as `localhost` or `*`, and its `localhost` covers every address of this Mac, including its Wi-Fi address. Refusing inbound entirely would stop every local dev server. Servers that listen on `127.0.0.1` (the default for Vite, Flask, Django, Jupyter and Node's inspector) are not reachable from elsewhere, and the agent's instructions tell it to start servers there unless asked; that is guidance, not enforcement. A server started by `run_command` stops when the command returns; one in an agent terminal runs until the terminal closes.
 
+## Sandbox file watching
+
+- Commands can watch files, which dev servers and `--watch` modes need. macOS's file-watching service (FSEvents) can't be limited to the chat's folders, so a command can learn the names, though not the contents, of files that change anywhere on this Mac while it watches. Without it, Node and other watchers fail with "EMFILE: too many open files, watch", and the agent's way around that is polling or running the server outside the sandbox, which reaches everything. Codex and Anthropic's sandbox-runtime keep the service blocked.
+
 ## Terminals
 
 - Closing a terminal, or its shell exiting, stops every process in the terminal's session or below its shell, and those whose environment carries the terminal's tag, except an app macOS opened for it, which stays open like one opened from the Dock. A process that starts a session of its own and loses its parent before the terminal next records its processes, every 5 s, is found only by that tag, which `ps` cannot read for some system programs; such a process can outlive the terminal. Recording every half second cost a few percent of a core per open terminal.
