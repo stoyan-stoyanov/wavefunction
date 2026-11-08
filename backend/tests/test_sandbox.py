@@ -419,14 +419,38 @@ async def test_network_access_reaches_loopback_but_not_other_local_sockets(works
         listener.close()
 
 
+# Starts a folder watch as Node's and Watchpack's do on macOS, through FSEvents.
+WATCH = r"""
+import ctypes, sys
+from ctypes import c_void_p as P
+lib = lambda name: ctypes.CDLL(f"/System/Library/Frameworks/{name}.framework/{name}")
+cf, cs, system = lib("CoreFoundation"), lib("CoreServices"), ctypes.CDLL("/usr/lib/libSystem.B.dylib")
+for f in (cf.CFStringCreateWithCString, cf.CFArrayCreate, cs.FSEventStreamCreate, system.dispatch_queue_create):
+    f.restype = P
+cs.FSEventStreamStart.restype = ctypes.c_bool
+path = P(cf.CFStringCreateWithCString(None, sys.argv[1].encode(), 0x08000100))
+paths = cf.CFArrayCreate(None, (P * 1)(path), ctypes.c_long(1), P(ctypes.addressof(P.in_dll(cf, "kCFTypeArrayCallBacks"))))
+callback = ctypes.CFUNCTYPE(None, P, P, ctypes.c_size_t, P, P, P)(lambda *_: None)
+stream = cs.FSEventStreamCreate(None, callback, None, P(paths), ctypes.c_uint64(2**64 - 1), ctypes.c_double(0.1), 0)
+cs.FSEventStreamSetDispatchQueue(P(stream), P(system.dispatch_queue_create(b"watch", None)))
+print("WATCHING" if cs.FSEventStreamStart(P(stream)) else "REFUSED")
+"""
+
+
 @macos_only
 @pytest.mark.asyncio
-async def test_commands_cannot_reach_apps_the_pasteboard_or_launchd(workspace) -> None:
+async def test_commands_watch_files_but_cannot_reach_apps_the_pasteboard_or_launchd(workspace) -> None:
     """Blocked at the services, not by binary name: LaunchServices (which `open` and every app
     launch go through), the pasteboard and job submission. A re-signed copy of a LaunchServices
-    client is refused the same way. Only queries without side effects are made."""
+    client is refused the same way. Only queries without side effects are made. File watching
+    is a service too, and dev servers need it: refused, Node reports EMFILE."""
     root, _, _ = workspace
     box = Sandbox([], scratch=scratch_for(root))
+    scratch_for(root).mkdir(parents=True, exist_ok=True)
+    watched = await box.run(
+        f"python3 -c {shlex.quote(WATCH)} {shlex.quote(str(scratch_for(root)))}", timeout=30
+    )
+    assert watched.stdout.strip() == "WATCHING", watched.stdout + watched.stderr
     query = "info -only bundleid Finder"
     direct = subprocess.run(f"/usr/bin/lsappinfo {query}", shell=True, capture_output=True, text=True)
     copy = scratch_for(root) / "renamed-client"

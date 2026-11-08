@@ -53,8 +53,8 @@ PRIVATE_FOLDERS = (".ssh", ".gnupg", ".aws", "Library/Keychains")
 # folder is elsewhere, so a checkout's agents cannot reach the real workspace's credentials.
 INSTALLED_DATA_DIR = "Library/Application Support/app.harness.coding"
 
-# The only launchd services a sandboxed command may look up: user and group lookups, and the
-# per-user temporary folders the toolchain needs. LaunchServices, Apple events, the pasteboard
+# The only launchd services a sandboxed command may look up: user and group lookups, the
+# per-user temporary folders the toolchain needs, and file watching. LaunchServices, Apple events, the pasteboard
 # and the window server are services too, so `open`, `osascript`, `pbcopy` and every app they
 # would start fail however they are invoked — a renamed copy of `open` included. Modelled on
 # the Codex CLI's Seatbelt policy.
@@ -62,6 +62,10 @@ MACH_SERVICES = (
     "com.apple.system.opendirectoryd.libinfo",
     "com.apple.system.opendirectoryd.membership",
     "com.apple.bsd.dirhelper",
+    # File watching, which dev servers and `--watch` modes use. Refused, Node reports "EMFILE:
+    # too many open files, watch". It can't be limited to folders, so a command can learn the
+    # names, though not the contents, of files changing elsewhere (docs/KNOWN_ISSUES.md).
+    "com.apple.FSEvents",
 )
 # Added with network access: DNS and proxy configuration, and certificate trust for TLS. Not
 # com.apple.SecurityServer, which Codex allows: it answers keychain searches.
