@@ -43,19 +43,6 @@ def _watch_parent(parent_pid: int) -> None:
     os.kill(os.getpid(), signal.SIGTERM)
 
 
-def more_open_files(wanted: int = 10240) -> None:
-    """Raise the open-file limit macOS starts an app with, 256, which the engine shares with every
-    command and terminal it starts. A dev server's file watcher alone can use that up. 10240 is
-    macOS's OPEN_MAX, which `setrlimit` accepts on every Mac."""
-    import resource
-
-    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
-    target = wanted if hard == resource.RLIM_INFINITY else min(wanted, hard)
-    if soft != resource.RLIM_INFINITY and soft < target:
-        with suppress(ValueError, OSError):
-            resource.setrlimit(resource.RLIMIT_NOFILE, (target, hard))
-
-
 def run_as_python() -> None:
     """Behave as an interpreter for the arguments after `--python`.
 
@@ -218,7 +205,6 @@ def main() -> None:
         return
 
     args = parse_args()
-    more_open_files()
     args.data_dir.mkdir(parents=True, exist_ok=True)
     os.environ["WAVEFUNCTION_DATA_DIR"] = str(args.data_dir)
     os.environ["WAVEFUNCTION_PORT"] = str(args.port)
