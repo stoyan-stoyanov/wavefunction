@@ -1,6 +1,8 @@
 """Chats: isolation, rejected folders, search, forks, attachments and history pages."""
 
 import asyncio
+import gc
+import os
 from pathlib import Path
 
 import pytest
@@ -17,6 +19,16 @@ async def test_threads_isolate_context_folders_models_and_attachments(coding, tm
         (folder / "marker.txt").write_text(folder.name)
     a = await create(client, folder=str(folders[0]), model={"provider": "demo", "model": "demo-reliable"})
     b = await create(client, folder=str(folders[1]))
+    # The desktop looks up a chat's helpers at every step. Each lookup's connection closes at
+    # once: left for the garbage collector, one per step used up the app's 256 open files.
+    gc.disable()
+    try:
+        open_files = len(os.listdir("/dev/fd"))
+        for _ in range(50):
+            assert ws.helper_threads("no-such-run") == {}
+        assert len(os.listdir("/dev/fd")) < open_files + 5
+    finally:
+        gc.enable()
     attached = await client.post(
         f"/api/coding/threads/{a['id']}/attachments",
         files={"file": ("private.txt", b"Only thread one knows this", "text/plain")},

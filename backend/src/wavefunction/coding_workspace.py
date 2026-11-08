@@ -12,7 +12,7 @@ import shutil
 import sqlite3
 import threading
 from collections import Counter
-from contextlib import AsyncExitStack, contextmanager, suppress
+from contextlib import AsyncExitStack, closing, contextmanager, suppress
 from pathlib import Path
 from typing import Annotated, Any, Literal, cast
 from urllib.parse import urlsplit
@@ -259,7 +259,7 @@ class CodingWorkspace:
 
     @contextmanager
     def db(self):
-        with self.lock, sqlite3.connect(self.path, timeout=30) as db:
+        with self.lock, closing(sqlite3.connect(self.path, timeout=30)) as db, db:
             db.row_factory = sqlite3.Row
             db.execute("PRAGMA foreign_keys = ON")
             yield db
