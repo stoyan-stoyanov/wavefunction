@@ -4,7 +4,7 @@
 
 | | Cases | One test | All tests together |
 |---|---|---|---|
-| Backend (Python, plus native Rust and launcher tests) | 240 | 30 s | 240 s |
+| Backend (Python, plus native Rust and launcher tests) | 250 | 30 s | 240 s |
 | Frontend (Vitest) | 230 | 5 s (Vitest's timeout) | 90 s |
 
 - **Enforcement.** `backend/tests/conftest.py` and the reporter in `frontend/vite.config.ts` enforce these. The case counts fail every run. The time limits fail a local run, which is what `npm run check` does, and CI only reports them: shared runners vary by a third between runs of the same code (the macOS job has summed 145 s to 258 s for one suite), so a time failure there says more about the runner than the change.

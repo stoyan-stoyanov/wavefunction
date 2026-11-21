@@ -71,6 +71,8 @@ export default defineConfig({
     setupFiles: "./src/test/setup.ts",
     // Local checks write throwaway tests under src/.verification (gitignored); they are not the suite.
     exclude: [...configDefaults.exclude, "src/.verification/**"],
+    // Bundled designs are loaded as stylesheet text; the rest of the app's CSS stays unprocessed.
+    css: { include: [/src\/themes\//] },
     reporters: ["default", testBudgetReporter()],
     maxWorkers: 2,
   },

@@ -991,3 +991,23 @@ class FilePreview(TypedDict):
     previewable: bool
     # False for files that would run when opened; those can only be shown in Finder.
     openable: bool
+
+
+class Theme(TypedDict):
+    """A theme in the themes folder. `error` says why one cannot be used."""
+
+    id: str
+    name: str
+    description: str
+    appearances: list[Literal["light", "dark"]]
+    window_controls: Literal["native", "theme"]
+    error: str | None
+
+
+class Themes(TypedDict):
+    folder: str
+    themes: list[Theme]
+
+
+class ThemeStylesheet(TypedDict):
+    css: str
