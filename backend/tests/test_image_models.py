@@ -6,6 +6,7 @@ reply that drifted from those shapes fails here rather than on the user's key.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 from io import BytesIO
@@ -28,14 +29,16 @@ def png(colour: str, size=(16, 9)) -> bytes:
     return buffer.getvalue()
 
 
-def fake_providers(monkeypatch, replies: dict[str, bytes]):
+def fake_providers(monkeypatch, replies: dict[str, bytes], gate: asyncio.Event | None = None):
     """Each provider's documented image API, answering with a solid colour; requests are kept.
 
-    A prompt that asks to be refused gets the provider's error instead.
+    A prompt that asks to be refused gets the provider's error instead, and one that is refused
+    "Sometimes" gets it every second time. With a `gate`, images wait for it to open.
     """
     sent: list[httpx.Request] = []
+    sometimes = []
 
-    def handle(request: httpx.Request) -> httpx.Response:
+    async def handle(request: httpx.Request) -> httpx.Response:
         sent.append(request)
         url = str(request.url)
         if url.startswith("https://generativelanguage.googleapis.com/v1beta/models?"):
@@ -51,6 +54,12 @@ def fake_providers(monkeypatch, replies: dict[str, bytes]):
             )
         if b"Refuse" in request.content:
             return httpx.Response(400, json={"error": {"message": "Rejected by the safety system."}})
+        if b"Sometimes" in request.content:
+            sometimes.append(request)
+            if len(sometimes) % 2 == 0:
+                return httpx.Response(429, json={"error": {"message": "Rate limit reached."}})
+        if gate is not None:
+            await gate.wait()
         image = base64.b64encode(replies.get(request.url.host, b"")).decode()
         if url.endswith(":generateContent"):
             # Thinking can draw an interim image first; only the final one is the answer.
@@ -157,7 +166,8 @@ async def test_a_chat_without_a_folder_keeps_its_images_as_attachments(coding, m
     client, ws, services = coding
     services.secrets.set("openai_api_key", "synthetic-openai")
     white = png("white", (12, 12))
-    sent = fake_providers(monkeypatch, {"api.openai.com": white})
+    gate = asyncio.Event()
+    sent = fake_providers(monkeypatch, {"api.openai.com": white}, gate)
     await client.put("/api/connections/image-models", json={"models": ["openai::gpt-image-2.6-flare"]})
 
     thread = await create(client)
@@ -175,9 +185,21 @@ async def test_a_chat_without_a_folder_keeps_its_images_as_attachments(coding, m
             ),
             AIMessage(content="Done."),
         ],
+        [
+            tool_call_message(
+                "edit_image", {"prompt": "Make the cat smaller", "images": ["a-cat.png"]}, "later"
+            ),
+            AIMessage(content="Smaller."),
+        ],
     )
     run = await ws.send(thread["id"], "Make a cat and put it in my photo")
+    # Queued while the cat is being drawn, so it took the chat's files before the cat was one.
+    later = await ws.send(thread["id"], "Then make the cat smaller", delivery="queue")
+    gate.set()
     assert (await services.runtime.wait(run["id"]))["status"] == "completed"
+    assert (await services.runtime.wait(later["id"]))["status"] == "completed"
+    [smaller] = results(services, later["id"])
+    assert smaller["images"] == [{"attachment": "make-the-cat-smaller.png", "id": smaller["images"][0]["id"]}]
 
     made, edited = results(services, run["id"])
     [cat] = made["images"]
@@ -196,7 +218,7 @@ async def test_a_chat_without_a_folder_keeps_its_images_as_attachments(coding, m
     small = await client.get(f"{base}/attachments/{cat['id']}")
     assert small.headers["content-type"] == "image/png"
     stored = services.files.project_dir(ws.agent_id) / "sources"
-    assert len(list(stored.iterdir())) == 4
+    assert len(list(stored.iterdir())) == 5
     # They belong to the chat's history and go with it.
     assert (await client.delete(base)).status_code == 204
     assert not list(stored.iterdir())
@@ -218,7 +240,7 @@ async def test_each_provider_gets_the_image_request_its_api_documents(monkeypatc
 
     async def make(key: str, ratio: str, inputs: list) -> tuple[Any, bytes]:
         sent.clear()
-        [made] = await image_models.create(
+        [made], _ = await image_models.create(
             secrets, key, "A cat", aspect_ratio=ratio, inputs=inputs, zero_data_retention=True
         )
         [request] = sent
@@ -278,3 +300,25 @@ async def test_each_provider_gets_the_image_request_its_api_documents(monkeypatc
         ValueError, match="OpenAI refused the image request \\(400\\): Rejected by the safety"
     ):
         await image_models.create(secrets, "openai::gpt-image-2.6-flare", "Refuse this")
+    # One request of a batch failing keeps the images the others made, and says why it failed.
+    made, failed = await image_models.create(secrets, "openai::gpt-image-2.6-flare", "Sometimes", count=2)
+    assert [image.data for image in made] == [png("white")]
+    assert failed == ["OpenAI refused the image request (429): Rate limit reached."]
+
+    # OpenRouter lists models that draw only SVG, which could not be saved as pictures.
+    svg_only = {"output_format": {"type": "enum", "values": ["svg"]}}
+    listed = image_models.parse_models(
+        "openrouter",
+        {
+            "data": [
+                {"id": "recraft/recraft-v4-vector", "name": "Vector", "supported_parameters": svg_only},
+                {
+                    "id": "openai/gpt-image-2",
+                    "name": "GPT Image 2",
+                    "supported_parameters": {"output_format": {"type": "enum", "values": ["png", "svg"]}},
+                },
+                {"id": "google/gemini-3.1-flash-image", "name": "Nano Banana 2", "supported_parameters": {}},
+            ]
+        },
+    )
+    assert [model["id"] for model in listed] == ["openai/gpt-image-2", "google/gemini-3.1-flash-image"]

@@ -40,6 +40,7 @@ MAX_INPUT_BYTES = 15 * 1024 * 1024
 # A high-quality image takes a minute or two.
 TIMEOUT = httpx.Timeout(300, connect=30)
 FORMATS = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}
+RASTER_FORMATS = {"png", "jpeg", "jpg", "webp"}
 EXTENSIONS = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 
 
@@ -143,7 +144,13 @@ def parse_models(provider: str, payload: dict[str, Any]) -> list[dict[str, str]]
             keep = raw.get("type") == "image"
             name = raw.get("name")
         else:
-            keep, name = True, raw.get("name")
+            # A model that draws only SVG would be paid for and then refused: pictures are PNG,
+            # JPEG or WebP. OpenRouter lists a model's output formats when it limits them.
+            parameters = raw.get("supported_parameters")
+            formats = parameters.get("output_format") if isinstance(parameters, dict) else None
+            values = formats.get("values") if isinstance(formats, dict) else None
+            keep = not values or any(value in RASTER_FORMATS for value in values)
+            name = raw.get("name")
         if keep and model:
             found[model] = str(name or model)
     return sorted(
@@ -265,22 +272,42 @@ async def create(
     aspect_ratio: str = "",
     inputs: list[Picture] | None = None,
     zero_data_retention: bool = False,
-) -> list[Picture]:
-    """`count` images from the model `key` (`provider::model`), edited from `inputs` when given."""
+) -> tuple[list[Picture], list[str]]:
+    """`count` images from the model `key` (`provider::model`), edited from `inputs` when given,
+    and why any of the requests failed.
+
+    The images that were made are kept when others fail: they were paid for, and trying again
+    would make them again. Raises only when none was made.
+    """
     provider, _, model = key.partition("::")
+    name = PROVIDERS[provider][0]
     async with httpx.AsyncClient(
         timeout=TIMEOUT, headers=_headers(provider, _key(secrets, provider))
     ) as client:
-        try:
-            batches = await asyncio.gather(
-                *(
-                    CLIENTS[provider](client, model, prompt, aspect_ratio, inputs or [], zero_data_retention)
-                    for _ in range(count)
-                )
-            )
-        except httpx.TimeoutException as error:
-            raise RuntimeError(f"{PROVIDERS[provider][0]} took too long to return the image.") from error
-    encoded = [item for batch in batches for item in batch]
-    if not encoded:
-        raise RuntimeError(f"{PROVIDERS[provider][0]} returned no image. Try rewording the prompt.")
-    return [picture(base64.b64decode(item), "The model's reply") for item in encoded]
+        outcomes = await asyncio.gather(
+            *(
+                CLIENTS[provider](client, model, prompt, aspect_ratio, inputs or [], zero_data_retention)
+                for _ in range(count)
+            ),
+            return_exceptions=True,
+        )
+    pictures: list[Picture] = []
+    failures: list[Exception] = []
+    for outcome in outcomes:
+        if isinstance(outcome, httpx.TimeoutException):
+            outcome = RuntimeError(f"{name} took too long to return the image.")
+        if isinstance(outcome, BaseException):
+            if not isinstance(outcome, Exception):
+                raise outcome  # Cancelled: the task is stopping.
+            failures.append(outcome)
+            continue
+        if not outcome:
+            failures.append(RuntimeError(f"{name} returned no image. Try rewording the prompt."))
+        for item in outcome:
+            try:
+                pictures.append(picture(base64.b64decode(item), "The model's reply"))
+            except ValueError as error:
+                failures.append(error)
+    if not pictures:
+        raise failures[0]
+    return pictures, [str(error) for error in failures]

@@ -116,6 +116,17 @@ def _attach(context: ToolContext, images: list[image_models.Picture], path: str,
     context.repository.capture_run_files(context.run_id, saved)
     if context.reference_files is not None:
         context.reference_files.extend(saved)
+    # A follow-up queued behind this task captured the chat's files already: it gets these too,
+    # in its live list as well, since its tools were built when it was queued.
+    runtime = context.coding_workspace.services.runtime
+    for queued in context.repository.pending_conversation_runs(
+        context.agent_id, str(context.conversation_id)
+    ):
+        if queued["id"] != context.run_id:
+            context.repository.capture_run_files(queued["id"], saved)
+            if live := runtime.active.get(queued["id"]):
+                known = {row["id"] for row in live.reference_files}
+                live.reference_files.extend(row for row in saved if row["id"] not in known)
     return [{"attachment": record["name"], "id": record["id"]} for record in saved]
 
 
@@ -162,7 +173,7 @@ def build_image_tools(context: ToolContext, models: list[str]) -> list[BaseTool]
             raise ValueError(f"Use an aspect ratio of {ratios}.")
         key = _chosen(models, model)
         inputs = [await asyncio.to_thread(_input, context, name) for name in images]
-        made = await image_models.create(
+        made, failed = await image_models.create(
             context.secrets,
             key,
             prompt.strip(),
@@ -178,6 +189,8 @@ def build_image_tools(context: ToolContext, models: list[str]) -> list[BaseTool]
             "images": saved,
             "note": "The user sees these images in the chat.",
         }
+        if failed:
+            result["failed"] = f"{len(failed)} of {count} could not be made: {failed[0]}"
         return json.dumps(result)
 
     @tool("generate_image", description=generate_description)
