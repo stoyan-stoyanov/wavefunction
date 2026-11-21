@@ -155,6 +155,10 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      # uv's own Python 3.12, which carries the shared libpython PyInstaller bundles. A system 3.12
+      # may lack it (Ubuntu ships it separately), and newer Ubuntus have no 3.12 at all.
+      UV_PYTHON_PREFERENCE: only-managed
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -173,12 +177,15 @@ jobs:
       - name: Bubblewrap and Tauri's system libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends bubblewrap libpython3.12 libwebkit2gtk-4.1-dev libxdo-dev \
+          sudo apt-get install -y --no-install-recommends bubblewrap libwebkit2gtk-4.1-dev libxdo-dev \
             libssl-dev libayatana-appindicator3-dev librsvg2-dev
-      # Ubuntu 24.04's AppArmor refuses unprivileged user namespaces, which bwrap needs, unless a
-      # profile allows them. README's Linux section tells users the same.
+      # Ubuntu's AppArmor (23.10 and later) refuses unprivileged user namespaces, which bwrap needs,
+      # unless a profile allows them. README's Linux section tells users the same.
       - name: Let bwrap create user namespaces
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+        run: |
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
       - run: npm run setup
       - name: Sandbox tests, the Linux escape tests among them
         working-directory: backend

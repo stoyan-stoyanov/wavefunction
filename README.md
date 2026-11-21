@@ -103,12 +103,12 @@ open src-tauri/target/release/bundle/macos/Wavefunction.app
 
 ### Linux
 
-Linux is community-supported and built from source only: there are no Linux releases or updates, and computer use, notifications and dictation are macOS-only for now. Commands run in a [Bubblewrap](https://github.com/containers/bubblewrap) sandbox with a seccomp filter, from the same grants as on macOS; without `/usr/bin/bwrap` the app runs no commands at all. On Ubuntu 24.04, with Node.js 22+, uv and Rust installed:
+Linux is community-supported and built from source only: there are no Linux releases or updates, and computer use, notifications and dictation are macOS-only for now. Commands run in a [Bubblewrap](https://github.com/containers/bubblewrap) sandbox with a seccomp filter, from the same grants as on macOS; without `/usr/bin/bwrap` the app runs no commands at all. On Ubuntu 24.04 or later, with Node.js 22+, uv and Rust installed:
 
 ```sh
-sudo apt install bubblewrap libpython3.12 build-essential file libwebkit2gtk-4.1-dev \
+sudo apt install bubblewrap build-essential file libwebkit2gtk-4.1-dev \
   libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-npm run setup
+UV_PYTHON_PREFERENCE=only-managed npm run setup   # uv's own Python 3.12, which the build can bundle
 npm run desktop:build   # the engine, then a .deb and an AppImage in dist/desktop
 ```
 
