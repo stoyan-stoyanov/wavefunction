@@ -124,7 +124,9 @@ def _stylesheet(folder: Path) -> str:
             return match.group(0)
         if target.startswith("//") or SCHEME.match(target):
             raise ThemeError(f"{target} is not in the theme's folder. Themes cannot load anything remote.")
-        asset = (root / re.split(r"[?#]", target, maxsplit=1)[0]).resolve()
+        # A fragment picks a part of the asset, such as one view of an SVG sprite: it stays on the URL.
+        path, _, fragment = target.partition("#")
+        asset = (root / path.partition("?")[0]).resolve()
         if not asset.is_relative_to(root):
             raise ThemeError(f"{target} is outside the theme's folder.")
         if asset not in inlined:
@@ -138,8 +140,8 @@ def _stylesheet(folder: Path) -> str:
                 data = asset.read_bytes()
             except OSError:
                 raise ThemeError(f"{target} is missing.") from None
-            inlined[asset] = f'url("data:{kind};base64,{base64.b64encode(data).decode()}")'
-        return inlined[asset]
+            inlined[asset] = f"data:{kind};base64,{base64.b64encode(data).decode()}"
+        return f'url("{inlined[asset]}{"#" + fragment if fragment else ""}")'
 
     return URL.sub(inline, css)
 

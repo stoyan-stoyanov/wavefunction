@@ -83,8 +83,8 @@ def test_user_themes_load_from_the_themes_folder_with_assets_inlined(tmp_path, m
     assert 'needs a "name"' in themes["broken"]["error"]
 
     css = client.get("/api/themes/glass/stylesheet").json()["css"]
-    data = 'url("data:image/svg+xml;base64,PHN2Zy8+")'
-    assert css == f".close {{ background: {data}; }} .again {{ mask: {data}; }}"
+    data = "data:image/svg+xml;base64,PHN2Zy8+"
+    assert css == f'.close {{ background: url("{data}"); }} .again {{ mask: url("{data}#x"); }}'
     refused = client.get("/api/themes/escape/stylesheet")
     assert refused.status_code == 422 and "outside" in refused.json()["detail"]
     assert client.get("/api/themes/missing/stylesheet").status_code == 404
