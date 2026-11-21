@@ -29,3 +29,4 @@ React, TypeScript (strict, no `any`), Vite, zustand and Tailwind. Read the root 
 - Route late responses, streams, approvals, context and drafts to the chat that captured them.
 - Preserve unrelated file edits and recovered drafts.
 - Give controls accessible names, so people and browser automation use the same controls.
+- A terminal starts at 80×24 and its screen resizes it only after the shell has printed its prompt, so input sent before that resize is echoed for the wrong width. Text the app types for the user waits for both (`TerminalScreen`).
