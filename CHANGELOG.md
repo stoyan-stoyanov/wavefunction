@@ -4,6 +4,10 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+### Added
+
+- Replies show what they link, the way messaging apps do: web links get a card with the page's picture, title and description, pictures show as thumbnails you can open larger, and videos play in place. ([#71](https://github.com/stoyan-stoyanov/wavefunction/pull/71))
+
 ## 0.4.0 - 2026-11-07
 
 ### Added
