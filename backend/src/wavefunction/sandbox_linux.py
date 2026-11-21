@@ -8,7 +8,8 @@ The network namespace is shared when a command has network access, and a shared 
 abstract Unix sockets (X11's, D-Bus's, containerd's), which no mount can hide. A socket file such as
 Docker's is reachable through any mount that shows it, read-only included. So a seccomp filter
 refuses to create Unix sockets at all, as Seatbelt refuses to connect to them on macOS.
-`socketpair` stays allowed: its sockets reach only each other.
+`socketpair` stays allowed for streams, whose ends reach only each other; a datagram end can be
+connected anywhere afterwards, so those are refused too.
 
 Fail closed: without `/usr/bin/bwrap`, or on an architecture the filter does not know, nothing runs.
 """
@@ -33,7 +34,7 @@ FILTER_FD = 3
 RUNTIME = ("/usr", "/bin", "/sbin", "/lib", "/lib32", "/lib64", "/libx32", "/etc", "/nix/store")
 
 # Classic BPF, as `struct sock_filter`, and the seccomp return values.
-_LOAD, _JEQ, _JGE, _RETURN = 0x20, 0x15, 0x35, 0x06
+_LOAD, _JEQ, _JGE, _AND, _RETURN = 0x20, 0x15, 0x35, 0x54, 0x06
 _ALLOW = 0x7FFF0000
 _ERRNO = 0x00050000
 # Where `struct seccomp_data` keeps the syscall number, the architecture and the low half of each
@@ -41,13 +42,17 @@ _ERRNO = 0x00050000
 _NR, _ARCH = 0, 4
 _ARG = (16, 24)
 AF_UNIX = 1
+# A socket's type, without the SOCK_CLOEXEC and SOCK_NONBLOCK flags, and the two kinds whose ends
+# stay connected to each other for good.
+SOCK_TYPE_MASK, SOCK_STREAM, SOCK_SEQPACKET = 0xF, 1, 5
 TIOCSTI, TIOCLINUX = 0x5412, 0x541C
 # x86-64's x32 ABI shares the architecture value and flags its syscall numbers with this bit.
 X32_SYSCALL_BIT = 0x40000000
 ARCHITECTURES = {
-    # AUDIT_ARCH_*, socket, ioctl. io_uring_setup, _enter and _register are 425 to 427 on both.
-    "x86_64": (0xC000003E, 41, 16),
-    "aarch64": (0xC00000B7, 198, 29),
+    # AUDIT_ARCH_*, socket, socketpair, ioctl. io_uring_setup, _enter and _register are 425 to 427
+    # on both.
+    "x86_64": (0xC000003E, 41, 53, 16),
+    "aarch64": (0xC00000B7, 198, 199, 29),
 }
 IO_URING = (425, 426, 427)
 
@@ -64,12 +69,13 @@ def _architecture() -> str:
 def seccomp_filter() -> bytes:
     """The compiled filter for this machine's architecture.
 
-    Refused with EPERM: creating a Unix socket; TIOCSTI and TIOCLINUX, which type into a terminal;
+    Refused with EPERM: creating a Unix socket, or a pair of them other than a stream or
+    sequenced-packet one; TIOCSTI and TIOCLINUX, which type into a terminal;
     and every syscall of another ABI (i386 and x32 on x86-64), whose numbers differ. io_uring can
     create sockets without the `socket` syscall, so it answers ENOSYS and libraries fall back.
     The kernel reads only the low 32 bits of `socket`'s domain and `ioctl`'s request.
     """
-    audit, socket, ioctl = ARCHITECTURES[_architecture()]
+    audit, socket, socketpair, ioctl = ARCHITECTURES[_architecture()]
     # Instructions as (code, value, label if true, label if false); a string marks a label.
     program: list[tuple[int, int, str | None, str | None] | str] = [
         (_LOAD, _ARCH, None, None),
@@ -77,6 +83,7 @@ def seccomp_filter() -> bytes:
         (_LOAD, _NR, None, None),
         (_JGE, X32_SYSCALL_BIT, "deny", None),
         (_JEQ, socket, "socket", None),
+        (_JEQ, socketpair, "socketpair", None),
         (_JEQ, ioctl, "ioctl", None),
         *((_JEQ, number, "unsupported", None) for number in IO_URING),
         (_RETURN, _ALLOW, None, None),
@@ -84,10 +91,16 @@ def seccomp_filter() -> bytes:
         (_LOAD, _ARG[0], None, None),
         (_JEQ, AF_UNIX, "deny", None),
         (_RETURN, _ALLOW, None, None),
+        "socketpair",
+        (_LOAD, _ARG[1], None, None),
+        (_AND, SOCK_TYPE_MASK, None, None),
+        (_JEQ, SOCK_STREAM, "allow", None),
+        (_JEQ, SOCK_SEQPACKET, "allow", "deny"),
         "ioctl",
         (_LOAD, _ARG[1], None, None),
         (_JEQ, TIOCSTI, "deny", None),
         (_JEQ, TIOCLINUX, "deny", None),
+        "allow",
         (_RETURN, _ALLOW, None, None),
         "deny",
         (_RETURN, _ERRNO | errno.EPERM, None, None),

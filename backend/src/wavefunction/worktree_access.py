@@ -68,11 +68,16 @@ def linked_worktree_grants(folder: Path, grants: list[Grant], source: Path) -> l
         raise ValueError("The managed worktree's Git registration is unavailable.") from error
     if not any(g.writable and folder.is_relative_to(g.path) for g in grants):
         return grants
-    if sys.platform == "linux" and not (common / "packed-refs").exists():
-        # The Linux sandbox keeps what a command creates in this folder only for the command
-        # (sandbox_linux), so a `pack-refs` there would prune loose refs into a file that is then
-        # gone. An empty file is what git reads when there is none, and replacing it fails instead.
-        (common / "packed-refs").touch()
+    if sys.platform == "linux":
+        # The Linux sandbox mounts only what exists, and keeps what a command creates in this
+        # folder for the command alone (sandbox_linux). So the granted folders are made first,
+        # or Git LFS objects and reflogs would vanish with the command; and `packed-refs` too,
+        # or a `pack-refs` would prune loose refs into a file that is then gone. Empty, each is
+        # what git and git-lfs read when there is none.
+        for name in ("lfs", "logs/refs"):
+            (common / name).mkdir(parents=True, exist_ok=True)
+        if not (common / "packed-refs").exists():
+            (common / "packed-refs").touch()
     # Avoid redundant paths in both the sandbox and the model's access context.
     additions = [Grant(common), *(Grant(path, True) for path in paths)]
     return [
