@@ -4,6 +4,10 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+### Added
+
+- Designs change how the whole app looks. Pick one in Settings › General › Design: the built-in Windows 7 design, with Aero glass, an Explorer-style sidebar and classic controls, or your own, made of CSS, images and fonts in the themes folder Settings shows. ([#73](https://github.com/stoyan-stoyanov/wavefunction/pull/73))
+
 ## 0.4.0 - 2026-11-07
 
 ### Added
