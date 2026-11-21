@@ -1,0 +1,163 @@
+/* What a reply links, below its text: pictures, videos, then link cards. */
+.reply-previews {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+}
+.reply-previews:empty,
+.reply-previews-images:empty {
+  display: none;
+}
+.reply-previews-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* A picture: a thumbnail that opens larger. Also used in place, for a Markdown image. */
+.media-thumbnail {
+  display: inline-flex;
+  max-width: 100%;
+  overflow: hidden;
+  vertical-align: middle;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+  cursor: zoom-in;
+}
+.media-thumbnail:disabled {
+  cursor: default;
+}
+.media-thumbnail:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.media-thumbnail img {
+  display: block;
+  max-width: min(100%, 320px);
+  max-height: 220px;
+  object-fit: contain;
+}
+.media-thumbnail-placeholder {
+  display: block;
+  width: 160px;
+  height: 110px;
+}
+.media-viewer img {
+  max-width: 100%;
+  max-height: 78vh;
+  margin: 0 auto;
+  object-fit: contain;
+}
+
+/* A video: a poster until played, then the player. */
+.media-video,
+.media-video-poster {
+  width: min(100%, 420px);
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--muted);
+}
+.media-video {
+  background: black;
+}
+.media-video-poster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.media-video-poster:not(:disabled):hover .media-video-play {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.media-video-play {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: var(--shadow-sm);
+}
+.media-video-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A web page's card, as messaging apps show a shared link. */
+.link-card {
+  display: flex;
+  width: min(100%, 460px);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--card-foreground);
+  text-decoration: none;
+  transition: background-color 120ms;
+}
+.link-card:hover {
+  background: var(--accent);
+}
+.link-card:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.link-card-image {
+  width: 112px;
+  flex-shrink: 0;
+  align-self: stretch;
+  object-fit: cover;
+  background: var(--muted);
+}
+.link-card-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+}
+.link-card-site {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 1.4;
+}
+.link-card-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 3px;
+  object-fit: contain;
+}
+.link-card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.link-card-description {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}

@@ -38,6 +38,7 @@ Send these as chat messages. Anything else gets a one-line "Synthetic reply".
 | `fixture: transcript` | A long reply with headings, lists and code, to check scrolling. |
 | `fixture: table` | A wide Markdown table. |
 | `fixture: files` | Links to generated files (PDF, CSV, Markdown), to check previews. |
+| `fixture: media` | A chart image, a video, web links and a localhost link, to check rich previews. Web cards need the internet. |
 | `/thorough-bug-review` | A slash skill captured and read. |
 
 ## Looking at it

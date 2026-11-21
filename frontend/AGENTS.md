@@ -29,3 +29,4 @@ React, TypeScript (strict, no `any`), Vite, zustand and Tailwind. Read the root 
 - Route late responses, streams, approvals, context and drafts to the chat that captured them.
 - Preserve unrelated file edits and recovered drafts.
 - Give controls accessible names, so people and browser automation use the same controls.
+- The desktop webview's content policy (`src-tauri/tauri.conf.json`) reaches only the engine: show a web image or video through `codingApi.linkMedia`, which fetches public addresses only, as a blob URL.

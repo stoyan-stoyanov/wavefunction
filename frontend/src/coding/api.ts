@@ -28,6 +28,7 @@ export type CodingRun = Run & { events: RunEvent[] } & Partial<
     Omit<Schemas["ChatRun"], keyof Run | "events">
   >;
 export type FilePreview = Schemas["FilePreview"];
+export type LinkPreview = Schemas["LinkPreview"];
 export type ThreadDetail = CodingThread & {
   runs: CodingRun[];
   attachments: ProjectFile[];
@@ -202,6 +203,11 @@ export const codingApi = {
   /** An attached image as a blob URL; the caller revokes it. */
   attachmentPreview: (id: string, fileId: string) =>
     fetchBlobUrl(`${threadUrl(id)}/attachments/${encodeURIComponent(fileId)}`),
+  /** The card for a web link in a reply, read by the engine: the webview reaches no other site. */
+  linkPreview: (url: string) => request<LinkPreview>(`${base}/link-preview?url=${encodeURIComponent(url)}`),
+  /** An image or video from the web, through the engine, as a blob URL; the caller revokes it. */
+  linkMedia: (url: string, signal?: AbortSignal) =>
+    fetchBlobUrl(`${base}/link-preview/media?url=${encodeURIComponent(url)}`, { signal }),
   removeAttachment: (id: string, fileId: string) =>
     request<void>(`${threadUrl(id)}/attachments/${fileId}`, json("DELETE")),
   tree: (id: string, path = "") =>
