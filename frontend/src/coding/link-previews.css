@@ -34,9 +34,10 @@
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
+/* A fixed bound: a percentage would let the picture's own width size the button. */
 .media-thumbnail img {
   display: block;
-  max-width: min(100%, 320px);
+  max-width: 320px;
   max-height: 220px;
   object-fit: contain;
 }
@@ -55,7 +56,7 @@
 /* A video: a poster until played, then the player. */
 .media-video,
 .media-video-poster {
-  width: min(100%, 420px);
+  width: min(100%, 360px);
   aspect-ratio: 16 / 9;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

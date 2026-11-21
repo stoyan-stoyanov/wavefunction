@@ -338,8 +338,9 @@ class FixtureModel(ScriptedModel):
                 (out / "demo.mp4").write_bytes(zlib.decompress(base64.b64decode(DEMO_MP4)))
                 self.script = [
                     AIMessage(
-                        content="Here is the chart:\n\n![Quarterly totals](out/chart.png)\n\n"
-                        "I recorded [the demo](out/demo.mp4), and the dev server is at "
+                        # Absolute: a chat that started in a worktree reads relative paths from it.
+                        content=f"Here is the chart:\n\n![Quarterly totals]({out}/chart.png)\n\n"
+                        f"I recorded [the demo]({out}/demo.mp4), and the dev server is at "
                         "http://localhost:5173/dashboard. The language's logo is "
                         "https://www.python.org/static/img/python-logo.png, its source is at "
                         "[CPython on GitHub](https://github.com/python/cpython), and background is on "
