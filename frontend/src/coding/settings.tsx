@@ -22,6 +22,7 @@ import { useSettings } from "@/store/settings";
 import { api } from "@/lib/api";
 import { beginWindowDrag } from "@/lib/titlebar";
 import { checkForUpdate, installUpdate, restartToUpdate, useAppUpdate } from "@/lib/app-update";
+import { linuxDesktop } from "@/lib/platform";
 import { codingApi, type CodingSnapshot } from "./api";
 import { CodingMarkdown } from "./markdown";
 import { useCoding } from "./store";
@@ -237,6 +238,18 @@ function AccessSettings() {
 function Updates() {
   const update = useAppUpdate();
   if (!("__TAURI_INTERNALS__" in window) || import.meta.env.DEV) return null;
+  if (linuxDesktop())
+    return (
+      <NativeSection title="Updates">
+        <div className="overflow-hidden rounded-xl bg-card">
+          <SettingsRow
+            title="Built from source"
+            description="Linux builds don't update themselves. Pull the latest code and build again to update."
+            control={null}
+          />
+        </div>
+      </NativeSection>
+    );
   const busy = update.status === "checking" || update.status === "installing";
   return (
     <NativeSection title="Updates">

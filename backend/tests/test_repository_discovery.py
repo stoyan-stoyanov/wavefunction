@@ -1,6 +1,5 @@
 """Repository navigation with real tools, including the macOS permission boundary."""
 
-import sys
 from dataclasses import replace
 
 import pytest
@@ -149,8 +148,10 @@ async def test_instructions_load_root_to_folder_with_explicit_truncation_and_env
 
     async def told(context):
         update = await EnvironmentMiddleware(context).abefore_model(
-            {"messages": [HumanMessage(content="Start")]}, None
+            {"messages": [HumanMessage(content="Start")]},
+            None,  # pyright: ignore[reportArgumentType]
         )
+        assert update
         return update["messages"][0].content
 
     text = await told(context)
@@ -161,7 +162,7 @@ async def test_instructions_load_root_to_folder_with_explicit_truncation_and_env
     assert "ROOT:" not in text and "WEB:" not in text
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="macOS sandbox boundary")
+@pytest.mark.sandbox
 async def test_search_keeps_out_of_private_folders_and_bundled_rg_runs(tmp_path):
     from wavefunction.config import get_settings
 

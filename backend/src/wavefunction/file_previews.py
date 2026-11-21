@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import mimetypes
 import os
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -50,6 +52,24 @@ RUNNABLE_TYPES = {
     ".swift",
     ".osascript",
 }
+
+
+async def _open_on_linux(target: Path) -> None:
+    """Hand a file or folder to the desktop's handler. `xdg-open` returns once a handler has it,
+    or, where none takes it over, runs as long as the app it started, so it is not waited for
+    beyond a few seconds. A folder is opened rather than the file selected in it."""
+    process = await asyncio.create_subprocess_exec(
+        "/usr/bin/xdg-open",
+        str(target),
+        stdout=asyncio.subprocess.DEVNULL,
+        stderr=asyncio.subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    with contextlib.suppress(TimeoutError):
+        async with asyncio.timeout(5):
+            await process.communicate()
+            if process.returncode:
+                raise ValueError("The file could not be opened. Is xdg-open installed?")
 
 
 class OpenFile(BaseModel):
@@ -142,6 +162,9 @@ def register_file_previews(router, workspace):
             target.suffix.lower() in RUNNABLE_TYPES or os.access(target, os.X_OK)
         ):
             raise ValueError("Wavefunction won't run this file. Show it in Finder to open it yourself.")
+        if sys.platform == "linux":
+            await _open_on_linux(target.parent if payload.target == "finder" else target)
+            return
         # By absolute path: an `open` placed earlier on PATH must never be what runs.
         command = (
             ["/usr/bin/open", "-R", str(target)]

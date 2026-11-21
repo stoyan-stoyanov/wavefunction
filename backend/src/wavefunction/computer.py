@@ -58,6 +58,11 @@ from .desktop_bridge import DesktopBridge
 logger = logging.getLogger(__name__)
 
 IMAGE_REPO = "wavefunction-desktop"
+# Linux builds start without computer use: the desktop, its files and its Docker handling are made
+# for Docker Desktop on macOS. Said wherever computer use would otherwise be set up or started.
+UNSUPPORTED = (
+    "Computer use needs macOS for now. Linux builds come without it." if sys.platform == "linux" else None
+)
 # On the desktop containers, and on the volumes that keep chats' homes.
 CONTAINER_LABEL = "wavefunction.computer=1"
 INSTALLATION_LABEL = "wavefunction.installation"
@@ -363,7 +368,7 @@ class DesktopManager:
         self._docker_override = docker_path
         self._idle_ttl = idle_ttl
         self._controls = {}
-        self._status = DockerStatus(image_tag=image_tag())
+        self._status = DockerStatus(image_tag=image_tag(), docker_problem=UNSUPPORTED)
         self._sessions: dict[str, DesktopSession] = {}
         self._session_locks: dict[str, asyncio.Lock] = {}
         self._reaper: asyncio.Task | None = None
@@ -394,6 +399,10 @@ class DesktopManager:
             image_tag=image_tag(),
             docker_action=self._status.docker_action,
         )
+        if UNSUPPORTED:
+            status.docker_problem = UNSUPPORTED
+            self._status = status
+            return status
         docker = self.docker()
         if docker is None:
             self._status = status
@@ -766,6 +775,8 @@ class DesktopManager:
             return False
 
     async def _start_session(self, conversation_id: str, copy: str | None = None) -> DesktopSession:
+        if UNSUPPORTED:
+            raise DesktopUnavailable(UNSUPPORTED)
         status = await self.refresh_status()
         if not status.docker_available:
             raise DesktopUnavailable(

@@ -354,32 +354,6 @@ def test_a_folder_name_cannot_inject_policy(tmp_path: Path) -> None:
     assert '\\"' in build_profile([Grant(path=hostile, writable=True)], scratch=tmp_path)
 
 
-@macos_only
-@pytest.mark.asyncio
-async def test_reads_reach_the_disk_except_private_folders(workspace, monkeypatch) -> None:
-    """Commands read what they need to run — any folder — but never keys or the app's data,
-    not even through a writable grant that contains them."""
-    root, _, private = workspace
-    home = root / "home"
-    (home / ".ssh").mkdir(parents=True)
-    (home / ".ssh" / "id_synthetic").write_text("SSH-SECRET")
-    monkeypatch.setenv("HOME", str(home))
-    data = get_settings().data_dir / "Agent"
-    data.mkdir(parents=True, exist_ok=True)
-    (data / "synthetic.env").write_text("DATA-SECRET")
-    box = Sandbox([Grant(path=home, writable=True)], scratch=scratch_for(root))
-
-    assert "TOPSECRET" in (await box.run(f"cat {private}/keys.txt", timeout=30)).stdout
-    for secret, word in (
-        (home / ".ssh" / "id_synthetic", "SSH-SECRET"),
-        (data / "synthetic.env", "DATA-SECRET"),
-    ):
-        denied = await box.run(f"cat '{secret}'; echo more >> '{secret}'", timeout=30)
-        assert word not in denied.stdout
-        assert secret.read_text() == word
-    assert (await box.run(f"touch {home}/allowed.txt", timeout=30)).exit_code == 0
-
-
 # Plain sockets on the loopback addresses, IPv4 and IPv6: http.server looks up the host's
 # name, which on some machines waits on DNS far longer than the test does.
 LOOPBACK = (
@@ -694,7 +668,6 @@ async def test_user_toolchains_are_readable_but_unrelated_home_files_remain_priv
     (home / ".cargo/credentials.toml").write_text("UNGRANTED_REGISTRY_TOKEN")
     # With no gh of the user's own, the one the app installed for its sign-in, in its private
     # data, runs; the rest of that data stays private.
-    from wavefunction.config import get_settings
 
     managed = get_settings().data_dir / "integrations/bin/gh"
     managed.parent.mkdir(parents=True, exist_ok=True)

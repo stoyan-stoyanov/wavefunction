@@ -9,7 +9,7 @@ Tauri v2 in Rust, plus one Objective-C file for notifications. Read the root [AG
 | Startup, window, starting and supervising the engine | `src/lib.rs` |
 | Quit and restart, with the active-work check | `src/quit.rs` |
 | macOS notifications (long poll to the engine) | `src/notifications.rs`, `src/notifications.m`, `build.rs` |
-| Configuration and bundled resources | `tauri.conf.json`, `Cargo.toml` |
+| Configuration and bundled resources | `tauri.conf.json` (`tauri.linux.conf.json` replaces the window and bundle targets on Linux), `Cargo.toml` |
 
 ## Checking a change
 

@@ -49,3 +49,12 @@ Several agents can work at once, each in its own git worktree:
 ## The frozen engine
 
 `npm run sidecar:build` freezes the engine with PyInstaller into `backend/dist/wavefunction-backend`: an executable plus its `_internal` runtime. Tauri bundles that folder into `Wavefunction.app/Contents/Resources/backend` and starts it from there, so Python, its libraries, the built-in skills and ripgrep load from the app without extracting. Keep the folder together when copying or measuring it.
+
+## Linux
+
+Linux is community-supported ([README](../README.md#linux), [SECURITY.md](../SECURITY.md#linux)). The sandbox is `sandbox_linux.py`: Bubblewrap mounts and a seccomp filter, built from the same policy as the Seatbelt profile. Two things differ for code that reads its results:
+
+- A refusal reads as a missing path or a read-only file system, not "Operation not permitted". Code that tells a refusal from a missing file handles both, as `fileops._left_out` does.
+- Each command has its own PID namespace, so a PID it prints (`$!`) means another process outside. Tests translate it with `support.host_pid`.
+
+Without a Linux machine, Docker runs the sandbox and its tests in an Ubuntu container started with `--init --security-opt seccomp=unconfined --security-opt apparmor=unconfined --security-opt systempaths=unconfined`: bwrap needs user namespaces and a fresh `/proc`. Copy the checkout in rather than mounting it, so the container's `node_modules` and `.venv` don't replace the Mac's.

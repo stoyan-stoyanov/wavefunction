@@ -1,5 +1,8 @@
 """Editing repository files: the agent's edit-and-test loop and the editor's file boundary."""
 
+import sys
+from pathlib import Path
+
 import pytest
 from conftest import script_gateway, tool_call_message
 from langchain_core.messages import AIMessage
@@ -203,7 +206,10 @@ async def test_file_boundary_and_concurrent_edit_protection(coding, tmp_path, mo
             await client.post(preview + "/open", json={"path": "run.command", "target": "app"})
         ).status_code == 422
     pdf = str((folder / "out/report.pdf").resolve())
-    assert launched == [("/usr/bin/open", "-R", pdf), ("/usr/bin/open", "--", pdf)]
+    if sys.platform == "linux":
+        assert launched == [("/usr/bin/xdg-open", str(Path(pdf).parent)), ("/usr/bin/xdg-open", pdf)]
+    else:
+        assert launched == [("/usr/bin/open", "-R", pdf), ("/usr/bin/open", "--", pdf)]
     assert len(launched) == 2
     services.repository.set_setting("folder_grants", [])
     tree_url = f"/api/coding/threads/{thread['id']}/tree"

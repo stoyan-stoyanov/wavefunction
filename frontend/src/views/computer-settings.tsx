@@ -89,7 +89,7 @@ export function ComputerSettings() {
         title="Docker"
         description="The desktop runs inside Docker, which is installed separately and stays under your control."
       >
-        {status && !status.docker_available ? (
+        {status && !status.docker_available && !status.docker_problem ? (
           <div className="flex items-start gap-2 rounded-xl bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
             <Info className="mt-0.5 size-4 shrink-0" />
             <span>

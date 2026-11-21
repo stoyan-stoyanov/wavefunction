@@ -26,6 +26,16 @@ Accepted limitations. A review reports one of these again only if a change makes
 
 - A project folder that is a worktree made with `git worktree add`, or by another tool, keeps its objects and refs in its main repository, which the sandbox doesn't grant with it. Git there fails with "not a git repository", so the Changes tab, code history and the agent's Git commands don't work until the main repository is allowed in Settings › Access. Granting it automatically would trust the folder's `.git` file, which the agent can rewrite to name another repository's registration, such as one Git kept for a deleted folder.
 
+## Linux
+
+Linux is community-supported and built from source ([SECURITY.md](../SECURITY.md#linux)).
+
+- A path the sandbox doesn't show is missing to a command ("No such file or directory"), and a write outside writable grants fails as "Read-only file system", where macOS says "Operation not permitted". A failed command's result says so and points to `request_folder_access`, and the file tools report such a path as refused, as on macOS.
+- `gh` in a command can't use the app's GitHub sign-in: it reaches the proxy through a Unix socket, and the sandbox refuses to create any. `git` reaches GitHub through the loopback proxy as on macOS. Allowing one socket by its path isn't possible with seccomp, which can't read the address a program connects to.
+- In a Git worktree the app made, a command can't rewrite the shared `packed-refs` or `shallow` file: git fails with "Device or resource busy" when deleting a packed branch or tag, packing refs (`git pack-refs`, `git gc`) or deepening a shallow clone. Commits, fetches and deleting refs that aren't packed work. Seatbelt can allow one file by its path, including git's `packed-refs.lock` beside it; a mount can't, so the shared Git folder is a throwaway copy where only the granted entries are mounted back, and renaming over a mounted file fails.
+- A command without network access still has a loopback interface of its own: a server it starts there is reachable only from inside that command.
+- Computer use, notifications, dictation, updates and the in-app installs of the Microsoft, Google and email integrations are macOS-only.
+
 ## GitHub through the proxy
 
 - Commands act on GitHub as the user through `git` and `gh`, as in other coding agents' terminals. The proxy refuses only pushes that delete branches or push tags; there is no API blocklist.

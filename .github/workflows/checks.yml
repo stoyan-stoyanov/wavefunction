@@ -92,7 +92,10 @@ jobs:
         run: |
           uv run --no-sync --project backend python scripts/generate-openapi.py
           git diff --exit-code -- backend/openapi.json || { echo "::error::backend/openapi.json is stale. Run npm run generate:api and commit the result."; exit 1; }
+      # The `linux` job runs the cases marked `sandbox` on Linux; this one stays macOS-and-Linux-neutral.
       - run: npm run test:backend
+        env:
+          WAVEFUNCTION_SANDBOX_TESTS: "0"
       - name: Nothing left changed (commit what the job generated, or ignore it)
         run: git status --porcelain && test -z "$(git status --porcelain)"
   # Cases marked `sandbox`, and the launcher integration, whose fixture chat runs in a repository,
@@ -144,6 +147,55 @@ jobs:
       - run: mkdir -p backend/dist/wavefunction-backend
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
       - run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
+  # Linux, built from source and community-supported (SECURITY.md): the Bubblewrap and seccomp
+  # sandbox with its escape tests, then the frozen engine and the desktop app built and started.
+  # Not in all-checks, so a red Linux build never blocks a change.
+  linux:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: src-tauri
+      - name: Bubblewrap and Tauri's system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bubblewrap libpython3.12 libwebkit2gtk-4.1-dev libxdo-dev \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      # Ubuntu 24.04's AppArmor refuses unprivileged user namespaces, which bwrap needs, unless a
+      # profile allows them. README's Linux section tells users the same.
+      - name: Let bwrap create user namespaces
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: npm run setup
+      - name: Sandbox tests, the Linux escape tests among them
+        working-directory: backend
+        run: uv run --no-sync pytest -n 4 --dist loadfile -m "sandbox and not live and not destructive"
+      - name: The desktop app (engine, then .deb and AppImage)
+        run: npm run desktop:build
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+      - name: The packaged engine starts, answers /health and passes its sandbox self-check
+        run: |
+          dpkg-deb -x dist/desktop/*.deb "$RUNNER_TEMP/app"
+          engine=$(find "$RUNNER_TEMP/app" -path '*/backend/wavefunction-backend' -type f)
+          "$engine" --port 8799 --token ci-token --data-dir "$RUNNER_TEMP/data" & engine_pid=$!
+          trap 'kill $engine_pid' EXIT
+          for _ in $(seq 90); do curl -fsS http://127.0.0.1:8799/health && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8799/health
+          curl -fsS -H "Authorization: Bearer ci-token" http://127.0.0.1:8799/api/grants | jq -e '.sandbox_ok'
   # The one check to require in branch protection: it passes only when every job passed or was
   # skipped. Any other result fails it, including "abandoned", which a job gets when GitHub never
   # finds it a runner and so runs none of its steps.

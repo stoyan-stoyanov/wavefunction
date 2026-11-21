@@ -36,7 +36,7 @@ def computer_setup_row(computer=None):
         return {**row, "state": "connecting"}
     if status.image_ready:
         return {**row, "state": "ready"}
-    if not status.docker_available:
+    if not status.docker_available and not status.docker_problem:
         return {
             **row,
             "state": "error",
