@@ -1041,7 +1041,7 @@ class Sandbox:
             readable += [grant.path for grant in self.grants]
         exempt: list[tuple[Path, bool]] = [(self.scratch, True), (Path(ripgrep_binary()), False)]
         if (binary := interpreter()) is not None:
-            exempt.append((binary.parent, False))
+            exempt += [(binary.parent, False), (binary.resolve().parent, False)]
         if not getattr(sys, "frozen", False):
             exempt += [(Path(prefix).resolve(), False) for prefix in {sys.prefix, sys.base_prefix}]
         if gh := managed_gh():
@@ -1057,6 +1057,7 @@ class Sandbox:
             writable=[cache, *(grant.path for grant in self.grants if grant.writable)],
             private=[*private_folders(), *self.private_roots],
             exempt=exempt,
+            links=[binary] if binary is not None else [],
             network=self.network,
             restrict_reads=self.restrict_reads,
         )

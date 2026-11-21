@@ -155,6 +155,25 @@ def _inside(path: Path, roots: list[Path]) -> bool:
     return any(path == root or root in path.parents for root in roots)
 
 
+def symlinks(path: Path) -> list[tuple[str, Path]]:
+    """The links met on the way to `path`, as (target, link), in order. A virtual environment's
+    `python` can lead through one in a folder the sandbox doesn't mount, such as uv's link from a
+    minor version to the patch version installed."""
+    found: list[tuple[str, Path]] = []
+    current = Path(os.path.abspath(path))
+    while len(found) < 40:
+        for depth in range(2, len(current.parts) + 1):
+            prefix = Path(*current.parts[:depth])
+            if prefix.is_symlink():
+                target = os.readlink(prefix)
+                found.append((target, prefix))
+                current = Path(os.path.normpath(prefix.parent / target)).joinpath(*current.parts[depth:])
+                break
+        else:
+            break
+    return found
+
+
 def _scratch_folder(folder: Path, writable: list[Path]) -> list[str]:
     """A folder where only some files may change, as Seatbelt allows a file by its path: git's
     common folder for a worktree, where `packed-refs` is granted but `config` and `hooks` are not.
@@ -181,6 +200,7 @@ def launch(
     writable: list[Path],
     private: list[Path],
     exempt: list[tuple[Path, bool]],
+    links: list[Path],
     network: bool,
     restrict_reads: bool,
 ) -> list[str]:
@@ -191,7 +211,8 @@ def launch(
     the whole disk) read-only: the grants, parents before children, read-only ones only where no
     writable grant holds them; then each private folder that shows by now, covered by an empty
     one; then the `exempt` paths, which the policy allows even inside a private folder (path,
-    writable); and last the covers and the root made read-only.
+    writable); then the links on the way to each of `links` that nothing mounted shows; and
+    last the covers and the root made read-only.
     """
     mounts: list[str] = []
     visible: list[Path] = []
@@ -239,6 +260,10 @@ def launch(
         mounts += ["--perms", "0111" if through else "0000", "--tmpfs", str(path)]
     for path, rule in exempt:
         mounts += _bind(path, writable=rule)
+    shown = [*visible, *(path for path, _ in exempt)]
+    for target, link in dict.fromkeys(pair for path in links for pair in symlinks(path)):
+        if not _inside(link, shown):
+            mounts += ["--symlink", target, str(link)]
     # The covers, and the root, which bwrap leaves writable: a write anywhere not mounted writable
     # would otherwise seem to succeed and vanish with the command.
     for path in [*covers, Path("/")]:
