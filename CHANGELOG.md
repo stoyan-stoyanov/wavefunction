@@ -4,6 +4,10 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+### Added
+
+- Wavefunction builds and runs on Linux from source, with the agent's commands confined by a Bubblewrap sandbox as they are on macOS. Linux is community-supported: there are no Linux downloads or updates yet, and computer use, notifications and dictation stay macOS-only. The README says how to build it. ([#74](https://github.com/stoyan-stoyanov/wavefunction/pull/74))
+
 ## 0.4.0 - 2026-11-07
 
 ### Added
