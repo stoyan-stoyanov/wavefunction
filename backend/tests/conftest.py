@@ -134,7 +134,7 @@ def pytest_collection_modifyitems(config, items):
 # (summed across workers; a subset can only exceed the total if the whole suite would). Times depend
 # on the machine, and a shared CI runner's vary by a third between runs of the same code, so CI
 # reports the time limits and a local run fails on them. The case count fails everywhere.
-CASES = 240
+CASES = 250
 TEST_SECONDS = 30
 SUITE_SECONDS = 240
 ENFORCE_TIME = not os.environ.get("CI")
