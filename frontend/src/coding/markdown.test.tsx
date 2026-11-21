@@ -41,7 +41,7 @@ it("offers to run finished shell blocks in the chat, running a console session's
   const run = vi.fn().mockResolvedValue(undefined);
   const reply = [
     "```bash\nnpm test\n```",
-    "```console\n$ ls\napp.py  README.md\n$ git commit -m 'one' \\\n  --allow-empty\n[main 1a2b3c4] one\n```",
+    "```console\n$ ls\napp.py  README.md\n$ git commit -m 'one' \\\n  --allow-empty\n[main 1a2b3c4] one\n$ printf '%s\\n' \\\n> hello\nhello\n```",
     "```sh\nfor name in one two; do\n  echo $name\ndone\n```",
     "```python\nprint('not a shell')\n```",
   ].join("\n\n");
@@ -58,7 +58,7 @@ it("offers to run finished shell blocks in the chat, running a console session's
   for (const button of buttons) fireEvent.click(button);
   expect(run.mock.calls).toEqual([
     ["npm test"],
-    ["ls\ngit commit -m 'one' \\\n  --allow-empty"],
+    ["ls\ngit commit -m 'one' \\\n  --allow-empty\nprintf '%s\\n' \\\nhello"],
     ["for name in one two; do\n  echo $name\ndone"],
   ]);
   // A block still streaming in is not the whole command yet.

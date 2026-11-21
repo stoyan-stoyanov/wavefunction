@@ -27,9 +27,10 @@ export function blockCommand(language: string, code: string) {
   const commands: string[] = [];
   let continued = false;
   for (const line of lines) {
-    // Output lines are skipped; a command ending in a backslash goes on in the next line.
+    // Output lines are skipped; a command ending in a backslash goes on in the next line, which may
+    // show the shell's `> ` continuation prompt.
     if (!continued && !line.startsWith("$ ")) continue;
-    const command: string = continued ? line : line.slice(2);
+    const command: string = continued ? line.replace(/^> /, "") : line.slice(2);
     commands.push(command);
     continued = command.endsWith("\\");
   }
