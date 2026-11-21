@@ -25,14 +25,13 @@ async def upload(stack, owner, name, data):
     return await stack.files.save_upload(owner, UploadFile(BytesIO(data), filename=name))
 
 
-async def test_invalid_uploads_leave_no_files_or_records(stack):
+@pytest.mark.parametrize("extension", ["png", "exe"])
+async def test_invalid_uploads_leave_no_files_or_records(stack, extension):
     agent = stack.agent
-    # An image that doesn't decode, and a type that is never accepted.
-    for extension in ("png", "exe"):
-        with pytest.raises(ValueError):
-            await upload(stack, agent["id"], f"broken.{extension}", b"not a valid file")
-        assert not stack.repository.list_project_files(agent["id"])
-        assert not list((stack.files.project_dir(agent["id"]) / "sources").glob("*"))
+    with pytest.raises(ValueError):
+        await upload(stack, agent["id"], f"broken.{extension}", b"not a valid file")
+    assert not stack.repository.list_project_files(agent["id"])
+    assert not list((stack.files.project_dir(agent["id"]) / "sources").glob("*"))
 
 
 class CapturingModel(ScriptedModel):

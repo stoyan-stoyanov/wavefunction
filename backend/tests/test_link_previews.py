@@ -76,12 +76,11 @@ def site(monkeypatch):
     server.server_close()
 
 
-async def test_link_cards_are_read_from_public_pages_cached_and_otherwise_plain(coding, site):
+async def test_link_cards_are_read_from_a_pages_tags_and_cached(coding, site):
     from wavefunction.link_previews import CardCache
 
     client, _, _ = coding
     origin, hits = site
-    port = origin.rsplit(":", 1)[1]
 
     async def card(url):
         response = await client.get("/api/coding/link-preview", params={"url": url})
@@ -127,19 +126,29 @@ async def test_link_cards_are_read_from_public_pages_cached_and_otherwise_plain(
     cache.put("old", article, 0)
     assert cache.get("old") is None
 
+
+async def test_links_without_a_card_stay_plain_and_private_addresses_are_never_fetched(coding, site):
+    client, _, _ = coding
+    origin, hits = site
+    port = origin.rsplit(":", 1)[1]
+
+    async def card(url):
+        response = await client.get("/api/coding/link-preview", params={"url": url})
+        assert response.status_code == 200, url
+        return response.json()["kind"]
+
     # This machine and its network are never fetched, directly or through a redirect.
-    assert (await card(f"http://127.0.0.1:{port}/plain"))["kind"] == "none"
-    assert (await card(f"{origin}/to-private"))["kind"] == "none"
-    assert hits["/plain"] == 1 and hits["/article"] == fetched
-    photos = hits["/photo"]
+    assert await card(f"http://127.0.0.1:{port}/plain") == "none"
+    assert await card(f"{origin}/to-private") == "none"
     private = await client.get(
         "/api/coding/link-preview/media", params={"url": f"http://127.0.0.1:{port}/photo"}
     )
-    assert private.status_code == 422 and hits["/photo"] == photos
+    assert private.status_code == 422
+    assert hits["/plain"] == hits["/article"] == hits["/photo"] == 0
     # A server error or a slow page gives up quickly.
-    assert (await card(f"{origin}/broken"))["kind"] == "none"
+    assert await card(f"{origin}/broken") == "none"
     started = time.monotonic()
-    assert (await card(f"{origin}/slow"))["kind"] == "none"
+    assert await card(f"{origin}/slow") == "none"
     assert time.monotonic() - started < 1
     # Only web addresses have cards.
     for url in ("file:///etc/hosts", "javascript:alert(1)"):
