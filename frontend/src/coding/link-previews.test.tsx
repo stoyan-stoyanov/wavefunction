@@ -33,7 +33,7 @@ it("asks the engine for cards of the web pages a reply links, never for code or 
   const linkPreview = vi
     .spyOn(codingApi, "linkPreview")
     .mockImplementation(async (url) =>
-      url.includes("docs.example.com")
+      new URL(url).hostname === "docs.example.com"
         ? { url, ...card }
         : { url, kind: "none", title: null, description: null, site_name: null, image: null, icon: null },
     );

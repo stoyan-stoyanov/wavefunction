@@ -3,6 +3,7 @@ import threading
 import time
 from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import urlparse
 
 import pytest
 
@@ -29,6 +30,8 @@ def site(monkeypatch):
     from wavefunction import link_previews, web
 
     hits = Counter()
+    # Set once the server has its port; never built from the request.
+    private_page = {}
     pages = {
         "/article": ("text/html; charset=utf-8", ARTICLE.replace("{long}", "word " * 100).encode()),
         "/plain": ("text/html", PLAIN.encode()),
@@ -42,8 +45,7 @@ def site(monkeypatch):
                 time.sleep(1)
             if self.path == "/to-private":
                 self.send_response(302)
-                port = self.headers["Host"].rsplit(":", 1)[1]
-                self.send_header("Location", f"http://127.0.0.1:{port}/article")
+                self.send_header("Location", private_page["url"])
                 self.end_headers()
                 return
             if self.path not in pages:
@@ -61,17 +63,18 @@ def site(monkeypatch):
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     server.daemon_threads = True
+    private_page["url"] = f"http://127.0.0.1:{server.server_port}/article"
     threading.Thread(target=server.serve_forever, daemon=True).start()
     original = web._assert_public
 
     async def public(url):
-        if "//site.test:" in url:
+        if urlparse(url).hostname == "site.test":
             return ipaddress.ip_address("127.0.0.1")
         return await original(url)
 
     monkeypatch.setattr(web, "_assert_public", public)
     monkeypatch.setattr(link_previews, "PREVIEW_DEADLINE", 0.3)
-    yield f"http://site.test:{server.server_address[1]}", hits
+    yield f"http://site.test:{server.server_port}", hits
     server.shutdown()
     server.server_close()
 
