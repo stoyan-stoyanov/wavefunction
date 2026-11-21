@@ -4,6 +4,10 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+### Added
+
+- A shell command the agent shares in a chat has a play button. Clicking it runs the command in a new terminal in the chat's folder, in the Terminal tab beside the chat. ([#70](https://github.com/stoyan-stoyanov/wavefunction/pull/70))
+
 ## 0.4.0 - 2026-11-07
 
 ### Added
