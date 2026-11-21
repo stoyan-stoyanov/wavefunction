@@ -4,6 +4,10 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+### Added
+
+- The agent can create and edit images. Turn on image models in **Settings › Models** (Gemini's Nano Banana models, OpenAI's GPT Image models, or the image models OpenRouter and the Vercel AI Gateway offer) and ask for a picture. The images are saved in the chat's folder and shown in the conversation; click one to see it full size. ([#72](https://github.com/stoyan-stoyanov/wavefunction/pull/72))
+
 ## 0.4.0 - 2026-11-07
 
 ### Added
