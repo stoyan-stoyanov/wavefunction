@@ -85,6 +85,12 @@ Accepted limitations. A review reports one of these again only if a change makes
 - On OpenRouter, Default sends no reasoning setting, so hosts of a model that makes thinking optional behave differently: Wafer's DeepSeek V4 Pro does not think unless asked, while CoreWeave's and Together's do. Asking for it every time doubled the cost and duration of the orchestration check without passing more of it, so Default stays as it is. Choose an effort to get thinking on every host.
 - OpenRouter keeps a chat on one host of its model only while it can, and may move it mid-run, from Azure to OpenAI, say. The new host can't open the reasoning the old one encrypted, so that request goes again without it and later ones send only the new host's. The turn goes through; the model loses that earlier reasoning.
 
+## Image models
+
+- On the Vercel AI Gateway, only OpenAI's image models get the aspect ratio asked for. The gateway's OpenAI-compatible Images API documents `size` for those alone and leaves the others' options to the AI SDK, so a FLUX or Seedream image comes out in that model's default shape.
+- OpenAI's models take three sizes the app picks from the ratio: square, 3:2 landscape or 2:3 portrait. A 16:9 request gets 3:2.
+- One request makes one image, so four images cost four requests even where a model could return several in one. Some models take only one per request, and the app does not keep each model's limit.
+
 ## Model checkpoints
 
 - A finished run keeps only its conversation's latest LangGraph checkpoint and those message points recorded, and drops the other checkpoints' writes with them. That is safe for `langgraph-checkpoint-sqlite` 3.x, whose `aget_tuple` reads only the returned checkpoint's own writes, and for the agent's plain-reducer channels. A saver that rebuilds state from ancestors' writes (`DeltaChannel`, or pending sends read from a parent) would need those ancestors kept; check this before adopting either.

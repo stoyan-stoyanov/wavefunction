@@ -202,6 +202,9 @@ export const codingApi = {
   /** An attached image as a blob URL; the caller revokes it. */
   attachmentPreview: (id: string, fileId: string) =>
     fetchBlobUrl(`${threadUrl(id)}/attachments/${encodeURIComponent(fileId)}`),
+  /** An attached or generated image at full size. */
+  attachmentImage: (id: string, fileId: string, signal?: AbortSignal) =>
+    fetchBlobUrl(`${threadUrl(id)}/attachments/${encodeURIComponent(fileId)}/content`, { signal }),
   removeAttachment: (id: string, fileId: string) =>
     request<void>(`${threadUrl(id)}/attachments/${fileId}`, json("DELETE")),
   tree: (id: string, path = "") =>

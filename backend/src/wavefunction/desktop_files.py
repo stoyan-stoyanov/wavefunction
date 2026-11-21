@@ -111,13 +111,18 @@ def _read_mac(context: ToolContext, path: Path) -> bytes:
     return data
 
 
-def _write_mac(context: ToolContext, folder: Path, name: str, data: bytes) -> Path:
-    """Write a new file in `folder`, never over one: "Report (1).pdf" when "Report.pdf" is taken."""
+def _write_mac(
+    context: ToolContext, folder: Path, name: str, data: bytes, grants: list | None = None
+) -> Path:
+    """Write a new file in `folder`, never over one: "Report (1).pdf" when "Report.pdf" is taken.
+
+    `grants` are the user's folder grants unless a caller passes a task's own, with its checkout.
+    """
     directory = os.open(folder, os.O_RDONLY | os.O_DIRECTORY)
     try:
         # The folder as opened is what is checked, and the file is made inside that very folder.
         real = _not_private(_where(directory))
-        if not _covered(str(real), True, _grants(context)):
+        if not _covered(str(real), True, _grants(context) if grants is None else grants):
             raise ValueError(f"{real} is not a folder the user allowed agents to save to.")
         stem, extension = os.path.splitext(name)
         for number in range(1000):

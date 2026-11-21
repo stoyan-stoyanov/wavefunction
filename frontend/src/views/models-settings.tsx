@@ -53,6 +53,7 @@ import {
 import { Popover as PopoverPrimitive } from "radix-ui";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { ImageModelsSettings } from "./image-models-settings";
 import { SettingsRow } from "./settings-row";
 function contextLabel(contextLength: number): string {
   if (!contextLength) return "";
@@ -449,8 +450,7 @@ export function ModelsSettings({
     ...modelProviders.filter(({ id }) => !isProviderConnected(connections, id)),
     ...(openAIConnected ? [] : [openAI]),
   ];
-  const defaultConnected = defaultModelConnected(connections);
-  const ready = realModelEnabled(connections) && defaultConnected;
+  const ready = realModelEnabled(connections) && defaultModelConnected(connections);
   const hasProvider = hasModelProvider(connections);
   const selected = typeof flow === "object" && flow !== null ? flow : null;
   const selectingModel =
@@ -632,6 +632,7 @@ export function ModelsSettings({
             </div>
           </NativeSection>
 
+          {ready ? <ImageModelsSettings connections={connections} /> : null}
           {ready ? (
             <div className="mt-8">
               <Button

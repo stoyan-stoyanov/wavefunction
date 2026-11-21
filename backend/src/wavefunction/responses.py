@@ -171,6 +171,8 @@ class SavedSecrets(TypedDict):
 class Connections(TypedDict):
     model: ModelChoice
     enabled_models: list[str]
+    # `provider::model`, the default first. Always sent; tests that build connections leave it out.
+    enabled_image_models: NotRequired[list[str]]
     coding_models: list[ModelChoice]
     secrets: SavedSecrets
     codex: CodexStatus
@@ -186,6 +188,19 @@ class DefaultModel(TypedDict):
 class EnabledModels(TypedDict):
     models: list[str]
     model: ModelChoice
+
+
+class ImageModelOption(TypedDict):
+    id: str
+    name: str
+
+
+class ImageModels(TypedDict):
+    models: list[ImageModelOption]
+
+
+class EnabledImageModels(TypedDict):
+    models: list[str]
 
 
 class ZeroDataRetention(TypedDict):

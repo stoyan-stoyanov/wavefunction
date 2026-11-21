@@ -89,6 +89,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/connections/image-models/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image Model Options */
+        get: operations["image_model_options_api_connections_image_models__provider__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/connections/image-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Image Models */
+        put: operations["update_image_models_api_connections_image_models_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/activity": {
         parameters: {
             query?: never;
@@ -1838,6 +1872,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coding/threads/{thread_id}/attachments/{file_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Attachment Original
+         * @description An attached or generated image at full size, for viewing it whole.
+         */
+        get: operations["attachment_original_api_coding_threads__thread_id__attachments__file_id__content_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/coding/threads/{thread_id}/preview/open": {
         parameters: {
             query?: never;
@@ -2312,6 +2366,8 @@ export interface components {
             model: components["schemas"]["ModelChoice"];
             /** Enabled Models */
             enabled_models: string[];
+            /** Enabled Image Models */
+            enabled_image_models?: string[];
             /** Coding Models */
             coding_models: components["schemas"]["ModelChoice"][];
             secrets: components["schemas"]["SavedSecrets"];
@@ -2553,6 +2609,11 @@ export interface components {
              * @default false
              */
             smtp_starttls: boolean;
+        };
+        /** EnabledImageModels */
+        EnabledImageModels: {
+            /** Models */
+            models: string[];
         };
         /** EnabledModels */
         EnabledModels: {
@@ -2953,6 +3014,18 @@ export interface components {
             version: string;
             /** Data Dir */
             data_dir: string;
+        };
+        /** ImageModelOption */
+        ImageModelOption: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** ImageModels */
+        ImageModels: {
+            /** Models */
+            models: components["schemas"]["ImageModelOption"][];
         };
         /** InputTokenDetails */
         InputTokenDetails: {
@@ -4446,6 +4519,74 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ControlStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    image_model_options_api_connections_image_models__provider__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImageModels"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_image_models_api_connections_image_models_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnabledModelsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnabledImageModels"];
                 };
             };
             /** @description Validation Error */
@@ -8421,6 +8562,40 @@ export interface operations {
             };
             path: {
                 thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attachment_original_api_coding_threads__thread_id__attachments__file_id__content_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                thread_id: string;
+                file_id: string;
             };
             cookie?: never;
         };

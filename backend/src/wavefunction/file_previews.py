@@ -81,6 +81,29 @@ def kind(path: Path) -> str:
     return "other" if b"\0" in sample else "text"
 
 
+def attachment_image(ws, thread_id: str, file_id: str) -> tuple[Path, str]:
+    """An image attached to this conversation's draft or sent with, or made in, its messages."""
+    repo = ws.services.repository
+    with ws.db() as db:
+        drafted = db.execute(
+            "SELECT 1 FROM coding_attachments WHERE thread_id = ? AND file_id = ?", (thread_id, file_id)
+        ).fetchone()
+    record = (
+        repo.get_project_file(ws.agent_id, file_id)
+        if drafted
+        else repo.conversation_file(ws.agent_id, ws.thread(thread_id)["conversation_id"], file_id)
+    )
+    if record is None:
+        raise KeyError("Attachment not found in this conversation")
+    if not record["media_type"].startswith("image/"):
+        raise ValueError("Only image attachments have a preview.")
+    root = ws.services.files.project_dir(ws.agent_id).resolve()
+    path = (root / record["relative_path"]).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        raise KeyError("Attachment not found in this conversation")
+    return path, record["media_type"]
+
+
 def register_file_previews(router, workspace):
     def resolve(thread_id: str, link: str) -> Path:
         ws = workspace()
@@ -131,6 +154,14 @@ def register_file_previews(router, workspace):
         )
         # SVG is shown as an <img>, which never runs its scripts.
         return FileResponse(target, media_type=media_type, headers={"Content-Security-Policy": "sandbox"})
+
+    @router.get("/threads/{thread_id}/attachments/{file_id}/content")
+    async def attachment_original(thread_id: str, file_id: str):
+        """An attached or generated image at full size, for viewing it whole."""
+        path, media_type = attachment_image(workspace(), thread_id, file_id)
+        if path.stat().st_size > MAX_PREVIEW_BYTES:
+            raise ValueError("This image is too large to preview.")
+        return FileResponse(path, media_type=media_type, headers={"Content-Security-Policy": "sandbox"})
 
     @router.post("/threads/{thread_id}/preview/open", status_code=204)
     async def open_file(thread_id: str, payload: OpenFile):
