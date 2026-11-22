@@ -1,6 +1,6 @@
-/* Windows 7: Aero glass, Explorer's navigation pane and the classic controls.
-   An original recreation of the look in CSS. No Microsoft fonts or icon files: the fonts fall back
-   through open ones, and the icons in icons/ are drawn for this theme.
+/* Nostalgia: a glass title bar, a classic navigation pane and the push buttons of 2009.
+   Drawn in CSS from scratch. No system fonts or icon files are bundled: the fonts fall back
+   through open ones, and the icons in icons/ are drawn for this design.
    Rules that must outrank the app's own carry :root[data-design] (see ../README.md). */
 
 :root {
@@ -38,7 +38,7 @@
   --sidebar-border: #d6e5f5;
   --sidebar-ring: #3399ff;
 
-  /* Windows 7 separates with borders, and only menus and windows cast shadows. */
+  /* Structure comes from borders; only menus and windows cast shadows. */
   --elevation-1: 0 0 0 1px var(--border);
   --elevation-2: 0 0 0 1px var(--border);
   --elevation-3: 0 0 0 1px #979797, 2px 2px 3px rgb(0 0 0 / 0.3);
@@ -68,9 +68,9 @@
   --text-3xl: 1.25rem;
   --text-3xl--line-height: 1.75rem;
 
-  /* Aero glass in the default "Sky" colour: soft light streaks over a blue that lets a little
+  /* Sky-blue glass: soft light streaks over a blue that lets a little
      through. Fixed to the window, so the bands and the frame read as one sheet of glass. */
-  --w7-glass:
+  --nostalgia-glass:
     linear-gradient(to bottom, rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.12) 22px, transparent 46px),
     linear-gradient(
       112deg,
@@ -83,21 +83,21 @@
       transparent 84%
     ),
     linear-gradient(to bottom, rgb(164 199 238 / 0.95), rgb(112 158 220 / 0.95));
-  --w7-glass-edge: rgb(36 58 92 / 0.55);
-  --w7-glow: 0 0 9px #fff, 0 0 9px #fff, 0 0 3px #fff;
+  --nostalgia-glass-edge: rgb(36 58 92 / 0.55);
+  --nostalgia-glow: 0 0 9px #fff, 0 0 9px #fff, 0 0 3px #fff;
 
-  --w7-button: linear-gradient(#f2f2f2 0%, #ebebeb 50%, #dddddd 51%, #cfcfcf 100%);
-  --w7-button-hover: linear-gradient(#eaf6fd 0%, #d9f0fc 50%, #bee6fd 51%, #a7d9f5 100%);
-  --w7-button-active: linear-gradient(#e5f4fc 0%, #c4e5f6 50%, #98d1ef 51%, #68b3db 100%);
-  --w7-hot: linear-gradient(#fafbfd, #ebf3fd);
-  --w7-hot-border: #b8d6fb;
-  --w7-selected: linear-gradient(#dcebfc, #c1dbfc);
-  --w7-selected-border: #7da2ce;
-  --w7-header: linear-gradient(#ffffff, #f1f2f4);
-  --w7-pane: linear-gradient(#fafcfe, #e9f0f8);
-  --w7-heading: #1e395b;
-  --w7-instruction: #003399;
-  --w7-link: #0066cc;
+  --nostalgia-button: linear-gradient(#f2f2f2 0%, #ebebeb 50%, #dddddd 51%, #cfcfcf 100%);
+  --nostalgia-button-hover: linear-gradient(#eaf6fd 0%, #d9f0fc 50%, #bee6fd 51%, #a7d9f5 100%);
+  --nostalgia-button-active: linear-gradient(#e5f4fc 0%, #c4e5f6 50%, #98d1ef 51%, #68b3db 100%);
+  --nostalgia-hot: linear-gradient(#fafbfd, #ebf3fd);
+  --nostalgia-hot-border: #b8d6fb;
+  --nostalgia-selected: linear-gradient(#dcebfc, #c1dbfc);
+  --nostalgia-selected-border: #7da2ce;
+  --nostalgia-header: linear-gradient(#ffffff, #f1f2f4);
+  --nostalgia-pane: linear-gradient(#fafcfe, #e9f0f8);
+  --nostalgia-heading: #1e395b;
+  --nostalgia-instruction: #003399;
+  --nostalgia-link: #0066cc;
 }
 
 /* ---- Text, selection, focus ---- */
@@ -195,25 +195,25 @@
 #root {
   box-sizing: border-box;
   padding: 0 7px 7px;
-  background: var(--w7-glass);
+  background: var(--nostalgia-glass);
   background-attachment: fixed;
 }
 :root[data-design] .coding-shell {
   height: calc(100dvh / var(--css-zoom, 1) - 7px);
   background: #fff;
-  box-shadow: 0 0 0 1px var(--w7-glass-edge);
+  box-shadow: 0 0 0 1px var(--nostalgia-glass-edge);
 }
 :root[data-design] .coding-shell :is(.navigation-topbar, .shell-titlebar, .workbench-toolbar) {
   height: 46px;
   border-bottom: 0;
-  background: var(--w7-glass);
+  background: var(--nostalgia-glass);
   background-attachment: fixed;
-  box-shadow: inset 0 -1px 0 var(--w7-glass-edge);
+  box-shadow: inset 0 -1px 0 var(--nostalgia-glass-edge);
   -webkit-backdrop-filter: blur(6px);
   backdrop-filter: blur(6px);
   color: #000;
 }
-/* The window's icon and name, where Windows puts them. */
+/* The window's icon and name, top left. */
 :root[data-design] .navigation-topbar {
   padding: 0 6px 0 9px;
 }
@@ -224,7 +224,7 @@
   background: url("icons/chat.svg") left center / 16px no-repeat;
   font-size: 12px;
   line-height: 16px;
-  text-shadow: var(--w7-glow);
+  text-shadow: var(--nostalgia-glow);
   white-space: nowrap;
 }
 /* The toolbar floats over the chat as glass, always in sight. */
@@ -247,7 +247,7 @@
 :root[data-design] .shell-titlebar .chat-title {
   font-size: 12px;
   font-weight: 400;
-  text-shadow: var(--w7-glow);
+  text-shadow: var(--nostalgia-glow);
 }
 :root[data-design] .shell-titlebar svg.lucide-message-square {
   background: url("icons/chat.svg") center / contain no-repeat;
@@ -339,7 +339,7 @@
   filter: brightness(0.85);
 }
 
-/* ---- Explorer's navigation pane ---- */
+/* ---- The navigation pane ---- */
 
 :root[data-design] .coding-sidebar {
   background: #fff;
@@ -389,14 +389,14 @@
     .coding-thread-row:hover,
     .sidebar-bottom > button:hover
   ) {
-  border-color: var(--w7-hot-border);
-  background: var(--w7-hot);
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
 }
 :root[data-design]:not(.dark)
   .coding-sidebar
   :is(.coding-thread-row.selected, .new-project[aria-current="page"]) {
-  border-color: var(--w7-selected-border);
-  background: var(--w7-selected);
+  border-color: var(--nostalgia-selected-border);
+  background: var(--nostalgia-selected);
 }
 :root[data-design] .coding-sidebar .coding-thread-row .thread-more {
   margin: 0 2px 0 0;
@@ -429,7 +429,7 @@
   background: #3399ff;
 }
 
-/* Drawn icons in place of the line icons Explorer would never use. */
+/* Drawn, coloured icons in place of the line icons. */
 :root[data-design]
   .coding-sidebar
   :is(
@@ -499,7 +499,7 @@
   ) {
   border: 1px solid #707070;
   border-radius: 3px;
-  background: var(--w7-button);
+  background: var(--nostalgia-button);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.7);
   color: #000;
   font-weight: 400;
@@ -519,7 +519,7 @@
     .send-button
   ):not(:disabled):hover {
   border-color: #3c7fb1;
-  background: var(--w7-button-hover);
+  background: var(--nostalgia-button-hover);
 }
 :root[data-design]
   :is(
@@ -535,10 +535,10 @@
     .send-button
   ):not(:disabled):active {
   border-color: #2c628b;
-  background: var(--w7-button-active);
+  background: var(--nostalgia-button-active);
   box-shadow: inset 1px 1px 1px rgb(0 0 0 / 0.15);
 }
-/* The default button carries the blue edge Windows gives the one Enter presses. */
+/* The default button carries the blue edge that marks the one Enter presses. */
 :root[data-design] :is([data-slot="button"][data-variant="default"], [data-slot="alert-dialog-action"]) {
   border-color: #3c7fb1;
   box-shadow:
@@ -566,12 +566,12 @@
 :root[data-design]
   :is([data-slot="dropdown-menu-trigger"], [data-slot="popover-trigger"])[data-variant="ghost"]:hover,
 :root[data-design] [data-variant="ghost"][data-state="open"] {
-  border-color: var(--w7-hot-border);
-  background: var(--w7-hot);
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
   color: #000;
 }
 :root[data-design] [data-slot="button"][data-variant="link"] {
-  color: var(--w7-link);
+  color: var(--nostalgia-link);
 }
 :root[data-design] [data-slot="button"][data-variant="link"]:hover {
   color: #3399ff;
@@ -604,7 +604,7 @@
 :root[data-design] input[type="range"] {
   accent-color: #3c7fb1;
 }
-/* Switches become check boxes, as Windows would show an on/off choice. */
+/* Switches become check boxes, the period's on/off control. */
 :root[data-design] :is([data-slot="switch"], input[type="checkbox"]) {
   flex-shrink: 0;
   appearance: none;
@@ -633,7 +633,7 @@
 :root[data-design] [data-slot="switch-thumb"] {
   display: none;
 }
-/* The light/dark choice as Windows radio buttons. */
+/* The light/dark choice as radio buttons. */
 :root[data-design] div[role="radiogroup"] {
   gap: 14px;
   padding: 0;
@@ -725,7 +725,7 @@
   box-shadow:
     0 0 0 1px rgb(255 255 255 / 0.6),
     0 0 0 8px rgb(150 188 230 / 0.95),
-    0 0 0 9px var(--w7-glass-edge),
+    0 0 0 9px var(--nostalgia-glass-edge),
     0 10px 32px rgb(0 0 0 / 0.45);
 }
 :root[data-design] :is([data-slot="dialog-overlay"], [data-slot="alert-dialog-overlay"]) {
@@ -734,7 +734,7 @@
   backdrop-filter: none;
 }
 :root[data-design] :is([data-slot="dialog-title"], [data-slot="alert-dialog-title"]) {
-  color: var(--w7-instruction);
+  color: var(--nostalgia-instruction);
   font-size: 16px;
   font-weight: 400;
 }
@@ -763,17 +763,17 @@
   line-height: 1.55;
 }
 :root[data-design] .coding-markdown :is(h1, h2) {
-  color: var(--w7-instruction);
+  color: var(--nostalgia-instruction);
   font-size: 16px;
   font-weight: 400;
 }
 :root[data-design] .coding-markdown :is(h3, h4) {
-  color: var(--w7-heading);
+  color: var(--nostalgia-heading);
   font-size: 13px;
   font-weight: 600;
 }
 :root[data-design] .coding-markdown a {
-  color: var(--w7-link);
+  color: var(--nostalgia-link);
   text-decoration: none;
 }
 :root[data-design] .coding-markdown a:hover {
@@ -798,7 +798,7 @@
 :root[data-design] .coding-markdown [data-streamdown="code-block-header"] {
   height: 23px;
   border-bottom: 1px solid #d5d5d5;
-  background: var(--w7-header);
+  background: var(--nostalgia-header);
   color: #4c607a;
   font-family: var(--font-sans);
   font-size: 11px;
@@ -830,15 +830,15 @@
 :root[data-design] .chat-table th {
   border-right: 1px solid #e3e5e8;
   border-bottom: 1px solid #d5d5d5;
-  background: var(--w7-header);
+  background: var(--nostalgia-header);
   color: #4c607a;
   font-weight: 400;
 }
 :root[data-design] .chat-table tbody tr:hover td {
-  background: var(--w7-hot);
+  background: var(--nostalgia-hot);
 }
 :root[data-design] .trace-toggle {
-  color: var(--w7-heading);
+  color: var(--nostalgia-heading);
   font-size: 12px;
 }
 :root[data-design] .trace-toggle:hover {
@@ -848,7 +848,7 @@
 :root[data-design] .run-time {
   color: #6d6d6d;
 }
-/* Tool activity as a group box of rows that highlight like Explorer's. */
+/* Tool activity as a group box of rows that highlight like the navigation pane's. */
 :root[data-design] .coding-trace {
   border: 1px solid #d5dfe5;
   border-radius: 3px;
@@ -867,12 +867,12 @@
   font-size: 12px;
 }
 :root[data-design] .coding-trace summary:hover {
-  border-color: var(--w7-hot-border);
-  background: var(--w7-hot);
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
 }
 :root[data-design] .coding-trace details[open] > summary {
-  border-color: var(--w7-selected-border);
-  background: var(--w7-selected);
+  border-color: var(--nostalgia-selected-border);
+  background: var(--nostalgia-selected);
 }
 :root[data-design] .coding-trace :is(pre, .font-mono) {
   font-family: var(--font-mono);
@@ -881,7 +881,7 @@
 :root[data-design] :is(.approval-card, .question-card, .routine-report-card) {
   border: 1px solid #d5dfe5;
   border-radius: 3px;
-  background: var(--w7-pane);
+  background: var(--nostalgia-pane);
   box-shadow: none;
 }
 
@@ -924,8 +924,8 @@
   .coding-composer
   .composer-toolbar
   :is(.model-selector, .composer-chip)[data-state="open"] {
-  border-color: var(--w7-hot-border);
-  background: var(--w7-hot);
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
 }
 :root[data-design] .send-button {
   width: 34px;
@@ -937,14 +937,14 @@
 }
 :root[data-design] .composer-footer,
 :root[data-design] .composer-footer .composer-repository {
-  color: var(--w7-heading);
+  color: var(--nostalgia-heading);
   font-size: 11px;
 }
 :root[data-design] .composer-footer {
   padding-top: 6px;
 }
 
-/* ---- Settings, as a Control Panel ---- */
+/* ---- Settings, with a task pane ---- */
 
 :root[data-design] .coding-settings-sidebar {
   background: linear-gradient(#f7fafd, #dce7f5);
@@ -954,7 +954,7 @@
   border: 1px solid transparent;
   border-radius: 3px;
   background: transparent;
-  color: var(--w7-heading);
+  color: var(--nostalgia-heading);
   font-size: 12px;
   font-weight: 400;
 }
@@ -964,19 +964,19 @@
   text-decoration: underline;
 }
 :root[data-design] .coding-settings-sidebar .coding-settings-nav button.selected {
-  border-color: var(--w7-selected-border);
-  background: var(--w7-selected);
+  border-color: var(--nostalgia-selected-border);
+  background: var(--nostalgia-selected);
   color: #000;
   text-decoration: none;
 }
 :root[data-design] .native-view h2 {
-  color: var(--w7-instruction);
+  color: var(--nostalgia-instruction);
   font-size: 16px;
   font-weight: 400;
   letter-spacing: 0;
 }
 :root[data-design] .native-view h3 {
-  color: var(--w7-heading);
+  color: var(--nostalgia-heading);
   font-size: 13px;
   font-weight: 400;
 }
@@ -992,7 +992,7 @@
   border: 1px solid #898c95;
   border-bottom: 0;
   border-radius: 2px 2px 0 0;
-  background: var(--w7-button);
+  background: var(--nostalgia-button);
   color: #000;
 }
 :root[data-design] .coding-workbench .workbench-tab.selected {

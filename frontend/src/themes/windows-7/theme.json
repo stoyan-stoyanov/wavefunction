@@ -1,6 +1,0 @@
-{
-  "name": "Windows 7",
-  "description": "Aero glass, Explorer's navigation pane and classic controls.",
-  "appearances": ["light"],
-  "windowControls": "theme"
-}

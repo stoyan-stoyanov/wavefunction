@@ -72,18 +72,20 @@ it("switches designs from Settings in place, forcing the appearance of a light-o
   render(<Settings />);
   const heading = screen.getByRole("heading", { name: "General" });
   await screen.findByText(/Broken: theme\.json needs a "name"\./);
-  expect(screen.getByText("/data/themes")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Where your own designs go" }));
+  expect(await screen.findByText("/data/themes")).toBeInTheDocument();
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
   const theme = screen.getByRole("radiogroup", { name: "Theme" });
   await waitFor(() => expect(document.documentElement).toHaveClass("dark"));
 
-  choose("Windows 7");
-  await waitFor(() => expect(document.documentElement.dataset.design).toBe("windows-7"));
-  expect(stylesheet()?.textContent).toContain("--w7-glass");
-  expect(localStorage.getItem("wavefunction.design")).toBe("windows-7");
+  choose("Nostalgia");
+  await waitFor(() => expect(document.documentElement.dataset.design).toBe("nostalgia"));
+  expect(stylesheet()?.textContent).toContain("--nostalgia-glass");
+  expect(localStorage.getItem("wavefunction.design")).toBe("nostalgia");
   await waitFor(() => expect(document.documentElement).toHaveClass("light"));
   expect(within(theme).getByRole("radio", { name: "Light" })).toHaveAttribute("aria-checked", "true");
   expect(within(theme).getByRole("radio", { name: "Dark" })).toBeDisabled();
-  expect(screen.getByText("Windows 7 has a light look only.")).toBeInTheDocument();
+  expect(screen.getByText("Nostalgia has a light look only.")).toBeInTheDocument();
 
   fireEvent.keyDown(screen.getByRole("combobox", { name: "Design" }), { key: "ArrowDown" });
   expect(screen.getByRole("option", { name: "Broken" })).toHaveAttribute("aria-disabled", "true");
@@ -103,11 +105,11 @@ it("switches designs from Settings in place, forcing the appearance of a light-o
 });
 
 it("restores the saved design at startup and falls back to the default when it has gone", async () => {
-  localStorage.setItem("wavefunction.design", "windows-7");
+  localStorage.setItem("wavefunction.design", "nostalgia");
   await restoreDesign();
   // A bundled design is in place by the time the app first renders.
-  expect(document.documentElement.dataset.design).toBe("windows-7");
-  expect(stylesheet()?.textContent).toContain("--w7-glass");
+  expect(document.documentElement.dataset.design).toBe("nostalgia");
+  expect(stylesheet()?.textContent).toContain("--nostalgia-glass");
 
   serve({ folder: "/data/themes", themes: [] });
   localStorage.setItem("wavefunction.design", "user:gone");

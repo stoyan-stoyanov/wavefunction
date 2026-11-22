@@ -1,6 +1,7 @@
 import { NativeSection, NativeView, ViewHeading } from "@/components/native-view";
 import { SegmentedControl } from "@/components/segmented-control";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -15,7 +16,7 @@ import { bundledDesigns, useDesign } from "@/lib/design";
 import { useZoom } from "@/lib/zoom";
 import { readSidebarTransparency, setSidebarTransparency } from "@/lib/sidebar-transparency";
 import { useEffect, useId, useState } from "react";
-import { Minus, Monitor, Moon, Plus, RotateCcw, Sun, type LucideIcon } from "lucide-react";
+import { Info, Minus, Monitor, Moon, Plus, RotateCcw, Sun, type LucideIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 
 const themeOptions: Array<{ value: string; label: string; icon: LucideIcon }> = [
@@ -153,54 +154,73 @@ function DesignRow() {
         title="Design"
         description={error ?? active.description}
         control={
-          <Select
-            value={active.id}
-            onValueChange={(id) =>
-              void useDesign
-                .getState()
-                .select(id)
-                .catch(() => undefined)
-            }
-          >
-            <SelectTrigger aria-label="Design" className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {bundledDesigns.map((design) => (
-                <SelectItem key={design.id} value={design.id}>
-                  {design.name}
-                </SelectItem>
-              ))}
-              {userDesigns?.length ? (
-                <>
-                  <SelectSeparator />
-                  <SelectGroup>
-                    <SelectLabel>Your themes</SelectLabel>
-                    {userDesigns.map((design) => (
-                      <SelectItem key={design.id} value={design.id} disabled={Boolean(design.error)}>
-                        {design.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </>
-              ) : null}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1.5">
+            {folder ? <ThemesFolder folder={folder} /> : null}
+            <Select
+              value={active.id}
+              onValueChange={(id) =>
+                void useDesign
+                  .getState()
+                  .select(id)
+                  .catch(() => undefined)
+              }
+            >
+              <SelectTrigger aria-label="Design" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {bundledDesigns.map((design) => (
+                  <SelectItem key={design.id} value={design.id}>
+                    {design.name}
+                  </SelectItem>
+                ))}
+                {userDesigns?.length ? (
+                  <>
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <SelectLabel>Your themes</SelectLabel>
+                      {userDesigns.map((design) => (
+                        <SelectItem key={design.id} value={design.id} disabled={Boolean(design.error)}>
+                          {design.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </>
+                ) : null}
+              </SelectContent>
+            </Select>
+          </div>
         }
       />
-      {folder ? (
-        <div className="px-4 pb-3.5 text-xs leading-5 text-muted-foreground">
-          <p>
-            Add your own: a folder with <code>theme.json</code> and <code>theme.css</code> in{" "}
-            <span className="font-mono break-all select-text">{folder}</span>
-          </p>
+      {broken.length ? (
+        <div className="px-4 pb-3.5 text-xs leading-5 text-destructive">
           {broken.map((design) => (
-            <p key={design.id} className="text-destructive">
+            <p key={design.id}>
               {design.name}: {design.error}
             </p>
           ))}
         </div>
       ) : null}
     </>
+  );
+}
+
+/** Where a person's own designs go, behind an info button so the row stays short. */
+function ThemesFolder({ folder }: { folder: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon-sm" aria-label="Where your own designs go">
+          <Info />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-3 text-xs leading-5">
+        <p>
+          Add your own: a folder with <code>theme.json</code> and <code>theme.css</code> in
+        </p>
+        <p className="mt-1 font-mono break-all select-text">{folder}</p>
+        <p className="mt-2 text-muted-foreground">Or ask the agent to make one for you.</p>
+      </PopoverContent>
+    </Popover>
   );
 }
