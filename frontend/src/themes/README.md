@@ -25,6 +25,7 @@ The folder name is the design's id: lowercase letters, digits and dashes.
 ## Where designs live
 
 - **Bundled** designs are folders here, compiled into the app. [nostalgia](nostalgia/) is the reference.
+- **The agent** makes one when asked: the built-in `design-creator` skill (`backend/src/wavefunction/coding_skills/design-creator.md`) tells it what a design can change, and its `save_design` tool writes the folder, checked the way Settings loads it.
 - **Your own** go in the `themes` folder of the app's data folder: `~/Library/Application Support/app.harness.coding/themes/` in the desktop app. Settings shows the path, and lists a design that can't load with the reason. Choosing a design again reads it from disk again.
 
 ## Only CSS and assets

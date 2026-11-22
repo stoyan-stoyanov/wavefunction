@@ -262,10 +262,10 @@
 :root[data-design] .workbench-toolbar [data-slot="button"][data-variant="ghost"] {
   color: #1b2a3f;
 }
-/* Room for the caption buttons in whichever toolbar reaches the right edge. */
-:root[data-window-controls] .coding-main:not(:has(~ .coding-workbench-frame)) > .shell-titlebar,
-:root[data-window-controls] .coding-workbench-frame .workbench-toolbar {
-  padding-right: 112px;
+/* Room for the caption buttons when the chat's band reaches the right edge. The workbench's tabs
+   sit low in its band, under the buttons, so it needs none. */
+:root[data-window-controls] .coding-main:not(:has(~ .coding-workbench-frame)) > .shell-titlebar {
+  padding-right: 124px;
 }
 :root[data-window-controls].tauri .sidebar-hidden .shell-titlebar {
   padding-left: 14px;
@@ -274,11 +274,10 @@
 /* ---- Caption buttons ---- */
 
 :root[data-design] .window-controls {
-  top: 0;
-  right: 7px;
+  top: 1px;
+  right: 12px;
   z-index: 45;
   border: 1px solid rgb(40 56 80 / 0.75);
-  border-top: 0;
   border-radius: 0 0 5px 5px;
   overflow: hidden;
   box-shadow:
@@ -576,7 +575,7 @@
 :root[data-design] [data-slot="button"][data-variant="link"]:hover {
   color: #3399ff;
 }
-:root[data-design] :is([data-slot="input"], [data-slot="textarea"], .coding-composer) {
+:root[data-design] :is([data-slot="input"], [data-slot="textarea"], .coding-composer > textarea) {
   border: 1px solid;
   border-color: #abadb3 #dbdfe6 #e3e9ef #e2e3ea;
   border-radius: 2px;
@@ -584,11 +583,10 @@
   box-shadow: none;
   color: #000;
 }
-:root[data-design] :is([data-slot="input"], [data-slot="textarea"], .coding-composer):hover {
+:root[data-design] :is([data-slot="input"], [data-slot="textarea"], .coding-composer > textarea):hover {
   border-color: #5794bf #b7d5ea #c7e2f1 #c5daed;
 }
-:root[data-design] :is([data-slot="input"], [data-slot="textarea"]):focus,
-:root[data-design] .coding-composer:focus-within {
+:root[data-design] :is([data-slot="input"], [data-slot="textarea"], .coding-composer > textarea):focus {
   border-color: #3d7bad #a4c9e3 #b7d9ed #b5cfe7;
   box-shadow: none;
   outline: none;
@@ -885,7 +883,7 @@
   box-shadow: none;
 }
 
-/* ---- The composer, in a details pane along the bottom ---- */
+/* ---- The composer: a small dialog panel with an edit control and real buttons ---- */
 
 :root[data-design] .composer-dock {
   border-top: 1px solid #c2d2e4;
@@ -895,53 +893,134 @@
   display: none;
 }
 :root[data-design] .composer-wrap {
-  padding: 10px 24px 8px;
+  padding: 10px 24px 6px;
 }
 :root[data-design] .coding-composer {
-  overflow: hidden;
+  overflow: visible;
+  padding: 7px 7px 0;
+  border: 1px solid #a0a8b4;
+  border-radius: 3px;
+  background: linear-gradient(#fbfbfb, #ececec);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    1px 1px 2px rgb(0 0 0 / 0.08);
 }
 :root[data-design] .coding-composer > textarea {
-  padding: 6px 8px 4px;
+  min-height: 46px;
+  padding: 4px 6px;
   font-size: 12px;
   line-height: 1.5;
 }
 :root[data-design] .composer-toolbar {
-  gap: 4px;
-  padding: 3px 4px;
-  border-top: 1px solid #e3e9ef;
-  background: linear-gradient(#f9fbfd, #eaf0f8);
+  gap: 6px;
+  padding: 6px 0 7px;
+  border: 0;
+  background: transparent;
 }
+/* The pickers are drop-down lists. */
 :root[data-design] .coding-composer .composer-toolbar :is(.model-selector, .composer-chip) {
   height: 22px !important;
-  border: 1px solid transparent;
+  gap: 6px;
+  padding: 0 4px 0 7px;
+  border: 1px solid #707070;
   border-radius: 3px;
-  background: transparent;
+  background: var(--nostalgia-button);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.7);
   color: #000;
-  font-size: 11px !important;
+  font-size: 12px !important;
 }
 :root[data-design] .coding-composer .composer-toolbar :is(.model-selector, .composer-chip):hover,
 :root[data-design]
   .coding-composer
   .composer-toolbar
   :is(.model-selector, .composer-chip)[data-state="open"] {
-  border-color: var(--nostalgia-hot-border);
-  background: var(--nostalgia-hot);
+  border-color: #3c7fb1;
+  background: var(--nostalgia-button-hover);
 }
-:root[data-design] .send-button {
-  width: 34px;
+:root[data-design]
+  .coding-composer
+  .composer-toolbar
+  :is(.model-selector, .composer-chip)
+  svg.lucide-chevron-down {
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  padding-left: 3px;
+  border-left: 1px solid #b9b9b9;
+  background: url("icons/dropdown.svg") right center / 14px no-repeat;
+  color: transparent;
+}
+:root[data-design]
+  .coding-composer
+  .composer-toolbar
+  :is(.model-selector, .composer-chip)
+  svg.lucide-chevron-down
+  > * {
+  display: none;
+}
+/* Attach and dictate are small push buttons. */
+:root[data-design]
+  .coding-composer
+  .composer-toolbar
+  [data-slot="button"]:is([data-variant="ghost"], [data-variant="secondary"]) {
+  width: 26px;
   height: 22px;
+  border: 1px solid #707070;
+  border-radius: 3px;
+  background: var(--nostalgia-button);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.7);
   color: #1b2a3f;
+}
+:root[data-design]
+  .coding-composer
+  .composer-toolbar
+  [data-slot="button"]:is([data-variant="ghost"], [data-variant="secondary"]):not(:disabled):hover {
+  border-color: #3c7fb1;
+  background: var(--nostalgia-button-hover);
+}
+/* Send is the dialog's default button, with its label. */
+:root[data-design] .send-button {
+  width: 70px;
+  height: 22px;
+  margin-left: 2px;
+  border-color: #3c7fb1;
+  box-shadow:
+    inset 0 0 0 1px #c4e5f6,
+    inset 0 0 0 2px rgb(255 255 255 / 0.5);
+  color: #000;
+  font-size: 12px;
+}
+:root[data-design] .send-button:has(svg.lucide-arrow-up) > svg {
+  display: none;
+}
+:root[data-design] .send-button:has(svg.lucide-arrow-up)::after {
+  content: "Send";
 }
 :root[data-design] .send-button:disabled {
   opacity: 1;
+}
+/* Below it, a status bar. */
+:root[data-design] .composer-footer {
+  margin: 6px 0 0;
+  padding: 2px 4px;
+  border-top: 1px solid #c9d6e6;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
 }
 :root[data-design] .composer-footer,
 :root[data-design] .composer-footer .composer-repository {
   color: var(--nostalgia-heading);
   font-size: 11px;
 }
-:root[data-design] .composer-footer {
-  padding-top: 6px;
+:root[data-design] .composer-footer .composer-repository:hover {
+  color: #3399ff;
+  text-decoration: underline;
+}
+:root[data-design] .composer-footer svg.lucide-folder-open {
+  background: url("icons/folder-open.svg") center / contain no-repeat;
+  color: transparent;
+}
+:root[data-design] .composer-footer svg.lucide-folder-open > * {
+  display: none;
 }
 
 /* ---- Settings, with a task pane ---- */
@@ -986,15 +1065,259 @@
   box-shadow: none;
 }
 
-/* ---- Workbench tabs, as a property sheet ---- */
+/* ---- Pane toggles: small glass buttons hanging from the band, like the caption buttons ---- */
 
+:root[data-design]
+  :is(
+    .sidebar-toggle,
+    .shell-titlebar [aria-label="Show workbench"],
+    .shell-titlebar [aria-label="Hide workbench"]
+  ) {
+  align-self: flex-start;
+  width: 29px;
+  height: 20px;
+  min-height: 0;
+  margin-top: 1px;
+  padding: 0;
+  border: 1px solid rgb(40 56 80 / 0.75);
+  border-radius: 0 0 4px 4px;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.15) 50%, transparent 51%),
+    linear-gradient(#bfd3ea, #a6c0e0 50%, #8eadd6 51%, #b2cdec);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.55),
+    inset 0 0 0 1px rgb(255 255 255 / 0.45);
+}
+:root[data-design]
+  :is(
+    .sidebar-toggle,
+    .shell-titlebar [aria-label="Show workbench"],
+    .shell-titlebar [aria-label="Hide workbench"]
+  ):hover {
+  border-color: rgb(40 56 80 / 0.75);
+  background:
+    linear-gradient(rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.2) 50%, transparent 51%),
+    linear-gradient(#d6ecfd, #a8d4f8 50%, #6eb3ef 51%, #a6dcff);
+}
+:root[data-design]
+  :is(
+    .sidebar-toggle,
+    .shell-titlebar [aria-label="Show workbench"],
+    .shell-titlebar [aria-label="Hide workbench"]
+  )
+  > svg {
+  width: 13px;
+  height: 11px;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  color: transparent;
+}
+:root[data-design]
+  :is(
+    .sidebar-toggle,
+    .shell-titlebar [aria-label="Show workbench"],
+    .shell-titlebar [aria-label="Hide workbench"]
+  )
+  > svg
+  > * {
+  display: none;
+}
+:root[data-design] .sidebar-toggle > svg {
+  background-image: url("icons/pane-navigation.svg");
+}
+:root[data-design] .shell-titlebar :is([aria-label="Show workbench"], [aria-label="Hide workbench"]) > svg {
+  background-image: url("icons/pane-preview.svg");
+}
+
+/* ---- The workbench: property-sheet tabs over Explorer-style panes ---- */
+
+:root[data-design] .coding-workbench {
+  background: #fff;
+}
+:root[data-design] .coding-workbench .workbench-toolbar {
+  align-items: flex-end;
+  gap: 4px;
+  padding: 0 8px;
+}
+:root[data-design] .coding-workbench .workbench-tabs {
+  align-self: stretch;
+  align-items: flex-end;
+  gap: 2px;
+}
 :root[data-design] .coding-workbench .workbench-tab {
+  min-height: 0;
+  height: 22px;
+  gap: 5px;
+  padding: 0 9px;
   border: 1px solid #898c95;
   border-bottom: 0;
-  border-radius: 2px 2px 0 0;
-  background: var(--nostalgia-button);
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(#f5f5f5, #ececec 50%, #dfdfdf 51%, #d6d6d6);
+  color: #000;
+  font-size: 12px;
+  font-weight: 400;
+}
+:root[data-design] .coding-workbench .workbench-tab:hover {
+  background: var(--nostalgia-button-hover);
   color: #000;
 }
 :root[data-design] .coding-workbench .workbench-tab.selected {
+  height: 25px;
   background: #fff;
+}
+:root[data-design] .coding-workbench .workbench-tab svg {
+  width: 16px;
+  height: 16px;
+  background: center / contain no-repeat;
+  color: transparent;
+}
+:root[data-design] .coding-workbench .workbench-tab svg > * {
+  display: none;
+}
+:root[data-design] .coding-workbench .workbench-tab svg.lucide-files {
+  background-image: url("icons/folder.svg");
+}
+:root[data-design] .coding-workbench .workbench-tab svg.lucide-terminal {
+  background-image: url("icons/console.svg");
+}
+:root[data-design] .coding-workbench .workbench-tab svg.lucide-git-compare-arrows {
+  background-image: url("icons/compare.svg");
+}
+:root[data-design] .coding-workbench .workbench-overlay-close {
+  margin-bottom: 2px;
+}
+/* Files: a tree, as in the navigation pane. */
+:root[data-design] .workbench-files-header,
+:root[data-design] .repository-changes-toolbar,
+:root[data-design] .split-labels {
+  border-bottom: 1px solid #d5d5d5;
+  background: var(--nostalgia-header);
+  color: #4c607a;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root[data-design] .workbench-files-header {
+  padding: 2px 6px 2px 8px;
+}
+:root[data-design] .workbench-content .workbench-file {
+  width: calc(100% - 8px);
+  margin: 0 4px 1px;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #000;
+  font-size: 12px;
+}
+:root[data-design] .workbench-content .workbench-file:hover {
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
+}
+:root[data-design] .workbench-content .workbench-file:focus-visible {
+  border-color: var(--nostalgia-selected-border);
+  background: var(--nostalgia-selected);
+}
+:root[data-design] .workbench-content .workbench-file svg {
+  width: 16px;
+  height: 16px;
+  background: center / contain no-repeat;
+  color: transparent;
+  rotate: none;
+  transform: none;
+}
+:root[data-design] .workbench-content .workbench-file svg > * {
+  display: none;
+}
+:root[data-design] .workbench-content .workbench-file svg.lucide-chevron-right {
+  background-image: url("icons/tree-collapsed.svg");
+}
+:root[data-design] .workbench-content .workbench-file svg.lucide-chevron-right.rotate-90 {
+  background-image: url("icons/tree-expanded.svg");
+}
+:root[data-design] .workbench-content .workbench-file svg.lucide-folder {
+  background-image: url("icons/folder.svg");
+}
+:root[data-design] .workbench-content .workbench-file svg:is(.lucide-file-code-corner, .lucide-file-code-2) {
+  background-image: url("icons/file.svg");
+}
+/* Terminal: a console window, light grey on black. */
+:root[data-design] .terminal-tabs {
+  min-height: 0;
+  padding: 3px 6px;
+  border-bottom: 1px solid #c2d2e4;
+  background: var(--nostalgia-pane);
+}
+:root[data-design] .terminal-tab {
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #000;
+  font-size: 12px;
+}
+:root[data-design] .terminal-tab:hover {
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
+}
+:root[data-design] .terminal-tab.active {
+  border-color: var(--nostalgia-selected-border);
+  background: var(--nostalgia-selected);
+}
+:root[data-design] :is(.terminal-actions, .terminal-rename, .terminal-search) {
+  border-bottom: 1px solid #e3e8ef;
+  background: #f5f7fa;
+}
+:root[data-design] .terminal-actions code {
+  white-space: nowrap;
+  color: #4c607a;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+:root[data-design] .terminal-surface {
+  padding: 4px 2px 4px 6px;
+  background: #000;
+  color: #c0c0c0;
+}
+:root[data-design] .terminal-empty-state h3 {
+  color: var(--nostalgia-instruction);
+  font-size: 15px;
+  font-weight: 400;
+}
+/* Changes: a list of files over a diff with line numbers in their own column. */
+:root[data-design] .repository-changes-toolbar {
+  padding: 3px 8px;
+}
+:root[data-design] .repository-change-files button {
+  margin-bottom: 1px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #000;
+  font-size: 12px;
+}
+:root[data-design] .repository-change-files button:hover {
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
+}
+:root[data-design] .review-diff {
+  border-bottom-color: #d5d5d5;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+:root[data-design] .diff-number {
+  border-right: 1px solid #e3e3e3;
+  background: #f7f7f7;
+  color: #2b91af;
+  font-size: 11px;
+}
+:root[data-design] :is(.diff-row, .diff-half).add {
+  background: #dff6dd;
+}
+:root[data-design] :is(.diff-row, .diff-half).delete {
+  background: #fde7e9;
+}
+:root[data-design] .diff-row.hunk {
+  background: #eef3fa;
+  color: #4c607a;
 }

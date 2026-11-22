@@ -127,7 +127,7 @@ function TerminalScreen({
     const themeObserver = new MutationObserver(updateTheme);
     themeObserver.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["class", "style"],
+      attributeFilter: ["class", "style", "data-design"],
     });
     updateTheme();
     terminal.focus();
