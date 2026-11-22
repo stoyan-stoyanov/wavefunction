@@ -6,7 +6,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Added
 
-- Designs change how the whole app looks. Pick one in Settings › General › Design: the built-in Nostalgia design, with a glass title bar, a classic navigation pane and 2009-era controls, or your own, made of CSS, images and fonts in the themes folder Settings shows. Ask the agent and it makes one for you. ([#73](https://github.com/stoyan-stoyanov/wavefunction/pull/73))
+- Designs change how the whole app looks. Pick one in Settings › General › Design: the built-in Nostalgia design, with a glass title bar, a classic navigation pane and 2009-era controls, the built-in Retro design, a dark terminal room with mono type, gold keycaps and pixel icons, or your own, made of CSS, images and fonts in the themes folder Settings shows. Ask the agent and it makes one for you. ([#73](https://github.com/stoyan-stoyanov/wavefunction/pull/73))
 
 ## 0.4.0 - 2026-11-07
 
