@@ -129,6 +129,10 @@
   outline: 1px solid var(--retro-gold);
   outline-offset: 1px;
 }
+/* The chat input shows focus with its caret alone; buttons and pickers keep the outline. */
+:root[data-design] .coding-composer > textarea:focus-visible {
+  outline: none;
+}
 :root[data-design] * {
   scrollbar-color: #34343f transparent;
 }
@@ -596,10 +600,6 @@
   border-radius: 0;
   background: var(--card);
   box-shadow: none;
-}
-:root[data-design] .coding-composer:focus-within {
-  border-color: rgb(232 201 138 / 50%);
-  box-shadow: 0 0 0 3px rgb(252 211 77 / 8%);
 }
 :root[data-design] .coding-composer > textarea {
   color: var(--retro-ink);
@@ -1088,9 +1088,6 @@
     .native-view .rounded-xl.bg-card
   ) {
   border-width: 2px;
-  box-shadow: var(--retro-step);
-}
-:root[data-design] .coding-composer:focus-within {
   box-shadow: var(--retro-step);
 }
 :root[data-design]

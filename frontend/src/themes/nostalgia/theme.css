@@ -118,6 +118,10 @@
   outline: 1px dotted #000;
   outline-offset: -3px;
 }
+/* The chat input shows focus with its caret alone; buttons and pickers keep the dotted outline. */
+:root[data-design] .coding-composer > textarea:focus-visible {
+  outline: none;
+}
 
 /* ---- Scroll bars ---- */
 
@@ -583,10 +587,10 @@
   box-shadow: none;
   color: #000;
 }
-:root[data-design] :is([data-slot="input"], [data-slot="textarea"], .coding-composer > textarea):hover {
+:root[data-design] :is([data-slot="input"], [data-slot="textarea"]):hover {
   border-color: #5794bf #b7d5ea #c7e2f1 #c5daed;
 }
-:root[data-design] :is([data-slot="input"], [data-slot="textarea"], .coding-composer > textarea):focus {
+:root[data-design] :is([data-slot="input"], [data-slot="textarea"]):focus {
   border-color: #3d7bad #a4c9e3 #b7d9ed #b5cfe7;
   box-shadow: none;
   outline: none;
