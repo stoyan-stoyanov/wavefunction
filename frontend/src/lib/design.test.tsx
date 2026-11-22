@@ -30,10 +30,13 @@ const themes = {
   ],
 };
 
+let mine = ":root { --background: #123456; }";
+
 function serve(listed: unknown = themes) {
+  mine = ":root { --background: #123456; }";
   vi.mocked(request).mockImplementation(async (path: string) => {
     if (path === "/api/themes") return listed;
-    if (path === "/api/themes/mine/stylesheet") return { css: ":root { --background: #123456; }" };
+    if (path === "/api/themes/mine/stylesheet") return { css: mine };
     throw new Error(`unexpected request ${path}`);
   });
 }
@@ -69,7 +72,7 @@ afterEach(() => {
 
 it("switches designs from Settings in place, forcing the appearance of a light-only one", async () => {
   serve();
-  render(<Settings />);
+  const view = render(<Settings />);
   const heading = screen.getByRole("heading", { name: "General" });
   await screen.findByText(/Broken: theme\.json needs a "name"\./);
   fireEvent.click(screen.getByRole("button", { name: "Where your own designs go" }));
@@ -102,6 +105,14 @@ it("switches designs from Settings in place, forcing the appearance of a light-o
   expect(localStorage.getItem("wavefunction.design")).toBeNull();
   // Nothing remounted: the page the person was on is the same page.
   expect(screen.getByRole("heading", { name: "General" })).toBe(heading);
+
+  // Your own design, saved again on disk, shows its new version when Settings opens again.
+  choose("Mine");
+  await waitFor(() => expect(document.documentElement.dataset.design).toBe("user:mine"));
+  mine = ":root { --background: #654321; }";
+  view.unmount();
+  render(<Settings />);
+  await waitFor(() => expect(stylesheet()?.textContent).toBe(mine));
 });
 
 it("restores the saved design at startup and falls back to the default when it has gone", async () => {

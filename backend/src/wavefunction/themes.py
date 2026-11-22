@@ -237,7 +237,8 @@ def build_save_design(folder: Path) -> BaseTool:
             staging.rename(target)
         return (
             f"Saved the design {theme['name']!r} at {target}. The user chooses it in Settings > General > "
-            "Design; the app's look does not change until they do."
+            "Design; the app's look does not change until they do. If it is the design already chosen, "
+            "reopening Settings > General shows the new version."
         )
 
     return save_design

@@ -168,6 +168,16 @@ function saved(): string | null {
 }
 
 /**
+ * List the themes folder again, and read the chosen design from disk again if it is one of the
+ * person's own: the agent's save_design, or an editor, may have changed it since it was applied.
+ */
+export function refreshDesigns(): Promise<unknown> {
+  const { active, select, loadUserDesigns } = useDesign.getState();
+  // `select` lists the folder too, so this is one listing either way.
+  return active.id.startsWith(USER) ? select(active.id) : loadUserDesigns();
+}
+
+/**
  * Apply the saved design at startup. A bundled one is applied before the first render, so the app
  * never shows the default look first; the caller awaits the returned promise for that. A person's
  * own needs the engine, so it is applied once the engine answers. One that has gone or broken

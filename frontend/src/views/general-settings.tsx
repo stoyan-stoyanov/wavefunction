@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { bundledDesigns, useDesign } from "@/lib/design";
+import { bundledDesigns, refreshDesigns, useDesign } from "@/lib/design";
 import { useZoom } from "@/lib/zoom";
 import { readSidebarTransparency, setSidebarTransparency } from "@/lib/sidebar-transparency";
 import { useEffect, useId, useState } from "react";
@@ -141,11 +141,10 @@ function DesignRow() {
   const userDesigns = useDesign((state) => state.userDesigns);
   const folder = useDesign((state) => state.folder);
   const error = useDesign((state) => state.error);
+  // Choosing the design already chosen is no change to the picker, so opening this page is what
+  // re-reads it from disk.
   useEffect(() => {
-    void useDesign
-      .getState()
-      .loadUserDesigns()
-      .catch(() => undefined);
+    void refreshDesigns().catch(() => undefined);
   }, []);
   const broken = userDesigns?.filter((design) => design.error) ?? [];
   return (
