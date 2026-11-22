@@ -76,6 +76,7 @@ BUILTIN_GROUPS = {
     ),
     "calculation": ("Calculator", ("calculator",)),
     "skills": ("Create or update the user's Global skills", ("save_skill",)),
+    "designs": ("Create or update the user's own designs (themes) for this app's look", ("save_design",)),
     "routines": (
         "Run a project chat on a schedule: create, list or cancel routines",
         ("create_routine", "list_routines", "cancel_routine"),

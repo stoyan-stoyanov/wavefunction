@@ -57,6 +57,7 @@ Read relevant skills with read_skill; skip others.
 - 'code-review': Review a code change for concrete bugs and regressions. Use when asked to inspect a diff or pull request.
 - 'coding-workflow': Complete a coding task in an existing repository. Use for implementing features or making a substantial code change.
 - 'debugging': Investigate and fix a reproducible software failure. Use for bugs, failing tests, exceptions, or incorrect behavior.
+- 'design-creator': Create or change a design for this app's own look: its colours, fonts, icons and controls. Use when the user asks to restyle, theme or skin the app, or for a look like another app or era.
 - 'skill-creator': Create or update a skill. Use when the user asks to make, save, change or improve a skill, or to turn a workflow, checklist or set of instructions into one.
 </available_skills>
 
@@ -70,6 +71,7 @@ Available on demand: search_available_tools
 - setup: Choose repository, request folder access or sign in to GitHub
 - calculation: Calculator
 - skills: Create or update the user's Global skills
+- designs: Create or update the user's own designs (themes) for this app's look
 - routines: Run a project chat on a schedule: create, list or cancel routines
 - projects: The user's projects: list, create one (and clone a repository into it), archive old chats, remove one
 Search a group/exact name before declaring unavailable. Discovery grants no permissions.

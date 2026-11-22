@@ -11,12 +11,16 @@ app anyway; refusing them here tells the theme's author why.
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 import re
+import shutil
 from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
 
 from fastapi import Depends, HTTPException
+from langchain_core.tools import BaseTool, tool
 
 from . import responses as api
 
@@ -168,3 +172,88 @@ def register_theme_routes(app, folder: Callable[[], Path], authorize) -> None:
         if css is None:
             raise HTTPException(status_code=422, detail=theme["error"])
         return {"css": css}
+
+
+def build_save_design(folder: Path) -> BaseTool:
+    """Let the agent write one of the user's designs: the themes folder is the app's own data, which
+    its sandbox cannot write. A design is checked the way Settings loads it before it replaces
+    anything, so a broken one never shows up in Settings."""
+
+    @tool("save_design")
+    def save_design(
+        name: str,
+        css: str,
+        description: str = "",
+        appearances: list[Literal["light", "dark"]] | None = None,
+        window_controls: Literal["native", "theme"] = "native",
+        assets: dict[str, str] | None = None,
+    ) -> str:
+        """Create or update one of the user's designs for this app, chosen in Settings > General > Design.
+
+        name: shown in Settings; its lowercase, hyphenated form names the folder. css: the design's
+        theme.css, naming its assets by relative path in url(). description: one line shown under the
+        picker. appearances: ["light"], ["dark"] or both (the default). window_controls: "theme" to
+        have the app draw minimize, maximize and close buttons for the CSS to style. assets: relative
+        path -> contents, SVG as text and PNG, JPEG, WebP, GIF or font files as base64. Saving an
+        existing name replaces its theme.json and theme.css and keeps assets not given again. If the
+        design would not load, nothing is saved and the error says what to fix.
+        """
+        slug = re.sub(r"[^a-z0-9]+", "-", name.strip().lower()).strip("-")[:64].strip("-")
+        if not THEME_ID.fullmatch(slug):
+            raise ValueError("Give the design a name with letters or digits.")
+        target, staging = folder / slug, folder / ".staging" / slug
+        if staging.exists():
+            shutil.rmtree(staging)
+        staging.parent.mkdir(parents=True, exist_ok=True)
+        if target.is_dir():
+            shutil.copytree(target, staging)
+        else:
+            staging.mkdir()
+        try:
+            manifest = {
+                "name": name.strip(),
+                "description": description.strip(),
+                "appearances": appearances or ["light", "dark"],
+                "windowControls": window_controls,
+            }
+            (staging / "theme.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+            (staging / "theme.css").write_text(css, encoding="utf-8")
+            for relative, content in (assets or {}).items():
+                _write_asset(staging, relative, content)
+            theme, stylesheet = read_theme(staging)
+            if stylesheet is None:
+                raise ValueError(f"Not saved: {theme['error']} Fix it and call save_design again.")
+        except Exception:
+            shutil.rmtree(staging)
+            raise
+        if target.exists():
+            replaced = staging.with_name(f"{slug}.replaced")
+            if replaced.exists():
+                shutil.rmtree(replaced)
+            target.rename(replaced)
+            staging.rename(target)
+            shutil.rmtree(replaced)
+        else:
+            staging.rename(target)
+        return (
+            f"Saved the design {theme['name']!r} at {target}. The user chooses it in Settings > General > "
+            "Design; the app's look does not change until they do."
+        )
+
+    return save_design
+
+
+def _write_asset(folder: Path, relative: str, content: str) -> None:
+    path = (folder / relative).resolve()
+    if path == folder.resolve() or not path.is_relative_to(folder.resolve()):
+        raise ValueError(f"{relative} is outside the design's folder.")
+    if path.suffix.lower() not in ASSET_TYPES:
+        raise ValueError(f"{relative}: a design can hold images and fonts only.")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix.lower() == ".svg":
+        path.write_text(content, encoding="utf-8")
+        return
+    try:
+        path.write_bytes(base64.b64decode(content, validate=True))
+    except binascii.Error:
+        raise ValueError(f"{relative}: give an image or font other than SVG as base64.") from None
