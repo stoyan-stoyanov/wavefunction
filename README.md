@@ -6,11 +6,12 @@
 
 <p align="center">
   <strong>Minimal by design. Open source down to the prompt.</strong><br>
-  A coding agent for your Mac. Keep talking while it works on several tasks at once.
+  A coding agent for macOS and Linux. Keep chatting while it works on several tasks at once.
 </p>
 
 <p align="center">
   <a href="https://github.com/stoyan-stoyanov/wavefunction/releases/latest">Download for macOS</a> ·
+  <a href="#linux-experimental">Linux (experimental)</a> ·
   <a href="https://www.wavefunction.si">Website</a> ·
   <a href="#build-from-source">Build from source</a> ·
   <a href="CONTRIBUTING.md">Contribute</a>
@@ -39,21 +40,32 @@ Wavefunction has one built-in coding agent. Each chat is a separate conversation
 - **Projects from a chat.** Ask a chat to create a project (and clone a repository into it), archive old chats or remove a project.
 - **Modes.** Plan mode reads and explains without changing anything. Full access runs commands outside the sandbox without asking each time; commands that can't be undone still ask.
 
-## Computer use that leaves your Mac alone
+## Computer use that leaves your computer alone
 
 Other agents take over your mouse, keyboard and screen to get things done. Wavefunction gets a desktop of its own, so you keep working while it clicks. Watch it, or take control at any time.
 
-- **Your Mac stays yours.** It never moves your pointer, types on your keyboard or records your screen. Its desktop runs in a local Docker container that can reach the web, but not your files or keychain.
+- **Your computer stays yours.** It never moves your pointer, types on your keyboard or records your screen. Its desktop runs in a local Docker container that can reach the web, but not your files or keychain.
 - **Secure sign-ins.** When a site needs your login, you sign in privately. The agent pauses and never sees what you type, and the chat stays signed in for next time.
-- **Files in and out.** Downloads come to your Mac in the folder you choose, and files you add are ready to upload.
+- **Files in and out.** Downloads come to your computer in the folder you choose, and files you add are ready to upload.
 
-Computer use needs Docker Desktop and a model that can read images.
+Computer use needs Docker Desktop and a model that can read images. It's macOS-only for now.
 
 ## Connectors and skills
 
 70+ ready-made connectors, plus any MCP server you add. Wavefunction follows your `AGENTS.md` and loads `SKILL.md` skills from the `.agents/skills`, `.claude/skills` and `.opencode/skills` folders in your projects and home folder, and from `~/.codex/skills`, so it works with the setup you already use.
 
 ![The connector catalog: Gmail, Outlook, Google, Microsoft 365, Airtable, Asana, Atlassian and more](docs/assets/wavefunction-connectors-dark.png)
+
+## Designs
+
+A design changes how the whole app looks, with CSS, images and fonts; it never runs code. Pick one in **Settings › General › Design**: the built-in Nostalgia, with a glass title bar and a classic navigation pane, or Retro, a dark terminal room with pixel type and art. Or ask the agent for one. It writes the design with its design skill, checks that it loads, and saves it to your themes folder for you to pick.
+
+<p>
+  <img src="docs/assets/wavefunction-design-retro.jpg" width="49%" alt="The Retro design: pixel type, pixel icons and pixel art of a desk on the new-session screen">
+  <img src="docs/assets/wavefunction-design-night-light.jpg" width="49%" alt="Night Light, a design the agent made in a chat: warm charcoal colours and a sleeping moon on the new-session screen">
+</p>
+
+Your own designs go in the `themes` folder Settings shows; [frontend/src/themes](frontend/src/themes/README.md) explains what a design can change.
 
 ## Usage tracking
 
@@ -78,9 +90,11 @@ Use local models or require zero data retention. With **Require zero data retent
 
 ## Get started
 
-Download the DMG from the [latest release](https://github.com/stoyan-stoyanov/wavefunction/releases/latest), open it and drag Wavefunction to Applications. It's signed and notarized by Apple, and it updates itself.
+On a Mac, download the DMG from the [latest release](https://github.com/stoyan-stoyanov/wavefunction/releases/latest), open it and drag Wavefunction to Applications. It's signed and notarized by Apple, and it updates itself.
 
 You need a Mac with Apple Silicon (macOS 11 or later). Setup walks you through connecting a provider, choosing models and creating your first project. Model usage is billed by your provider.
+
+On Linux there's no download yet: [build it from source](#linux-experimental). Linux support is experimental.
 
 <p>
   <img src="docs/assets/wavefunction-onboarding-provider-dark.png" width="49%" alt="Setup, step 1: connect a provider">
@@ -101,18 +115,32 @@ open src-tauri/target/release/bundle/macos/Wavefunction.app
 
 `desktop:build` also writes a ZIP and its checksum to `dist/desktop`. Its signature is ad hoc, so the app runs on the Mac that built it but warns elsewhere. For a signed, notarized DMG you can hand to others, use `npm run release:local`, which needs a Developer ID certificate and an App Store Connect API key ([releasing](docs/RELEASING.md)).
 
-### Linux
+### Linux (experimental)
 
-Linux is community-supported and built from source only: there are no Linux releases or updates, and computer use, notifications and dictation are macOS-only for now. Commands run in a [Bubblewrap](https://github.com/containers/bubblewrap) sandbox with a seccomp filter, from the same grants as on macOS; without `/usr/bin/bwrap` the app runs no commands at all. On Ubuntu 24.04 or later, with Node.js 22+, uv and Rust installed:
+Linux support is experimental and community-supported. There are no Linux downloads or updates yet, so you build the app yourself, and computer use, notifications and dictation are macOS-only for now. Commands run in a [Bubblewrap](https://github.com/containers/bubblewrap) sandbox with a seccomp filter, from the same grants as on macOS; without `/usr/bin/bwrap` the app runs no commands at all.
 
-```sh
-sudo apt install bubblewrap build-essential file libwebkit2gtk-4.1-dev \
-  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
-UV_PYTHON_PREFERENCE=only-managed npm run setup   # uv's own Python 3.12, which the build can bundle
-npm run desktop:build   # the engine, then a .deb and an AppImage in dist/desktop
-```
+These steps are for Ubuntu 24.04 or later, on x86-64 or arm64:
 
-Other distributions need the same libraries under their own names (Tauri lists them in its [prerequisites](https://v2.tauri.app/start/prerequisites/#linux)). If Settings › Access says the sandbox is unavailable, your distribution may stop `bwrap` from making user namespaces: Ubuntu 23.10 and later do unless an AppArmor profile allows it, which `sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0` lifts until the next restart. The app keeps its data in `~/.local/share/app.harness.coding`.
+1. Install Node.js 22 or later (from [nodejs.org](https://nodejs.org) or nvm), [uv](https://docs.astral.sh/uv/getting-started/installation/) and [Rust](https://rustup.rs).
+2. Install Bubblewrap and the libraries Tauri needs:
+
+   ```sh
+   sudo apt install bubblewrap build-essential file libwebkit2gtk-4.1-dev \
+     libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+   ```
+
+3. Get the code and build it:
+
+   ```sh
+   git clone https://github.com/stoyan-stoyanov/wavefunction.git
+   cd wavefunction
+   UV_PYTHON_PREFERENCE=only-managed npm run setup   # uv's own Python 3.12, which the build can bundle
+   npm run desktop:build   # the engine, then a .deb and an AppImage in dist/desktop
+   ```
+
+4. Install the `.deb` with `sudo apt install ./dist/desktop/*.deb`, or run the AppImage from `dist/desktop` directly.
+
+Other distributions need the same libraries under their own names (Tauri lists them in its [prerequisites](https://v2.tauri.app/start/prerequisites/#linux)). If Settings › Access says the sandbox is unavailable, your distribution may stop `bwrap` from making user namespaces: Ubuntu 23.10 and later do unless an AppArmor profile allows it, which `sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0` lifts until the next restart. The app keeps its data in `~/.local/share/app.harness.coding`. To update, pull the latest code and build again.
 
 While working on the interface, `npm run dev:fixture` runs it in your browser against a disposable synthetic workspace, with no account or model provider. `npm run desktop:dev` runs the app itself with the interface reloading as you edit. Before a pull request:
 

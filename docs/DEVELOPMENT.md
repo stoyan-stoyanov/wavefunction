@@ -52,7 +52,7 @@ Several agents can work at once, each in its own git worktree:
 
 ## Linux
 
-Linux is community-supported ([README](../README.md#linux), [SECURITY.md](../SECURITY.md#linux)). The sandbox is `sandbox_linux.py`: Bubblewrap mounts and a seccomp filter, built from the same policy as the Seatbelt profile. Two things differ for code that reads its results:
+Linux is community-supported ([README](../README.md#linux-experimental), [SECURITY.md](../SECURITY.md#linux)). The sandbox is `sandbox_linux.py`: Bubblewrap mounts and a seccomp filter, built from the same policy as the Seatbelt profile. Two things differ for code that reads its results:
 
 - A refusal reads as a missing path or a read-only file system, not "Operation not permitted". Code that tells a refusal from a missing file handles both, as `fileops._left_out` does.
 - Each command has its own PID namespace, so a PID it prints (`$!`) means another process outside. Tests translate it with `support.host_pid`.

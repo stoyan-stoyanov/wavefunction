@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { site } from "@/lib/site";
 
-export const alt = `Wavefunction, coding agent for Mac: "${site.headline}" above the app window.`;
+export const alt = `Wavefunction, coding agent for macOS and Linux: "${site.headline}" above the app window.`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -35,7 +35,7 @@ export default async function OpenGraphImage() {
           Wavefunction
           {/* The headline doesn't say what the app is, and on a share card nothing else does. */}
           <div style={{ width: 1.5, height: 28, background: "#c4ccd8", margin: "0 6px" }} />
-          <div style={{ color: "#586578" }}>Coding agent for Mac</div>
+          <div style={{ color: "#586578" }}>Coding agent for macOS and Linux</div>
         </div>
         <div
           style={{
