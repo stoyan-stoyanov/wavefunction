@@ -84,7 +84,7 @@ from conftest import ScriptedModel, tool_call_message
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
 from langchain_core.outputs import ChatGenerationChunk
 from wavefunction import coding_workspace as coding_surface
-from wavefunction import main
+from wavefunction import image_models, main
 from wavefunction.coding_workspace import ThreadInput
 from wavefunction.execution_policy import _is_user_message
 from wavefunction.skill_discovery import discover
@@ -360,6 +360,22 @@ class FixtureModel(ScriptedModel):
                         "```sh\ncurl https://example.com/not-a-card\n```"
                     )
                 ]
+            elif prompt.startswith("fixture: image"):
+                # Two images from the fixture's image model, saved in the repository, then one edited.
+                sunrise = "generated-images/a-synthetic-sunrise-over-hills-1.png"
+                self.script = [
+                    tool_call_message(
+                        "generate_image",
+                        {"prompt": "A synthetic sunrise over hills", "count": 2, "aspect_ratio": "16:9"},
+                        "fixture-image",
+                    ),
+                    tool_call_message(
+                        "edit_image",
+                        {"prompt": "The same hills at night", "images": [sunrise]},
+                        "fixture-edit",
+                    ),
+                    AIMessage(content="Made two sunrise images and a night version of the first."),
+                ]
             elif prompt.startswith("fixture: transcript"):
                 self.script = [
                     AIMessage(
@@ -436,6 +452,27 @@ class FixtureModel(ScriptedModel):
 
 
 main.services.models.chat_model = lambda *_args, **_kwargs: FixtureModel()
+
+
+async def fixture_image(_client, _model, prompt, aspect_ratio, inputs, _zdr):
+    """The fixture's image model: a picture drawn here, in the shape asked for, never a request."""
+    import base64
+    import io
+
+    from PIL import Image, ImageDraw
+
+    width, height = (int(part) * 64 for part in (aspect_ratio or "1:1").split(":"))
+    scale = 640 / max(width, height)
+    picture = Image.new("RGB", (int(width * scale), int(height * scale)), "#1d2b53" if inputs else "#ff9e3d")
+    ImageDraw.Draw(picture).text((24, 24), prompt, fill="white")
+    buffer = io.BytesIO()
+    picture.save(buffer, format="PNG")
+    return [base64.b64encode(buffer.getvalue()).decode()]
+
+
+image_models.CLIENTS["gemini"] = fixture_image
+image_models._key = lambda _secrets, _provider: "fixture-key"
+main.services.repository.set_setting(image_models.SETTING, ["gemini::fixture-image"])
 # A connected model, so the window opens past setup. Nothing calls its address: the fixture's
 # model answers every chat.
 fixture_model = {

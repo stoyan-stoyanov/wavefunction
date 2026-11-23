@@ -40,6 +40,7 @@ Send these as chat messages. Anything else gets a one-line "Synthetic reply".
 | `fixture: commands` | Shell, console and Python code blocks, to check running a command in the chat's terminal. |
 | `fixture: files` | Links to generated files (PDF, CSV, Markdown), to check previews. |
 | `fixture: media` | A chart image, a video, web links and a localhost link, to check rich previews. Web cards need the internet. |
+| `fixture: image` | Two images from a synthetic image model, then one edited, saved in `generated-images/` and shown in the transcript. |
 | `/thorough-bug-review` | A slash skill captured and read. |
 
 ## Looking at it

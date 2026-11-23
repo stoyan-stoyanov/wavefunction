@@ -208,6 +208,9 @@ export const codingApi = {
   /** An image or video from the web, through the engine, as a blob URL; the caller revokes it. */
   linkMedia: (url: string, signal?: AbortSignal) =>
     fetchBlobUrl(`${base}/link-preview/media?url=${encodeURIComponent(url)}`, { signal }),
+  /** An attached or generated image at full size. */
+  attachmentImage: (id: string, fileId: string, signal?: AbortSignal) =>
+    fetchBlobUrl(`${threadUrl(id)}/attachments/${encodeURIComponent(fileId)}/content`, { signal }),
   removeAttachment: (id: string, fileId: string) =>
     request<void>(`${threadUrl(id)}/attachments/${fileId}`, json("DELETE")),
   tree: (id: string, path = "") =>

@@ -288,6 +288,117 @@
         }
       }
     },
+    "/api/connections/image-models/{provider}": {
+      "get": {
+        "summary": "Image Model Options",
+        "operationId": "image_model_options_api_connections_image_models__provider__get",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImageModels"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/connections/image-models": {
+      "put": {
+        "summary": "Update Image Models",
+        "operationId": "update_image_models_api_connections_image_models_put",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnabledModelsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnabledImageModels"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/activity": {
       "get": {
         "summary": "Activity",
@@ -7129,6 +7240,69 @@
         }
       }
     },
+    "/api/coding/threads/{thread_id}/attachments/{file_id}/content": {
+      "get": {
+        "summary": "Attachment Original",
+        "description": "An attached or generated image at full size, for viewing it whole.",
+        "operationId": "attachment_original_api_coding_threads__thread_id__attachments__file_id__content_get",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Thread Id"
+            }
+          },
+          {
+            "name": "file_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "File Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/coding/threads/{thread_id}/preview/open": {
       "post": {
         "summary": "Open File",
@@ -8578,6 +8752,13 @@
             "type": "array",
             "title": "Enabled Models"
           },
+          "enabled_image_models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Enabled Image Models"
+          },
           "coding_models": {
             "items": {
               "$ref": "#/components/schemas/ModelChoice"
@@ -9234,6 +9415,22 @@
           "smtp_host"
         ],
         "title": "EmailSetup"
+      },
+      "EnabledImageModels": {
+        "properties": {
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Models"
+          }
+        },
+        "type": "object",
+        "required": [
+          "models"
+        ],
+        "title": "EnabledImageModels"
       },
       "EnabledModels": {
         "properties": {
@@ -10427,6 +10624,40 @@
           "data_dir"
         ],
         "title": "Health"
+      },
+      "ImageModelOption": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ImageModelOption"
+      },
+      "ImageModels": {
+        "properties": {
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ImageModelOption"
+            },
+            "type": "array",
+            "title": "Models"
+          }
+        },
+        "type": "object",
+        "required": [
+          "models"
+        ],
+        "title": "ImageModels"
       },
       "InputTokenDetails": {
         "properties": {

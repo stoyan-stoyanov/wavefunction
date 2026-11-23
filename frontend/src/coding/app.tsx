@@ -48,6 +48,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CodingMarkdown } from "./markdown";
 import { ChatFileLinks } from "./link-previews";
+import { GeneratedImages } from "./generated-images";
 import { RunChecklist } from "@/components/task-checklist";
 import { RunActivity } from "@/components/trace-event";
 import { groupRunActivity } from "@/lib/run-activity";
@@ -640,6 +641,23 @@ function HelperRequest({ request, chatId }: { request: HelperPause; chatId: stri
     </div>
   );
 }
+/** Where the conversation was compacted mid-task, and how that went. */
+function CompactionNote({ state, active }: { state: "running" | "done" | "failed"; active: boolean }) {
+  return (
+    <div className="context-compacted" role="status">
+      {state === "running" && active ? <LoaderCircle className="size-3 animate-spin" /> : null}
+      <span>
+        {state === "done"
+          ? "Context compacted"
+          : state === "failed"
+            ? "Compaction failed"
+            : active
+              ? "Compacting the conversation…"
+              : "Compaction stopped"}
+      </span>
+    </div>
+  );
+}
 const RunMessage = memo(function RunMessage({
   run,
   threadId,
@@ -774,18 +792,9 @@ const RunMessage = memo(function RunMessage({
             </Button>
           </div>
         ) : item.kind === "compaction" ? (
-          <div key={item.id} className="context-compacted" role="status">
-            {item.state === "running" && active ? <LoaderCircle className="size-3 animate-spin" /> : null}
-            <span>
-              {item.state === "done"
-                ? "Context compacted"
-                : item.state === "failed"
-                  ? "Compaction failed"
-                  : active
-                    ? "Compacting the conversation…"
-                    : "Compaction stopped"}
-            </span>
-          </div>
+          <CompactionNote key={item.id} state={item.state} active={active} />
+        ) : item.kind === "images" ? (
+          <GeneratedImages key={item.id} threadId={threadId} images={item.images} />
         ) : item.kind === "plan" ? (
           <div className="agent-message" key={item.id}>
             <RunChecklist events={run.events} active={active} />
