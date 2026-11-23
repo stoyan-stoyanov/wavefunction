@@ -1,18 +1,31 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { TerminalView } from "./terminal";
 import { codingApi, type CodingThread, type TerminalSession } from "./api";
+import { useCommandRunner } from "./run-command";
 
 const emulator = vi.hoisted(() => ({
   inputs: [] as Array<(text: string) => void>,
   disposed: vi.fn(),
+  // The columns the screen fits the terminal to, when set.
+  width: 0,
 }));
+type Size = { cols: number; rows: number };
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     options: Record<string, unknown> = {};
     textarea = document.createElement("textarea");
     host?: HTMLElement;
-    loadAddon() {}
+    cols: number;
+    rows: number;
+    resized?: (size: Size) => void;
+    constructor({ cols, rows }: Size) {
+      this.cols = cols;
+      this.rows = rows;
+    }
+    loadAddon(addon: { terminal?: unknown }) {
+      addon.terminal = this;
+    }
     open(host: HTMLElement) {
       this.host = host;
       host.appendChild(this.textarea);
@@ -21,7 +34,8 @@ vi.mock("@xterm/xterm", () => ({
       emulator.inputs.push(callback);
       return { dispose: vi.fn() };
     }
-    onResize() {
+    onResize(callback: (size: Size) => void) {
+      this.resized = callback;
       return { dispose: vi.fn() };
     }
     attachCustomKeyEventHandler() {}
@@ -41,7 +55,12 @@ vi.mock("@xterm/xterm", () => ({
 }));
 vi.mock("@xterm/addon-fit", () => ({
   FitAddon: class {
-    fit() {}
+    terminal?: Size & { resized?: (size: Size) => void };
+    fit() {
+      if (!this.terminal || !emulator.width || this.terminal.cols === emulator.width) return;
+      this.terminal.cols = emulator.width;
+      this.terminal.resized?.({ cols: emulator.width, rows: this.terminal.rows });
+    }
   },
 }));
 vi.mock("@xterm/addon-search", () => ({
@@ -84,6 +103,7 @@ const session: TerminalSession = {
 beforeEach(() => {
   vi.resetAllMocks();
   emulator.inputs.length = 0;
+  emulator.width = 0;
   localStorage.clear();
   vi.mocked(codingApi.terminals).mockResolvedValue([session]);
   vi.mocked(codingApi.terminalOutput).mockImplementation(
@@ -191,4 +211,47 @@ it("withholds new terminals in Plan mode", async () => {
   render(<TerminalView thread={{ ...thread, mode: "plan" }} />);
   expect(await screen.findByText(/Switch out of Plan mode/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "New Terminal" })).toBeDisabled();
+});
+it("types a command from the chat into its new terminal once the shell has the screen's size and prompt", async () => {
+  emulator.width = 40;
+  const opened = { ...session, id: "shell-run", title: "npm test" };
+  const prompt = { ...opened, text: "repo % ", cursor: 7, reset: false };
+  vi.mocked(codingApi.createTerminal).mockResolvedValue(opened);
+  vi.mocked(codingApi.terminals).mockResolvedValue([session, opened]);
+  let sized!: () => void;
+  vi.mocked(codingApi.terminalSize).mockImplementation(
+    () => new Promise<void>((resolve) => (sized = resolve)),
+  );
+  vi.mocked(codingApi.terminalOutput).mockResolvedValueOnce(prompt);
+  const onOpen = vi.fn();
+  const runner = renderHook(() => useCommandRunner(thread, onOpen)).result.current!;
+  await act(() => runner.run("npm test\nnpm run lint"));
+  expect(codingApi.createTerminal).toHaveBeenCalledExactlyOnceWith("one", "npm test");
+  expect(onOpen).toHaveBeenCalledWith(opened);
+  const view = render(<TerminalView thread={thread} opened="shell-run" />);
+  expect(await screen.findByRole("tab", { name: "npm test" })).toHaveAttribute("aria-selected", "true");
+  expect(await screen.findByText(/repo %/)).toBeInTheDocument();
+  // The prompt is in, but typed before the shell has the screen's width it would echo garbled.
+  await waitFor(() =>
+    expect(codingApi.terminalSize).toHaveBeenCalledWith("one", "shell-run", 40, 24, expect.any(AbortSignal)),
+  );
+  expect(codingApi.terminalInput).not.toHaveBeenCalled();
+  await act(async () => sized());
+  await waitFor(() =>
+    expect(codingApi.terminalInput).toHaveBeenCalledExactlyOnceWith(
+      "one",
+      "shell-run",
+      "npm test\rnpm run lint\r",
+      expect.any(AbortSignal),
+    ),
+  );
+  // Shown again, the terminal doesn't run it a second time.
+  view.unmount();
+  vi.mocked(codingApi.terminals).mockResolvedValue([session, { ...opened, cols: 40 }]);
+  vi.mocked(codingApi.terminalOutput).mockResolvedValueOnce(prompt);
+  const calls = vi.mocked(codingApi.terminalOutput).mock.calls.length;
+  render(<TerminalView thread={thread} opened="shell-run" />);
+  // The screen polls again only after handling the prompt.
+  await waitFor(() => expect(codingApi.terminalOutput).toHaveBeenCalledTimes(calls + 2));
+  expect(codingApi.terminalInput).toHaveBeenCalledTimes(1);
 });

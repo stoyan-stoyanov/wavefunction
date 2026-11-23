@@ -72,9 +72,9 @@ import {
 } from "./api";
 import { useCoding } from "./store";
 import { useThreadActivity } from "./thread-activity";
-import type { WorkbenchTab } from "./workbench";
 import { ResizableSidebar } from "./sidebar-resize";
-import { useWorkbenchPreference } from "./workbench-preference";
+import { RunCommand } from "./run-command";
+import { useWorkbenchPanel } from "./workbench-panel";
 import "./coding.css";
 import "./shell-layout.css";
 
@@ -1180,7 +1180,6 @@ function Shell() {
   const error = useCoding((s) => s.error);
   const clearError = useCoding((s) => s.clearError);
   const { resolvedTheme } = useTheme();
-  const { enabled: workbenchEnabled } = useWorkbenchPreference();
   const [page, setPage] = useState<Page>("chat");
   const [sidebar, setSidebar] = useState(true);
   const unreadThreads = useThreadActivity(workspace, page === "chat" ? selected : null);
@@ -1199,8 +1198,6 @@ function Shell() {
       }),
     [],
   );
-  const [panel, setPanel] = useState(false);
-  const [workbenchTab, setWorkbenchTab] = useState<WorkbenchTab>("files");
   const [search, setSearch] = useState(false);
   const [projectEditor, setProjectEditor] = useState<{
     project?: CodingProject;
@@ -1281,6 +1278,7 @@ function Shell() {
     return () => window.removeEventListener("keydown", keys);
   }, []);
   const thread = detail ?? workspace?.threads.find((item) => item.id === selected);
+  const workbench = useWorkbenchPanel(thread);
   const openingThread = Boolean(thread && !detail && !loading);
   const openModels = () => {
     setModelsPage(true);
@@ -1360,9 +1358,9 @@ function Shell() {
                 <ConversationToolbar
                   key={thread.id}
                   thread={thread}
-                  panel={panel}
-                  workbenchEnabled={workbenchEnabled}
-                  onPanel={() => setPanel((value) => !value)}
+                  panel={workbench.open}
+                  workbenchEnabled={workbench.enabled}
+                  onPanel={() => workbench.setOpen((value) => !value)}
                 />
               ) : (
                 <span className="chat-title">{loading ? "Wavefunction" : "New session"}</span>
@@ -1408,13 +1406,15 @@ function Shell() {
                 <p>This chat could not load.</p>
               </div>
             ) : thread ? (
-              <Chat
-                key={`${thread.id}:${thread.conversation_id}`}
-                thread={thread}
-                onSettings={() => setThreadEditor(thread)}
-                onModels={openModels}
-                attachRef={attachRef}
-              />
+              <RunCommand.Provider value={workbench.commands}>
+                <Chat
+                  key={`${thread.id}:${thread.conversation_id}`}
+                  thread={thread}
+                  onSettings={() => setThreadEditor(thread)}
+                  onModels={openModels}
+                  attachRef={attachRef}
+                />
+              </RunCommand.Provider>
             ) : (
               <div className="loading-screen">
                 <p>Your workspace could not open.</p>
@@ -1422,7 +1422,7 @@ function Shell() {
               </div>
             )}
           </main>
-          {page === "chat" && workbenchEnabled && panel && thread && detail && !loading ? (
+          {page === "chat" && workbench.enabled && workbench.open && thread && detail && !loading ? (
             <ResizableSidebar side="right">
               <Suspense
                 fallback={
@@ -1434,9 +1434,8 @@ function Shell() {
                 <Workbench
                   key={`${thread.id}:${thread.conversation_id}:${thread.folder}`}
                   thread={detail ?? thread}
-                  tab={workbenchTab}
-                  onTab={setWorkbenchTab}
-                  onClose={() => setPanel(false)}
+                  {...workbench.tabs}
+                  onClose={() => workbench.setOpen(false)}
                 />
               </Suspense>
             </ResizableSidebar>

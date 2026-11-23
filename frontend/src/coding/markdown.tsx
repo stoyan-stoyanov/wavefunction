@@ -13,10 +13,13 @@ import {
   type AnimateOptions,
   type Components,
   type ExtraProps,
+  type PluginConfig,
 } from "streamdown";
 import { toast } from "sonner";
 import { openExternal } from "@/lib/api";
 import { FileLinks, linkedFile } from "./file-links";
+import { shellLanguages } from "./run-command";
+import { ShellBlock } from "./shell-block";
 import "./markdown.css";
 
 const VisibleRows = createContext(10);
@@ -138,6 +141,7 @@ const rehypePlugins = Object.entries(defaultRehypePlugins).flatMap(([name, plugi
   name === "harden" ? [relativeFileLinks, plugin] : [plugin],
 );
 const controls = { table: false, code: { copy: true, download: false } };
+const plugins: PluginConfig = { renderers: [{ language: shellLanguages, component: ShellBlock }] };
 export const CodingMarkdown = memo(function CodingMarkdown({
   children,
   streaming = false,
@@ -154,6 +158,7 @@ export const CodingMarkdown = memo(function CodingMarkdown({
       linkSafety={linkSafety}
       rehypePlugins={rehypePlugins}
       controls={controls}
+      plugins={plugins}
       tableMaxHeight={0}
     >
       {children}

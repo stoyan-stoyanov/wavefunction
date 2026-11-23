@@ -290,6 +290,18 @@ class FixtureModel(ScriptedModel):
                         "[summary.md](out/summary.md), and see [the app](app.py)."
                     )
                 ]
+            elif prompt.startswith("fixture: commands"):
+                # Shell blocks get a button that runs them in the chat's terminal; other code doesn't.
+                self.script = [
+                    AIMessage(
+                        content="Check the repository:\n\n```bash\ngit log --oneline -3\n```\n\n"
+                        "A session, whose output lines don't run:\n\n"
+                        "```console\n$ ls\napp.py  README.md\n$ echo ready\nready\n```\n\n"
+                        "A loop, run as written:\n\n"
+                        '```sh\nfor name in one two; do\n  echo "hello $name"\ndone\n```\n\n'
+                        "Python has no button:\n\n```python\nprint('not a shell command')\n```"
+                    )
+                ]
             elif prompt.startswith("fixture: transcript"):
                 self.script = [
                     AIMessage(

@@ -11,6 +11,7 @@ import {
 import { codingApi, type FilePreview as Preview } from "./api";
 import { FileLinks, MAX_ROWS, parseTable } from "./file-links";
 import { CodingMarkdown } from "./markdown";
+import { RunCommand } from "./run-command";
 
 // pdf.js is large; load it only when a PDF is opened.
 const PdfViewer = lazy(() => import("./pdf-viewer"));
@@ -121,10 +122,13 @@ function Body({ threadId, preview }: { threadId: string; preview: Preview }) {
   }
   if (/\.(md|markdown)$/i.test(preview.name)) {
     // Links inside the file are relative to it, not to the chat, so they open nothing here.
+    // Its commands are the file's, not ones the chat shared, so they don't run from here either.
     return (
       <div className="file-preview-markdown">
         <FileLinks.Provider value={null}>
-          <CodingMarkdown>{text!}</CodingMarkdown>
+          <RunCommand.Provider value={null}>
+            <CodingMarkdown>{text!}</CodingMarkdown>
+          </RunCommand.Provider>
         </FileLinks.Provider>
       </div>
     );
