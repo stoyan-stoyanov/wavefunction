@@ -15,6 +15,7 @@ import subprocess
 import sys
 import termios
 import threading
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from pathlib import Path
 from uuid import uuid4
@@ -41,14 +42,15 @@ class TerminalSession:
         self.buffer, self.offset = "", 0
         self.changed = asyncio.Event()
         self.decoder = codecs.getincrementaldecoder("utf-8")("replace")
-        self.master, self.process, self.waiter = None, None, None
+        self.master, self.waiter = None, None
+        self.process: asyncio.subprocess.Process | None = None
         self.shell_pid = None
         self.close_lock = asyncio.Lock()
         self.closer = None
         self.input_lock = asyncio.Lock()
         self.marker = uuid4().hex
         self.closed = False
-        self.on_exit = None
+        self.on_exit: Callable[[], Awaitable[None]] | None = None
         self.children = {}
         self.children_lock = threading.Lock()
         self.tracker = None
@@ -81,7 +83,12 @@ class TerminalSession:
             os.set_blocking(ready_read, False)
             self.resize(self.cols, self.rows)
             shell = "/bin/zsh" if Path("/bin/zsh").is_file() else "/bin/bash"
-            argv = [shell, "-f", "-i"] if shell.endswith("zsh") else [shell, "--noprofile", "--norc", "-i"]
+            # zsh, unlike bash, reads `# ...` in typed commands as words unless told it is a comment.
+            argv = (
+                [shell, "-f", "-i", "-o", "interactivecomments"]
+                if shell.endswith("zsh")
+                else [shell, "--noprofile", "--norc", "-i"]
+            )
             if self.command:
                 argv = ["/bin/sh", "-c", self.command]
             argv, env = await asyncio.to_thread(runner.prepare_launch, argv, tty=Path(os.ttyname(slave)))
@@ -120,8 +127,8 @@ class TerminalSession:
                         raise ValueError("The terminal shell could not start.")
                     self.shell_pid = int(report.strip())
             asyncio.get_running_loop().add_reader(master, self._read)
-            self.tracker = asyncio.create_task(self._track_children())
-            self.waiter = asyncio.create_task(self._wait())
+            self.tracker = asyncio.create_task(self._track_children(self.process))
+            self.waiter = asyncio.create_task(self._wait(self.process))
         except BaseException:
             self._close_fd()
             if self.process:
@@ -162,8 +169,8 @@ class TerminalSession:
             os.close(self.master)
             self.master = None
 
-    async def _wait(self):
-        self.exit_code = await self.process.wait()
+    async def _wait(self, process):
+        self.exit_code = await process.wait()
         self.status = "exited" if not self.closed else "closed"
         if self.tracker:
             self.tracker.cancel()
@@ -209,7 +216,7 @@ class TerminalSession:
             for pid, stamp in self.children.items()
             if pid in processes and processes[pid][1] == stamp
         }
-        leaders = {self.process.pid, self.shell_pid}
+        leaders = {self.process.pid if self.process else None, self.shell_pid}
         owned = {leader for leader in leaders if leader is not None} | self.children.keys()
         for pid in processes:
             if pid in leaders:
@@ -232,8 +239,8 @@ class TerminalSession:
             with suppress(ProcessLookupError, PermissionError):
                 os.kill(pid, signum)
 
-    async def _track_children(self):
-        while self.process.returncode is None:
+    async def _track_children(self, process):
+        while process.returncode is None:
             await asyncio.to_thread(self._capture_children)
             await asyncio.sleep(TRACK_SECONDS)
 

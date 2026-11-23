@@ -58,11 +58,13 @@
 .coding-markdown [data-streamdown="code-block-body"] > pre {
   background: transparent;
 }
-/* The copy icon matches the language label beside it. */
-.coding-markdown [data-streamdown="code-block-copy-button"] {
+/* The copy and run icons match the language label beside them. */
+.coding-markdown [data-streamdown="code-block-copy-button"],
+.coding-markdown .shell-block-run {
   padding: 2px;
 }
-.coding-markdown [data-streamdown="code-block-copy-button"] svg {
+.coding-markdown [data-streamdown="code-block-copy-button"] svg,
+.coding-markdown .shell-block-run svg {
   width: 12px;
   height: 12px;
 }

@@ -230,11 +230,14 @@ export function Workbench({
   thread,
   tab,
   onTab,
+  terminal,
   onClose,
 }: {
   thread: CodingThread;
   tab?: WorkbenchTab;
   onTab?: (tab: WorkbenchTab) => void;
+  /** A terminal the chat just opened, for the Terminal tab to select. */
+  terminal?: string | null;
   onClose?: () => void;
 }) {
   const [localTab, setLocalTab] = useState<WorkbenchTab>("files");
@@ -344,7 +347,7 @@ export function Workbench({
           ) : activeTab === "changes" ? (
             <ChangesView thread={thread} />
           ) : (
-            <TerminalView thread={thread} />
+            <TerminalView thread={thread} opened={terminal} />
           )
         ) : (
           <div className="p-6 text-sm text-muted-foreground">

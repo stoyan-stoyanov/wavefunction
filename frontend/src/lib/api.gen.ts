@@ -1838,6 +1838,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/coding/link-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Link Preview */
+        get: operations["link_preview_api_coding_link_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/coding/link-preview/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Link Media */
+        get: operations["link_media_api_coding_link_preview_media_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/coding/threads/{thread_id}/preview": {
         parameters: {
             query?: never;
@@ -2636,7 +2670,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "pdf" | "image" | "table" | "text" | "other";
+            kind: "pdf" | "image" | "video" | "table" | "text" | "other";
             /** Size */
             size: number;
             /** Previewable */
@@ -3075,6 +3109,26 @@ export interface components {
             kind: "interval";
             /** Every Seconds */
             every_seconds: number;
+        };
+        /** LinkPreview */
+        LinkPreview: {
+            /** Url */
+            url: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "page" | "image" | "video" | "none";
+            /** Title */
+            title: string | null;
+            /** Description */
+            description: string | null;
+            /** Site Name */
+            site_name: string | null;
+            /** Image */
+            image: string | null;
+            /** Icon */
+            icon: string | null;
         };
         /** LocalAccount */
         LocalAccount: {
@@ -8504,6 +8558,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AnsweredRun"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_preview_api_coding_link_preview_get: {
+        parameters: {
+            query: {
+                url: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkPreview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_media_api_coding_link_preview_media_get: {
+        parameters: {
+            query: {
+                url: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

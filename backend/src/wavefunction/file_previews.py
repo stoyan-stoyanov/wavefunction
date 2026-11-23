@@ -12,11 +12,13 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from . import responses as api
+from .link_previews import register_link_previews
 from .sandbox import private_folders
 
 # The webview buffers the whole file before showing it.
 MAX_PREVIEW_BYTES = 25 * 1024 * 1024
 IMAGE_TYPES = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"}
+VIDEO_TYPES = {".mp4", ".webm", ".mov", ".m4v"}
 TABLE_TYPES = {".csv", ".tsv"}
 # Opening these in their default app runs them, so they are only revealed in Finder.
 # (Bundles such as .app are folders, which are never previewed or opened.)
@@ -68,6 +70,8 @@ def kind(path: Path) -> str:
         return "pdf"
     if suffix in IMAGE_TYPES:
         return "image"
+    if suffix in VIDEO_TYPES:
+        return "video"
     if suffix in TABLE_TYPES:
         return "table"
     with path.open("rb") as handle:
@@ -105,6 +109,8 @@ def attachment_image(ws, thread_id: str, file_id: str) -> tuple[Path, str]:
 
 
 def register_file_previews(router, workspace):
+    register_link_previews(router)
+
     def resolve(thread_id: str, link: str) -> Path:
         ws = workspace()
         thread = ws.thread(thread_id)
