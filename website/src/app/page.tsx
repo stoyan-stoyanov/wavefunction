@@ -33,7 +33,7 @@ const APPLICATION_JSON_LD = {
   url: site.url,
   downloadUrl: `${site.url}${site.download}`,
   applicationCategory: "DeveloperApplication",
-  operatingSystem: "macOS",
+  operatingSystem: "macOS, Linux",
   license: site.license,
   sameAs: site.github,
   offers: { "@type": "Offer", price: 0, priceCurrency: "USD" },
@@ -78,6 +78,7 @@ export default function Home() {
         <OpenSource />
         <Stats />
         <Extras />
+        <Designs />
         <FAQ />
         <Closing />
       </main>
@@ -365,7 +366,7 @@ function ComputerUse() {
     <section id="computer-use" className="scroll-mt-16 pt-44 sm:pt-64">
       <Container>
         <h2 className="reveal max-w-[24ch] text-[clamp(2rem,4.4vw,3.5rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
-          Computer use that leaves your Mac alone
+          Computer use that leaves your computer alone
         </h2>
         <p className="reveal mt-7 max-w-[40rem] text-lg leading-relaxed text-soft sm:text-xl">
           Other agents take over your mouse, keyboard and screen to get things
@@ -377,9 +378,9 @@ function ComputerUse() {
           <ul className="grid gap-x-10 gap-y-10 md:grid-cols-3 lg:grid-cols-1 lg:gap-y-8">
             {[
               {
-                title: "Your Mac stays yours",
+                title: "Your computer stays yours",
                 description:
-                  "It never moves your pointer, types on your keyboard or records your screen. Its desktop is a local Docker container with its own browser and files, and a file reaches your Mac only when the agent hands it over, to a folder you allowed.",
+                  "It never moves your pointer, types on your keyboard or records your screen. Its desktop is a local Docker container with its own browser and files, and a file reaches your computer only when the agent hands it over, to a folder you allowed.",
               },
               {
                 title: "Secure sign-ins",
@@ -389,7 +390,7 @@ function ComputerUse() {
               {
                 title: "Files in and out",
                 description:
-                  "Downloads come to your Mac in the folder you choose, and files you add are ready to upload.",
+                  "Downloads come to your computer in the folder you choose, and files you add are ready to upload.",
               },
             ].map(({ title, description }) => (
               <li key={title} className="reveal border-t border-text/15 pt-6">
@@ -402,7 +403,7 @@ function ComputerUse() {
           </ul>
         </div>
         <p className="reveal mt-10 text-sm text-faint">
-          Needs Docker Desktop and a model that can read images.
+          Needs Docker Desktop and a model that can read images. macOS only for now.
         </p>
       </Container>
     </section>
@@ -417,7 +418,7 @@ const PROVIDERS = [
   { logo: "openai", name: "OpenAI", connect: "API key" },
   { logo: "openrouter", name: "OpenRouter", connect: "API key" },
   { logo: "vercel", name: "Vercel AI Gateway", connect: "API key" },
-  { logo: "ollama", name: "Ollama", connect: "On your Mac or your server" },
+  { logo: "ollama", name: "Ollama", connect: "On your computer or your server" },
   { logo: null, name: "OpenAI-compatible", connect: "LM Studio and other servers" },
 ];
 
@@ -430,7 +431,7 @@ function Providers() {
         </h2>
         <p className="reveal mt-7 max-w-[40rem] text-lg leading-relaxed text-soft sm:text-xl">
           Sign in with ChatGPT, use your own API keys, or run models on your
-          Mac. Pick a model for each chat and switch whenever you like.
+          own computer. Pick a model for each chat and switch whenever you like.
         </p>
         <div className="mt-12 sm:mt-16">
           <Screenshot
@@ -613,6 +614,52 @@ function Extras() {
   );
 }
 
+function Designs() {
+  return (
+    <section id="designs" className="scroll-mt-16 pt-44 sm:pt-64">
+      <Container>
+        <h2 className="reveal max-w-[24ch] text-[clamp(2rem,4.4vw,3.5rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+          Make it look the way you like
+        </h2>
+        <p className="reveal mt-7 max-w-[40rem] text-lg leading-relaxed text-soft sm:text-xl">
+          Designs restyle the whole app. Pick a built-in one, like Nostalgia
+          or Retro, or ask the agent to make one for you.
+        </p>
+        <div className="mt-12 grid gap-4 sm:mt-16 lg:grid-cols-2">
+          {[
+            {
+              src: "/wavefunction-design-retro.jpg",
+              alt: "The Retro design: pixel type, pixel icons and pixel art of a desk on the new-session screen.",
+              caption: "Retro, built in",
+            },
+            {
+              src: "/wavefunction-design-night-light.jpg",
+              alt: "Night Light, a design the agent made in a chat: warm charcoal colours and a sleeping moon on the new-session screen.",
+              caption: "Night Light, made by the agent in a chat",
+            },
+          ].map(({ src, alt, caption }) => (
+            <figure key={src} className="reveal flex min-w-0 flex-col gap-4">
+              <Image
+                src={src}
+                alt={alt}
+                width={1920}
+                height={1440}
+                sizes="(min-width: 1200px) 560px, (min-width: 1024px) 50vw, 100vw"
+                className="w-full rounded-[20px] sm:rounded-[28px]"
+              />
+              <figcaption className="text-[15.5px] text-soft">{caption}</figcaption>
+            </figure>
+          ))}
+        </div>
+        <p className="reveal mt-10 text-sm text-faint">
+          A design is CSS, images and fonts. It changes how the app looks and
+          never runs code.
+        </p>
+      </Container>
+    </section>
+  );
+}
+
 function Stats() {
   return (
     <section id="stats" className="scroll-mt-16 pt-44 sm:pt-64">
@@ -667,7 +714,7 @@ function FAQ() {
     {
       question: "Which platforms are supported?",
       answer:
-        "Wavefunction is currently available for macOS. Download the app, connect a model, and start a conversation.",
+        "Wavefunction runs on macOS: download the app, connect a model, and start a conversation. Linux support is experimental: build it from source with the steps in the README.",
     },
   ];
 
@@ -735,7 +782,7 @@ function Closing() {
           Try Wavefunction today
         </h2>
         <p className="reveal mt-6 text-lg text-soft sm:text-xl">
-          Free and open source for macOS.
+          Free and open source for macOS and Linux.
         </p>
         <div className="reveal mt-10 flex flex-wrap justify-center gap-3">
           <Download />
