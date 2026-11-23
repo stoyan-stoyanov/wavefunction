@@ -32,7 +32,7 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
     from langchain_core.messages import AIMessage, ToolMessage
     from langchain_core.outputs import ChatGeneration, ChatResult
     from PIL import Image
-    from support import create, git, reached, repository
+    from support import create, git, host_pid, reached, repository
 
     from wavefunction.coding_access import full_access
 
@@ -90,7 +90,7 @@ async def test_helper_lifecycle_keeps_access_limits_asks_for_more_and_passes_to_
                     if pid_file.exists():
                         break
                     await asyncio.sleep(0.025)
-                pid = int(pid_file.read_text())
+                pid = host_pid(int(pid_file.read_text()), session.process.pid)
                 terminals.append((session, pid))
                 await child_ready.put((session, pid))
                 await asyncio.Event().wait()

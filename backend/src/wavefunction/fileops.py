@@ -677,6 +677,11 @@ def instructions(request: dict) -> dict:
             with path.open(encoding="utf-8", errors="replace") as source:
                 text = source.read(budget + 1)
         except FileNotFoundError:
+            if not _left_out(str(path)):
+                continue
+            # Refused, as Seatbelt says it on macOS, so it is read again after a grant.
+            complete = False
+            parts.append(f"Repository instructions could not be read: {path}: Permission denied")
             continue
         except OSError as error:
             complete = False
@@ -966,13 +971,36 @@ OPERATIONS = {
 }
 
 
+def _left_out(path: str | None) -> bool:
+    """Whether the Linux sandbox did not mount `path`, which Seatbelt would have refused: then its
+    nearest folder that exists is part of the sandbox's own empty root, where folders exist only
+    to mount others through. Without restricted reads the root is the disk's, and nothing is."""
+    if not path or sys.platform != "linux":
+        return False
+    with suppress(OSError):
+        with open("/proc/self/mountinfo") as mounts:
+            root = [line for line in mounts if line.split()[4] == "/"][-1]
+        if root.split(" - ")[1].split()[0] != "tmpfs":
+            return False
+        # Followed, so a link to a file the sandbox doesn't show counts as that file.
+        folder = Path(os.path.realpath(path))
+        while not folder.exists() and folder != folder.parent:
+            folder = folder.parent
+        return os.stat(folder).st_dev == os.stat("/").st_dev
+    return False
+
+
 def run(request: dict) -> dict:
     """One operation's result, or why it was refused. Anything unforeseen raises."""
     try:
         return {"ok": True, **OPERATIONS[request["op"]](request)}
     except Refused as refusal:
+        if refusal.kind == "not_found" and _left_out(request.get("path")):
+            return {"ok": False, "error": "denied", "message": f"Permission denied: {request['path']}"}
         return {"ok": False, "error": refusal.kind, "message": str(refusal)}
     except FileNotFoundError as error:
+        if _left_out(error.filename or request.get("path")):
+            return {"ok": False, "error": "denied", "message": f"Permission denied: {error.filename}"}
         return {
             "ok": False,
             "error": "not_found",
@@ -990,6 +1018,13 @@ def run(request: dict) -> dict:
             }
         return {"ok": False, "error": "denied", "message": f"Permission denied: {path}"}
     except OSError as error:
+        if error.errno == errno.EROFS and sys.platform == "linux":
+            # The Linux sandbox's refusal: what it shows but may not change is mounted read-only.
+            return {
+                "ok": False,
+                "error": "denied",
+                "message": f"Permission denied: {error.filename or request.get('path')}",
+            }
         return {
             "ok": False,
             "error": "os",

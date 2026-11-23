@@ -1,0 +1,21 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "dragDropEnabled": false,
+        "title": "Wavefunction",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 880,
+        "minHeight": 700,
+        "center": true,
+        "decorations": true
+      }
+    ]
+  },
+  "bundle": {
+    "targets": ["deb", "appimage"]
+  }
+}

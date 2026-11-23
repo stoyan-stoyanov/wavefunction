@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import process from "node:process";
@@ -14,7 +15,9 @@ function run(command, args, cwd) {
       ...process.env,
       // uv's cache is safe to share between builds. PyInstaller's is cleared on every build (--clean),
       // so each checkout keeps its own and parallel builds in other worktrees don't collide.
-      UV_CACHE_DIR: process.env.UV_CACHE_DIR || "/private/tmp/harness-uv-cache",
+      UV_CACHE_DIR:
+        process.env.UV_CACHE_DIR ||
+        (process.platform === "darwin" ? "/private/tmp/harness-uv-cache" : join(tmpdir(), "harness-uv-cache")),
       PYINSTALLER_CONFIG_DIR: process.env.PYINSTALLER_CONFIG_DIR || join(backend, "build", "pyinstaller-config"),
     },
   });

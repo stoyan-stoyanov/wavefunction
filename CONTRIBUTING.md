@@ -125,7 +125,7 @@ npm run check
 
 It runs what CI would fail on for the files you changed (`npm run check -- --all` runs everything) and ends with what failed and how to rerun it. `npm run fix` formats your code and applies the lint fixes it can.
 
-The default tests use synthetic data and no model accounts. Tests marked `sandbox` run real commands through the macOS sandbox, so they only run on a Mac.
+The default tests use synthetic data and no model accounts. Tests marked `sandbox` run real commands through the sandbox, so they run on a Mac, or on Linux with Bubblewrap installed.
 
 Once it's ready, open the pull request as ready for review, not as a draft. If you couldn't check something, say so; we'd rather know.
 

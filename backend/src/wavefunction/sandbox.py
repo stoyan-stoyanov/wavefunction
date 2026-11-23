@@ -10,6 +10,9 @@ macOS enforcement is Seatbelt via `sandbox-exec`. It has carried a DEPRECATED ba
 and every major browser and coding agent still depends on it; Apple's own OS does too. The real
 risk is not removal but profile rot — a new macOS release makes some library read a sysctl the
 profile does not allow, and everything breaks at once. `self_test` exists for exactly that.
+
+Linux enforcement is Bubblewrap plus a seccomp filter (sandbox_linux), from the same policy:
+the same grants, private folders and network switch.
 """
 
 from __future__ import annotations
@@ -47,8 +50,13 @@ SAFE_ENVIRONMENT = ("HOME", "LANG", "LC_ALL", "TERM", "TZ", "USER")
 FROZEN_ENVIRONMENT = ("_PYI_ARCHIVE_FILE", "_PYI_APPLICATION_HOME_DIR", "_PYI_PARENT_PROCESS_LEVEL")
 
 # Credentials stay private even inside a granted folder. Task execution also restricts reads to
-# folder/runtime grants. Relative to home.
-PRIVATE_FOLDERS = (".ssh", ".gnupg", ".aws", "Library/Keychains")
+# folder/runtime grants. Relative to home. Linux has no Keychain: its keyrings, and the files gh and
+# Docker keep their sign-ins in when there is no keyring, take its place.
+PRIVATE_FOLDERS = (
+    (".ssh", ".gnupg", ".aws", ".local/share/keyrings", ".config/gh", ".docker")
+    if sys.platform == "linux"
+    else (".ssh", ".gnupg", ".aws", "Library/Keychains")
+)
 # The installed app's data folder. Private even to a development backend, whose own data
 # folder is elsewhere, so a checkout's agents cannot reach the real workspace's credentials.
 INSTALLED_DATA_DIR = "Library/Application Support/app.harness.coding"
@@ -97,6 +105,14 @@ TOOL_CACHES = {
 }
 
 DEFAULT_TIMEOUT = 120
+# Added to a failed command's errors on Linux, where the sandbox's refusals read as a missing path or
+# a read-only file system rather than macOS's "Operation not permitted".
+LINUX_REFUSALS = ("No such file or directory", "Read-only file system")
+LINUX_NOTE = (
+    "\n[The Linux sandbox shows only the folders this task may use, so others look missing, and "
+    "refuses writes outside writable grants as a read-only file system. If the path exists, ask "
+    "for it with request_folder_access.]"
+)
 # How much of each output stream rides in the result. Beyond that the whole stream is kept in
 # a file under the scratch space, and the result says where — `read_file` with offsets reads
 # the rest. The 40,000-byte cap this replaced drained and discarded everything past it.
@@ -177,8 +193,25 @@ def private_folders() -> list[Path]:
 
     home = Path.home()
     folders = [home / name for name in PRIVATE_FOLDERS]
-    folders += [get_settings().data_dir, home / INSTALLED_DATA_DIR]
+    folders += [get_settings().data_dir, installed_data_dir()]
     return list(dict.fromkeys(folder.resolve() for folder in folders))
+
+
+def installed_data_dir() -> Path:
+    """Where the installed desktop app keeps its data: Tauri's app data folder."""
+    if sys.platform == "linux":
+        data_home = os.environ.get("XDG_DATA_HOME") or str(Path.home() / ".local/share")
+        return Path(data_home) / "app.harness.coding"
+    return Path.home() / INSTALLED_DATA_DIR
+
+
+def tool_cache(scratch: Path) -> Path:
+    """The cache folder commands' package managers write to, shared by every task of this user."""
+    if sys.platform == "linux":
+        return (
+            Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache").resolve() / "wavefunction-tools"
+        )
+    return (_user_folder("DARWIN_USER_CACHE_DIR") or scratch) / "wavefunction-tools"
 
 
 def holds_app_data(folder: Path, data_dir: Path) -> bool:
@@ -505,8 +538,7 @@ def build_profile(
         for path in git_config_files():
             # A subpath: for a file, the file alone; for the hooks folder, its hooks.
             lines.append(f"(allow file-read* (require-all (subpath {_quote(path)}) (require-not {private})))")
-        cache = (_user_folder("DARWIN_USER_CACHE_DIR") or scratch) / "wavefunction-tools"
-        lines.append(f"(allow file-read* file-write* (subpath {_quote(cache)}))")
+        lines.append(f"(allow file-read* file-write* (subpath {_quote(tool_cache(scratch))}))")
         if temporary := _user_folder("DARWIN_USER_TEMP_DIR"):
             # xcrun ignores TMPDIR for its database and randomized replacement files.
             # Permit only those files, never the rest of the user's temporary data.
@@ -651,6 +683,13 @@ def _end_tagged(command_id: str) -> None:
     (`XPC_SERVICE_NAME=application.<its id>…`). It is the user's to quit, like an app opened from
     the Dock; stopping it closed the window the user asked for, or the browser `open URL` started.
     """
+    tag = f"WAVEFUNCTION_COMMAND_ID={command_id}"
+    if sys.platform == "linux":
+        # Every environment is readable in /proc, and no app launcher relabels what it starts.
+        for pid in _linux_tagged(tag.encode()):
+            with contextlib.suppress(ProcessLookupError, PermissionError):
+                os.kill(pid, signal.SIGKILL)
+        return
     try:
         listed = subprocess.run(
             ["/bin/ps", "-Eww", "-o", "pid=,command=", "-U", str(os.getuid())],
@@ -660,7 +699,6 @@ def _end_tagged(command_id: str) -> None:
         ).stdout
     except (OSError, subprocess.SubprocessError):
         return
-    tag = f"WAVEFUNCTION_COMMAND_ID={command_id}"
     # A command inherits this process's label, if any, so only a different one marks an app.
     inherited = f"XPC_SERVICE_NAME={os.environ.get('XPC_SERVICE_NAME', '')}"
     for line in listed.splitlines():
@@ -673,6 +711,23 @@ def _end_tagged(command_id: str) -> None:
             continue
         with contextlib.suppress(ProcessLookupError, PermissionError):
             os.kill(int(pid), signal.SIGKILL)
+
+
+def _linux_tagged(tag: bytes) -> list[int]:
+    """This user's processes, other than this one, whose environment holds `tag` exactly."""
+    found = []
+    for entry in os.scandir("/proc"):
+        if not entry.name.isdigit() or int(entry.name) == os.getpid():
+            continue
+        try:
+            if entry.stat().st_uid != os.getuid():
+                continue
+            with open(f"/proc/{entry.name}/environ", "rb") as environ:
+                if tag in environ.read().split(b"\0"):
+                    found.append(int(entry.name))
+        except OSError:
+            continue
+    return found
 
 
 def _discard(spools: list[Path]) -> None:
@@ -899,6 +954,10 @@ class Sandbox:
 
     @staticmethod
     def available() -> bool:
+        if sys.platform == "linux":
+            from . import sandbox_linux
+
+            return sandbox_linux.available()
         return os.path.exists(SANDBOX_EXEC)
 
     def environment(self) -> dict[str, str]:
@@ -909,7 +968,7 @@ class Sandbox:
         # the tools the user would find in Terminal. The profile, not PATH, is the boundary.
         built["PATH"] = ":".join(dict.fromkeys([str(self.scratch / "bin"), *command_path()]))
         built["TMPDIR"] = str(self.scratch)
-        caches = (_user_folder("DARWIN_USER_CACHE_DIR") or self.scratch) / "wavefunction-tools"
+        caches = tool_cache(self.scratch)
         built.update({name: str(caches / folder) for name, folder in TOOL_CACHES.items()})
         # Swift and clang build modules (`import Foundation`) into this cache and stop when they
         # cannot write it. Built from each project's own sources, so in this task's scratch,
@@ -946,9 +1005,16 @@ class Sandbox:
 
     def prepare_launch(self, argv: list[str], *, tty: Path | None = None) -> tuple[list[str], dict[str, str]]:
         if not self.available():
-            raise SandboxUnavailable("This Mac has no sandbox available, so commands cannot be run safely.")
+            raise SandboxUnavailable(
+                f"Commands cannot be run safely: {_unavailable()}."
+                if sys.platform == "linux"
+                else "This Mac has no sandbox available, so commands cannot be run safely."
+            )
         self.scratch.mkdir(parents=True, exist_ok=True)
         self._install_interpreter()
+        if sys.platform == "linux":
+            # The pseudo-terminal needs no rule: the command inherits it already open.
+            return self._linux_launch(argv), self.environment()
         profile = build_profile(
             self.grants,
             scratch=self.scratch,
@@ -958,6 +1024,43 @@ class Sandbox:
             restrict_reads=self.restrict_reads,
         )
         return [SANDBOX_EXEC, "-p", profile, *argv], self.environment()
+
+    def _linux_launch(self, argv: list[str]) -> list[str]:
+        """The Seatbelt policy above as mounts. What the profile allows without `require-not`
+        private — the scratch space, the app's interpreter, rg and gh — is mounted after the
+        private folders' covers, so it stays reachable where the app keeps it in its data."""
+        from . import sandbox_linux
+        from .config import get_settings
+        from .repository_search import ripgrep_binary
+
+        readable: list[Path] = []
+        if self.restrict_reads:
+            readable += [Path(__file__).resolve().parent, *toolchain_roots(), *git_config_files()]
+            if getattr(sys, "frozen", False):
+                readable.append(Path(sys._MEIPASS).resolve())  # pyright: ignore[reportAttributeAccessIssue]
+            readable += [grant.path for grant in self.grants]
+        exempt: list[tuple[Path, bool]] = [(self.scratch, True), (Path(ripgrep_binary()), False)]
+        if (binary := interpreter()) is not None:
+            exempt += [(binary.parent, False), (binary.resolve().parent, False)]
+        if not getattr(sys, "frozen", False):
+            exempt += [(Path(prefix).resolve(), False) for prefix in {sys.prefix, sys.base_prefix}]
+        if gh := managed_gh():
+            exempt.append((gh, False))
+        if self.network:
+            exempt += [(Path(folder), False) for folder in sorted(READABLE_FOLDERS)]
+        cache = tool_cache(self.scratch)
+        cache.mkdir(parents=True, exist_ok=True)
+        return sandbox_linux.launch(
+            argv,
+            filter_path=sandbox_linux.filter_file(get_settings().data_dir),
+            readable=readable,
+            writable=[cache, *(grant.path for grant in self.grants if grant.writable)],
+            private=[*private_folders(), *self.private_roots],
+            exempt=exempt,
+            links=[binary] if binary is not None else [],
+            network=self.network,
+            restrict_reads=self.restrict_reads,
+        )
 
     async def run(
         self,
@@ -971,7 +1074,7 @@ class Sandbox:
         scan_detached: bool = True,
     ) -> CommandResult:
         argv, env = self.prepare_launch(["/bin/sh", "-c", command])
-        return await _run_process(
+        result = await _run_process(
             argv,
             env=env,
             cwd=cwd or self.scratch,
@@ -982,6 +1085,9 @@ class Sandbox:
             stdin=stdin,
             scan_detached=scan_detached,
         )
+        if sys.platform == "linux" and result.exit_code and any(r in result.stderr for r in LINUX_REFUSALS):
+            result.stderr += LINUX_NOTE
+        return result
 
 
 def _default_locale(env: dict[str, str]) -> None:
@@ -1029,18 +1135,19 @@ async def self_test(scratch: Path) -> str | None:
     a working sandbox until something escapes. Claude Code's profile broke this way on Tahoe.
     """
     if not Sandbox.available():
-        return "sandbox-exec is missing from this Mac"
+        return _unavailable() if sys.platform == "linux" else "sandbox-exec is missing from this Mac"
 
     from .config import get_settings
 
     sandbox = Sandbox([], scratch=scratch)
     # The app's data folder always exists and is readable to the user, so listing it succeeds
-    # exactly when the private folders are not private.
+    # exactly when the private folders are not private. On Linux a private folder is an empty
+    # cover, which lists (with the folders the scratch space is mounted through), so a file the
+    # data folder always holds there, the seccomp filter, is read instead.
     data = shlex.quote(str(get_settings().data_dir.resolve()))
+    probe = f"cat {data}/sandbox/*" if sys.platform == "linux" else f"ls -a {data}"
     try:
-        denied = await sandbox.run(
-            f"ls -a {data} 2>/dev/null || cat ~/.ssh/known_hosts 2>/dev/null", timeout=15
-        )
+        denied = await sandbox.run(f"{probe} 2>/dev/null || cat ~/.ssh/known_hosts 2>/dev/null", timeout=15)
     except Exception as error:  # noqa: BLE001 - any failure here means unproven, so unsafe
         return f"the sandbox could not be started: {error}"
     if denied.exit_code == 0 and denied.stdout.strip():
@@ -1051,6 +1158,12 @@ async def self_test(scratch: Path) -> str | None:
         return f"the sandbox blocked a command it should have allowed: {allowed.stderr.strip()}"
 
     return None
+
+
+def _unavailable() -> str:
+    from . import sandbox_linux
+
+    return sandbox_linux.unavailable_reason() or "the Linux sandbox is unavailable"
 
 
 def load_grants(raw: object) -> list[Grant]:

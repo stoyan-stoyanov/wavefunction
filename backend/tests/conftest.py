@@ -21,6 +21,7 @@ from wavefunction.files import ProjectFileStore
 from wavefunction.models import ModelGateway
 from wavefunction.repository import Repository
 from wavefunction.runtime import RuntimeManager
+from wavefunction.sandbox import Sandbox
 from wavefunction.secrets import EnvFileSecretStore
 from wavefunction.spec_v2 import AgentSpecV2, ToolBinding
 
@@ -119,10 +120,11 @@ def pytest_collection_modifyitems(config, items):
         _budget_report.append(
             (f"Cases: {total} of {CASES} ({len(items)} Python, {native} native, {launcher} launcher).", False)
         )
-    # The app runs no command outside the macOS sandbox, so where it is missing these cases cannot
-    # run. CI runs the whole suite on macOS too.
-    if sys.platform != "darwin":
-        missing = pytest.mark.skip(reason="Needs the macOS sandbox")
+    # The app runs no command outside the sandbox (Seatbelt on macOS, Bubblewrap on Linux), so
+    # where it is missing these cases cannot run. The required Linux job leaves them to the
+    # community-supported `linux` job (WAVEFUNCTION_SANDBOX_TESTS=0); CI runs them on macOS too.
+    if os.environ.get("WAVEFUNCTION_SANDBOX_TESTS") == "0" or not Sandbox.available():
+        missing = pytest.mark.skip(reason="Needs the sandbox: sandbox-exec on macOS, bwrap on Linux")
         for item in items:
             if "sandbox" in item.keywords:
                 item.add_marker(missing)
@@ -267,6 +269,8 @@ def _signed_out_of_github(monkeypatch):
     monkeypatch.setattr(github_cli, "token", signed_out)
     monkeypatch.setattr(github_cli, "signed_in_account", no_account)
     monkeypatch.setattr(github_cli, "_command_token", None)
+    # Computer use is off in Linux builds; its tests drive a fake Docker as the macOS app does.
+    monkeypatch.setattr("wavefunction.computer.UNSUPPORTED", None)
 
 
 @pytest.fixture

@@ -6,7 +6,7 @@ import httpx
 import pytest
 from conftest import script_gateway, tool_call_message
 from langchain_core.messages import AIMessage, ToolMessage
-from support import create
+from support import create, host_pid, refused
 
 
 @pytest.mark.sandbox
@@ -275,16 +275,16 @@ async def test_terminal_enforces_private_storage_and_stops_children_on_close(cod
             output = await session.output(cursor, 0.2)
             text += output["text"]
             cursor = output["cursor"]
-            if "Operation not permitted" in text or "Permission denied" in text:
+            if refused(text):
                 break
         assert "PRIVATE-SYNTHETIC-MARKER" not in text
-        assert "Operation not permitted" in text or "Permission denied" in text, text
+        assert refused(text), text
         await session.write("sleep 60 & echo $! >child.pid\n")
         for _ in range(30):
             if (folder / "child.pid").is_file():
                 break
             await asyncio.sleep(0.05)
-        child = int((folder / "child.pid").read_text())
+        child = host_pid(int((folder / "child.pid").read_text()), session.process.pid)
         if closure == "exit":
             await session.write("exit\nexit\n")
             await asyncio.wait_for(session.waiter, 3)

@@ -19,7 +19,7 @@ const permissionText: Record<NotificationPermission | "checking", string> = {
   granted: "macOS allows notifications from Wavefunction. A Focus mode can still silence them.",
   not_requested: "macOS asks for permission when the first notification is due, or when you send a test.",
   denied: "macOS blocks notifications from Wavefunction. Allow them in System Settings › Notifications.",
-  unsupported: "Notifications appear in the Wavefunction desktop app.",
+  unsupported: "System notifications need the Wavefunction app on macOS.",
   unavailable: "The macOS notification setting could not be read.",
 };
 

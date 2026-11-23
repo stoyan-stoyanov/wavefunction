@@ -174,6 +174,19 @@ async def test_owned_worktree_gitfile_cannot_redirect_backend_or_captured_access
 
 
 @pytest.mark.sandbox
+async def test_a_helper_s_git_lfs_objects_outlive_its_command(coding, helper):
+    """Git LFS keeps objects in the shared Git folder's `lfs/`, which a repository has only once
+    something used LFS. A helper's command that starts it keeps what it stores there."""
+    source, _, captured = helper
+    stored = source / ".git/lfs/objects/ab/cd/abcd"
+    command = TOOL_REGISTRY["run_command"].build(captured)
+    script = f"mkdir -p {shlex.quote(str(stored.parent))} && printf asset > {shlex.quote(str(stored))}"
+    result = await command.ainvoke({"command": script})
+    assert "[exit code 0]" in result, result
+    assert stored.read_text() == "asset"
+
+
+@pytest.mark.sandbox
 async def test_a_helper_starts_with_its_parents_uncommitted_work(coding, tmp_path):
     client, ws, _ = coding
     source = repository(tmp_path)

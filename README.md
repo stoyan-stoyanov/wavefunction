@@ -91,7 +91,7 @@ You need a Mac with Apple Silicon (macOS 11 or later). Setup walks you through c
 
 The app is a [Tauri](https://tauri.app) shell in Rust (`src-tauri`) around a React interface (`frontend`) and a Python agent engine (`backend`). The build freezes the engine with PyInstaller and bundles it, with its own Python, into the app.
 
-You need macOS, Node.js 22+, [uv](https://docs.astral.sh/uv/) (it installs Python 3.12), Rust and the Xcode Command Line Tools.
+On macOS you need Node.js 22+, [uv](https://docs.astral.sh/uv/) (it installs Python 3.12), Rust and the Xcode Command Line Tools.
 
 ```sh
 npm run setup           # frontend packages and the Python environment, from their lockfiles
@@ -100,6 +100,19 @@ open src-tauri/target/release/bundle/macos/Wavefunction.app
 ```
 
 `desktop:build` also writes a ZIP and its checksum to `dist/desktop`. Its signature is ad hoc, so the app runs on the Mac that built it but warns elsewhere. For a signed, notarized DMG you can hand to others, use `npm run release:local`, which needs a Developer ID certificate and an App Store Connect API key ([releasing](docs/RELEASING.md)).
+
+### Linux
+
+Linux is community-supported and built from source only: there are no Linux releases or updates, and computer use, notifications and dictation are macOS-only for now. Commands run in a [Bubblewrap](https://github.com/containers/bubblewrap) sandbox with a seccomp filter, from the same grants as on macOS; without `/usr/bin/bwrap` the app runs no commands at all. On Ubuntu 24.04 or later, with Node.js 22+, uv and Rust installed:
+
+```sh
+sudo apt install bubblewrap build-essential file libwebkit2gtk-4.1-dev \
+  libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+UV_PYTHON_PREFERENCE=only-managed npm run setup   # uv's own Python 3.12, which the build can bundle
+npm run desktop:build   # the engine, then a .deb and an AppImage in dist/desktop
+```
+
+Other distributions need the same libraries under their own names (Tauri lists them in its [prerequisites](https://v2.tauri.app/start/prerequisites/#linux)). If Settings › Access says the sandbox is unavailable, your distribution may stop `bwrap` from making user namespaces: Ubuntu 23.10 and later do unless an AppArmor profile allows it, which `sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0` lifts until the next restart. The app keeps its data in `~/.local/share/app.harness.coding`.
 
 While working on the interface, `npm run dev:fixture` runs it in your browser against a disposable synthetic workspace, with no account or model provider. `npm run desktop:dev` runs the app itself with the interface reloading as you edit. Before a pull request:
 

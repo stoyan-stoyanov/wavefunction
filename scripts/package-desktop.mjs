@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { restoreBackendLinks } from "./backend-links.mjs";
 
@@ -9,6 +9,32 @@ const target = process.env.CARGO_TARGET_DIR
   ? resolve(root, "src-tauri", process.env.CARGO_TARGET_DIR)
   : join(root, "src-tauri/target");
 const config = JSON.parse(readFileSync(join(root, "src-tauri/tauri.conf.json"), "utf8"));
+const folder = join(root, "dist/desktop");
+
+function checksum(path, name) {
+  const digest = createHash("sha256").update(readFileSync(path)).digest("hex");
+  writeFileSync(join(folder, name + ".sha256"), `${digest}  ${name}\n`);
+}
+
+// Linux builds come from source: Tauri's .deb and AppImage, unsigned, with their checksums.
+if (process.platform === "linux") {
+  const packages = ["deb", "appimage"].flatMap((kind) => {
+    const bundle = join(target, "release/bundle", kind);
+    return existsSync(bundle)
+      ? readdirSync(bundle).filter((name) => /\.(deb|AppImage)$/.test(name)).map((name) => join(bundle, name))
+      : [];
+  });
+  if (!packages.length) throw new Error("Build the desktop app before packaging it.");
+  mkdirSync(folder, { recursive: true });
+  for (const path of packages) {
+    const name = path.split("/").pop();
+    copyFileSync(path, join(folder, name));
+    checksum(path, name);
+    console.log(`Packaged desktop: ${join(folder, name)}`);
+  }
+  process.exit(0);
+}
+
 const app = join(target, `release/bundle/macos/${config.productName}.app`);
 if (!existsSync(app))
   throw new Error("Build the desktop app before packaging it.");
@@ -25,7 +51,6 @@ for (const args of [
   const signed = spawnSync("/usr/bin/codesign", args, { stdio: "inherit" });
   if (signed.status !== 0) process.exit(signed.status ?? 1);
 }
-const folder = join(root, "dist/desktop");
 mkdirSync(folder, { recursive: true });
 const name = `${config.productName}-${config.version}-macos-${process.arch}.zip`;
 const archive = join(folder, name);
@@ -35,6 +60,5 @@ const result = spawnSync(
   { stdio: "inherit" },
 );
 if (result.status !== 0) process.exit(result.status ?? 1);
-const digest = createHash("sha256").update(readFileSync(archive)).digest("hex");
-writeFileSync(join(folder, name + ".sha256"), `${digest}  ${name}\n`);
+checksum(archive, name);
 console.log(`Packaged desktop: ${archive}`);

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from conftest import script_gateway, tool_call_message
 from langchain_core.messages import AIMessage
-from support import create
+from support import create, refused
 
 
 async def test_a_command_runs_outside_the_sandbox_once_approved_or_freely_in_a_chat_with_full_access(
@@ -304,7 +304,7 @@ async def test_folder_access_approval_rejection_and_native_command_boundary(codi
     assert (await services.runtime.wait(run["id"]))["status"] == "waiting_approval"
     assert (folder / "inside.txt").read_text() == "no approval needed"
     events = services.repository.list_run_events(run["id"])
-    assert "Operation not permitted" in str(events)
+    assert refused(str(events))
     assert "external requirement" not in str([e for e in events if e["event_type"] == "tool_result"])
     pause = next(e for e in reversed(events) if e["event_type"] == "run_waiting_for_approval")
     assert pause["payload"]["requests"][0]["folder"] == str(outside)
@@ -478,4 +478,101 @@ async def test_a_toolchain_on_path_reads_its_install_folder_but_home_stays_close
     )
     result = await box.run("gotool; cargotool", cwd=project)
     assert "package runtime" in result.stdout, result.stderr
-    assert "SYNTHETIC_TOKEN" not in result.stdout and "Operation not permitted" in result.stderr
+    assert "SYNTHETIC_TOKEN" not in result.stdout and refused(result.stderr)
+
+
+# Each attempt prints its name if it gets through.
+ESCAPES = r"""
+import socket, sys
+
+key, data, docker, planted, datagrams, abstract = sys.argv[1:]
+
+def attempt(name, action):
+    try:
+        action()
+        print("ESCAPED", name, flush=True)
+    except OSError:
+        pass
+
+def connect(address):
+    return lambda: socket.socket(socket.AF_UNIX).connect(address)
+
+def datagram(address):
+    # A datagram end of a socket pair can be connected elsewhere afterwards.
+    return lambda: socket.socketpair(socket.AF_UNIX, socket.SOCK_DGRAM)[0].connect(address)
+
+attempt("ssh key", lambda: open(key).read())
+attempt("ssh write", lambda: open(key + ".pub", "w").write("planted"))
+attempt("app data", lambda: open(data).read())
+attempt("app data write", lambda: open(data, "a").write("planted"))
+attempt("docker socket", connect(docker))
+attempt("socket in a granted folder", connect(planted))
+attempt("datagram socket in a granted folder", datagram(datagrams))
+if abstract:
+    attempt("abstract socket", connect("\0" + abstract))
+    attempt("abstract datagram socket", datagram("\0" + abstract + "-datagram"))
+print("DONE", flush=True)
+"""
+
+
+@pytest.mark.sandbox
+async def test_commands_reach_no_keys_app_data_docker_or_abstract_sockets(tmp_path, system_tmp, monkeypatch):
+    """Writable grants of home and of the app's data folder itself still leave out ~/.ssh and that
+    data. No Unix socket is reachable: not Docker's, not one in a granted folder, not through a
+    datagram socket pair, and on Linux not an abstract one (X11's, D-Bus's), which with the network
+    shared no mount can hide."""
+    import shlex
+    import socket
+    import sys
+    import uuid
+
+    from wavefunction.config import get_settings
+    from wavefunction.sandbox import Grant, Sandbox, scratch_for
+
+    home = tmp_path / "home"
+    (home / ".ssh").mkdir(parents=True)
+    key = home / ".ssh" / "id_synthetic"
+    key.write_text("SSH-SECRET")
+    monkeypatch.setenv("HOME", str(home))
+    data = get_settings().data_dir / "synthetic.env"
+    data.parent.mkdir(parents=True, exist_ok=True)
+    data.write_text("DATA-SECRET")
+    # Short, as macOS allows a socket's path 104 bytes.
+    planted, datagrams = system_tmp / "docker.sock", system_tmp / "datagram.sock"
+    abstract = f"wavefunction-test-{uuid.uuid4().hex}" if sys.platform == "linux" else ""
+    listeners = []
+    try:
+        for address in [str(planted), *(["\0" + abstract] if abstract else [])]:
+            listener = socket.socket(socket.AF_UNIX)
+            listener.bind(address)
+            listener.listen()
+            listeners.append(listener)
+        for address in [str(datagrams), *(["\0" + abstract + "-datagram"] if abstract else [])]:
+            listener = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
+            listener.bind(address)
+            listeners.append(listener)
+        if abstract:
+            # Reachable from outside, so a refusal inside is the sandbox's.
+            with socket.socket(socket.AF_UNIX) as outside:
+                outside.connect("\0" + abstract)
+            ends = socket.socketpair(socket.AF_UNIX, socket.SOCK_DGRAM)
+            ends[0].connect("\0" + abstract + "-datagram")
+            for end in ends:
+                end.close()
+        script = home / "escapes.py"
+        script.write_text(ESCAPES)
+        docker = Path("/var/run/docker.sock")
+        command = shlex.join(
+            ["python3", *map(str, [script, key, data, docker, planted, datagrams]), abstract]
+        )
+        grants = [Grant(home, True), Grant(get_settings().data_dir, True), Grant(system_tmp, True)]
+        for network in (False, True):
+            box = Sandbox(grants, scratch=scratch_for(tmp_path), network=network, restrict_reads=True)
+            result = await box.run(command, timeout=60)
+            assert "DONE" in result.stdout, (network, result.stderr)
+            assert "ESCAPED" not in result.stdout, (network, result.stdout)
+    finally:
+        for listener in listeners:
+            listener.close()
+    assert key.read_text() == "SSH-SECRET" and data.read_text() == "DATA-SECRET"
+    assert not (home / ".ssh" / "id_synthetic.pub").exists()

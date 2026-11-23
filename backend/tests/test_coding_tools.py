@@ -5,6 +5,7 @@ import re
 import shlex
 import sys
 from dataclasses import replace
+from typing import Any
 
 import pytest
 from conftest import ScriptedModel, tool_call_message
@@ -88,7 +89,9 @@ async def test_line_reads_page_and_bound_long_lines_without_losing_unicode(tmp_p
     with pytest.raises(ValueError, match="has not been read"):
         await tools["write_file"].ainvoke({"path": "calculation.py", "content": text})
     page = await read.ainvoke({"path": "calculation.py", "start_line": 5})
-    continuation = int(re.search(r"continue with offset=(\d+)", page).group(1))
+    match = re.search(r"continue with offset=(\d+)", page)
+    assert match
+    continuation = int(match.group(1))
     start = text.index("def calculate_total")
     shown = [line.split(": ", 1)[1] for line in page.splitlines() if re.match(r"\d+: ", line)]
     assert shown == text[start:continuation].splitlines()
@@ -111,7 +114,7 @@ async def test_commands_distinguish_denial_failure_and_timeout_without_losing_ou
         shlex.join([sys.executable, "-I", "-c", script]), timeout=0.5, cwd=tmp_path, tail=True
     )
     assert result.exit_code == 124 and result.timed_out
-    assert "Showing the last" in result.stdout
+    assert "Showing the last" in result.stdout and result.stdout_file is not None
     assert result.stdout_file.read_text().strip() == "x" * (PREVIEW_BYTES + 100)
     assert "partial error" in result.stderr and "Timed out" in result.stderr
 
@@ -130,11 +133,11 @@ async def test_compaction_keeps_tool_confirmed_state_through_multiple_summaries(
         messages += [AIMessage(content="", tool_calls=[call]), await tools[name].ainvoke(call)]
     model = ScriptedModel(script=[AIMessage(content="Continue fixing the tests.")])
     middleware = RetryingSummarizationMiddleware(model)
-    first = middleware._build_new_messages(await middleware._acreate_summary(messages))
+    first = middleware._build_new_messages(await middleware._acreate_summary(messages))  # pyright: ignore[reportArgumentType]
     # Checkpoint roundtrip and a newly reconstructed middleware must retain the evidence.
     restored = messages_from_dict(json.loads(json.dumps(messages_to_dict(first))))
     middleware = RetryingSummarizationMiddleware(model)
-    second = middleware._build_new_messages(await middleware._acreate_summary(restored))
+    second = middleware._build_new_messages(await middleware._acreate_summary(restored))  # pyright: ignore[reportArgumentType]
     state = second[0].additional_kwargs["coding_state"]
     assert state["read"] == [str(tmp_path / "code.py")]
     assert state["modified"] == [str(tmp_path / "code.py")]
@@ -143,7 +146,7 @@ async def test_compaction_keeps_tool_confirmed_state_through_multiple_summaries(
     assert "test-failed" in second[0].content
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="Seatbelt is macOS only")
+@pytest.mark.sandbox
 async def test_batch_edits_use_original_matches_and_reject_whole_invalid_batch(tmp_path):
     source = tmp_path / "code.txt"
     source.write_text("alpha beta gamma")
@@ -186,6 +189,7 @@ async def test_command_streams_before_completion_and_keeps_tail_and_full_log(tmp
         assert not task.done() and "FIRST" in updates[0][0]
         result = await task
         assert result.stdout.rstrip().endswith("LAST") and "Showing the last" in result.stdout
+        assert result.stdout_file is not None
         assert result.stdout_file.read_text().startswith("FIRST\n")
         assert result.stdout_file.read_text().rstrip().endswith("LAST")
         assert "ERROR TAIL" in updates[-1][1]
@@ -264,7 +268,7 @@ async def test_local_image_read_attaches_pixels_only_at_request_time(tmp_path):
     ]
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="Seatbelt is macOS only")
+@pytest.mark.sandbox
 async def test_local_image_reads_use_the_same_boundary_as_text(tmp_path):
     from PIL import Image
 
@@ -382,7 +386,7 @@ def test_command_tails_coalesce_with_monotonic_reconnect_cursors(stack):
     assert len([e for e in read(owner["id"]) if e["event_type"] == "tool_output"]) == 2
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="Seatbelt is macOS only")
+@pytest.mark.sandbox
 async def test_atomic_edit_obeys_native_write_grant(tmp_path):
     from wavefunction.sandbox import Grant
 
@@ -737,7 +741,7 @@ async def test_reads_tell_text_from_images_and_binaries_and_say_where_a_file_end
     assert await read.ainvoke({"path": "wide.txt", "offset": 40_000, "limit": 40_000}) == wide[40_000:]
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="Seatbelt is macOS only")
+@pytest.mark.sandbox
 async def test_repository_instructions_retry_after_a_grant_then_stay_fixed_per_run(stack, tmp_path):
     from wavefunction.sandbox import GRANTS_SETTING
 
@@ -755,7 +759,7 @@ async def test_repository_instructions_retry_after_a_grant_then_stay_fixed_per_r
         coding_workspace=stack.services.coding_workspace,
     )
 
-    async def told(middleware, messages):
+    async def told(middleware, messages) -> Any:
         update = await middleware.abefore_model({"messages": messages}, None)
         return update["messages"][0] if update else None
 
