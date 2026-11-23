@@ -9,7 +9,9 @@ worse than some navigation text in the output.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import ipaddress
+from collections.abc import AsyncIterator
 from html.parser import HTMLParser
 from typing import Any
 from urllib.parse import urlparse
@@ -57,6 +59,38 @@ async def _assert_public(url: str) -> ipaddress.IPv4Address | ipaddress.IPv6Addr
             )
         addresses.append(address)
     return addresses[0]
+
+
+@contextlib.asynccontextmanager
+async def open_public(client: httpx.AsyncClient, url: str) -> AsyncIterator[tuple[httpx.Response, str]]:
+    """Stream a public address, following redirects, as the response and the address it came from.
+
+    Redirects are followed by hand so every hop is validated, not just the first URL. The request
+    connects to the exact address the validation approved (the hostname is kept for TLS and the
+    Host header): resolving twice would let a rebinding DNS server answer public during the check
+    and loopback for the connection. The caller bounds the whole loop with a wall-clock deadline,
+    because httpx's timeout bounds individual socket operations and a slow-drip server would
+    otherwise hold it open forever.
+    """
+    target = url
+    for _hop in range(MAX_REDIRECTS + 1):
+        address = await _assert_public(target)
+        parsed = httpx.URL(target)
+        host = parsed.host
+        # The full authority, not just the hostname: a server on a non-default port routes by
+        # `Host: example.com:8443`, and IPv6 keeps its brackets.
+        authority = parsed.netloc.decode("ascii")
+        pinned = parsed.copy_with(host=f"[{address}]" if address.version == 6 else str(address))
+        request_extensions = {"sni_hostname": host} if parsed.scheme == "https" else {}
+        async with client.stream(
+            "GET", pinned, headers={"Host": authority}, extensions=request_extensions
+        ) as response:
+            if response.is_redirect:
+                target = str(httpx.URL(target).join(response.headers.get("location", "")))
+                continue
+            yield response, target
+            return
+    raise RuntimeError(f"{url} redirected more than {MAX_REDIRECTS} times.")
 
 
 # Elements whose text is not content.
@@ -145,69 +179,43 @@ def build_fetch_page(_context: Any = None) -> BaseTool:
         Args:
             url: The full address, for example https://docs.example.com/setup.
         """
-        # Redirects are followed by hand so every hop is validated, not just the first URL.
-        # The request connects to the exact address the validation approved (the hostname is
-        # kept for TLS and the Host header) — resolving twice would let a rebinding DNS server
-        # answer public during the check and loopback for the connection. The whole loop runs
-        # under one wall-clock deadline, because httpx's timeout bounds individual socket
-        # operations and a slow-drip server would otherwise hold the turn open forever.
-        target = url
-        async with httpx.AsyncClient(
-            timeout=FETCH_TIMEOUT,
-            follow_redirects=False,
-            # No compressed transfer: httpx would decompress transparently, and a small
-            # compression bomb could then blow far past the byte cap in one chunk.
-            headers={"User-Agent": "Wavefunction/0.1", "Accept-Encoding": "identity"},
-        ) as client:
-            async with asyncio.timeout(FETCH_DEADLINE):
-                for _hop in range(MAX_REDIRECTS + 1):
-                    address = await _assert_public(target)
-                    parsed = httpx.URL(target)
-                    host = parsed.host
-                    # The full authority, not just the hostname: a server on a non-default
-                    # port routes by `Host: example.com:8443`, and IPv6 keeps its brackets.
-                    authority = parsed.netloc.decode("ascii")
-                    pinned = parsed.copy_with(host=f"[{address}]" if address.version == 6 else str(address))
-                    request_extensions = {"sni_hostname": host} if parsed.scheme == "https" else {}
-                    async with client.stream(
-                        "GET", pinned, headers={"Host": authority}, extensions=request_extensions
-                    ) as response:
-                        if response.is_redirect:
-                            location = response.headers.get("location", "")
-                            target = str(httpx.URL(target).join(location))
-                            continue
-                        response.raise_for_status()
-                        content_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
-                        if response.headers.get("content-encoding", "") not in ("", "identity"):
-                            return (
-                                "That server insists on compressed transfer, which this tool "
-                                "does not read. Tell the user the address instead."
-                            )
-                        html = content_type in ("text/html", "application/xhtml+xml", "")
-                        if not html and not (
-                            content_type.startswith("text/")
-                            or content_type in ("application/json", "application/xml")
-                        ):
-                            # Decided before the body is read: a binary is never downloaded
-                            # just to be refused.
-                            return (
-                                f"That page is {content_type or 'binary content'}, which cannot "
-                                "be read as text. If it is a document the user needs, tell them "
-                                "the address instead."
-                            )
-                        charset = response.charset_encoding or "utf-8"
-                        # Read whole. The 2 MB cut this replaced dropped the end of a long page
-                        # silently — the part with the answer, as often as not. The deadline
-                        # above bounds how much a server can send; what the model sees of a
-                        # long page is bounded by the request budget, which keeps the complete
-                        # text readable by offset.
-                        collected = bytearray()
-                        async for chunk in response.aiter_bytes():
-                            collected.extend(chunk)
-                        final_url = target
-                        break
-                else:
-                    raise RuntimeError(f"{url} redirected more than {MAX_REDIRECTS} times.")
+        async with (
+            httpx.AsyncClient(
+                timeout=FETCH_TIMEOUT,
+                follow_redirects=False,
+                # No compressed transfer: httpx would decompress transparently, and a small
+                # compression bomb could then blow far past the byte cap in one chunk.
+                headers={"User-Agent": "Wavefunction/0.1", "Accept-Encoding": "identity"},
+            ) as client,
+            asyncio.timeout(FETCH_DEADLINE),
+            open_public(client, url) as (response, final_url),
+        ):
+            response.raise_for_status()
+            content_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
+            if response.headers.get("content-encoding", "") not in ("", "identity"):
+                return (
+                    "That server insists on compressed transfer, which this tool "
+                    "does not read. Tell the user the address instead."
+                )
+            html = content_type in ("text/html", "application/xhtml+xml", "")
+            if not html and not (
+                content_type.startswith("text/") or content_type in ("application/json", "application/xml")
+            ):
+                # Decided before the body is read: a binary is never downloaded just to be
+                # refused.
+                return (
+                    f"That page is {content_type or 'binary content'}, which cannot "
+                    "be read as text. If it is a document the user needs, tell them "
+                    "the address instead."
+                )
+            charset = response.charset_encoding or "utf-8"
+            # Read whole. The 2 MB cut this replaced dropped the end of a long page silently
+            # — the part with the answer, as often as not. The deadline above bounds how much
+            # a server can send; what the model sees of a long page is bounded by the request
+            # budget, which keeps the complete text readable by offset.
+            collected = bytearray()
+            async for chunk in response.aiter_bytes():
+                collected.extend(chunk)
 
         # The declared charset, because always-UTF-8 quietly corrupted names and quotes on
         # ISO-8859-1 pages; replacement characters stay for bytes the declared one cannot read.

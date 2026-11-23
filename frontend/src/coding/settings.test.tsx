@@ -1,5 +1,6 @@
 import { useSettings } from "@/store/settings";
 import { applySavedSidebarTransparency } from "@/lib/sidebar-transparency";
+import { useDesign } from "@/lib/design";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ThemeProvider } from "next-themes";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -27,6 +28,7 @@ beforeEach(() => {
   useCoding.setState({ selected: "thread-a", workspace: null });
   vi.spyOn(useSettings.getState(), "loadConnections").mockResolvedValue(undefined);
   vi.spyOn(useSettings.getState(), "loadGrants").mockResolvedValue(undefined);
+  vi.spyOn(useDesign.getState(), "loadUserDesigns").mockResolvedValue([]);
   vi.spyOn(useCoding.getState(), "refresh").mockResolvedValue(undefined);
   vi.spyOn(codingApi, "skillCatalog").mockResolvedValue({ skills: [], warnings: [] });
   vi.spyOn(codingApi, "access").mockResolvedValue({ access: "network" });

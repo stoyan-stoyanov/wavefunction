@@ -274,12 +274,22 @@ def build_agent(spec: AgentSpecV2, models: ModelGateway, context: ToolContext, *
             tools.extend(build_agent_tools(context))
             # Routines and projects are changes that outlive the task, which Plan mode does not make.
             if "write_file" in tool_names:
+                from .themes import build_save_design, themes_folder
+
                 tools.extend(build_routine_tools(context))
                 tools.extend(build_project_tools(context))
+                tools.append(
+                    build_save_design(themes_folder(context.coding_workspace.services.settings.data_dir))
+                )
             if context.skills is not None and "write_file" in tool_names:
                 from .skills import build_save_skill
 
                 tools.append(build_save_skill(context.skills, spec.skill_versions))
+    # Images are files a task saves, which Plan mode does not do.
+    if spec.image_models and "write_file" in tool_names:
+        from .image_tools import build_image_tools
+
+        tools.extend(build_image_tools(context, spec.image_models))
     from .coding_access import build_request_folder_access
 
     if context.choose_folder and context.folder_grants is None:

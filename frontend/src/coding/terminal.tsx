@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
@@ -18,6 +18,54 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/transport";
 import { codingApi, type CodingThread, type TerminalSession } from "./api";
+import { selectedTerminalKey, waitingCommands } from "./run-command";
+
+/** Finding text in a terminal's output. */
+function TerminalFind({
+  search,
+  query,
+  onQuery,
+  onClose,
+}: {
+  search: RefObject<SearchAddon | null>;
+  query: string;
+  onQuery: (query: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <Input
+        autoFocus
+        aria-label="Search terminal output"
+        value={query}
+        onChange={(e) => {
+          onQuery(e.target.value);
+          search.current?.findNext(e.target.value, { incremental: true });
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") search.current?.findNext(query);
+          if (e.key === "Escape") onClose();
+        }}
+      />
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        aria-label="Previous terminal match"
+        onClick={() => search.current?.findPrevious(query)}
+      >
+        <ArrowUp />
+      </Button>
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        aria-label="Next terminal match"
+        onClick={() => search.current?.findNext(query)}
+      >
+        <ArrowDown />
+      </Button>
+    </>
+  );
+}
 
 function TerminalScreen({
   threadId,
@@ -48,6 +96,17 @@ function TerminalScreen({
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     let resizeTimer: ReturnType<typeof setTimeout> | undefined;
     let inputs = Promise.resolve();
+    // A command the chat opened this terminal for waits until the shell has this screen's size and has
+    // shown its prompt: typed sooner, the shell would echo it for the wrong width.
+    let prompted = false,
+      sized = false;
+    const typeCommand = () => {
+      const command = waitingCommands.get(session.id);
+      if (!command || !prompted || !sized || !alive) return;
+      waitingCommands.delete(session.id);
+      queued += `${command.replace(/\n/g, "\r")}\r`;
+      flush();
+    };
     const terminal = new Terminal({
       cols: session.cols,
       rows: session.rows,
@@ -118,7 +177,13 @@ function TerminalScreen({
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
         if (alive && cols >= 10 && rows >= 2)
-          void codingApi.terminalSize(threadId, session.id, cols, rows, controller.signal).catch(failure);
+          void codingApi
+            .terminalSize(threadId, session.id, cols, rows, controller.signal)
+            .then(() => {
+              sized = true;
+              typeCommand();
+            })
+            .catch(failure);
       }, 80);
     });
     // Size changes arrive every frame while the window or a sidebar is resized.
@@ -127,9 +192,11 @@ function TerminalScreen({
     const themeObserver = new MutationObserver(updateTheme);
     themeObserver.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["class", "style"],
+      attributeFilter: ["class", "style", "data-design"],
     });
     updateTheme();
+    // Fitting resized the terminal, unless the shell already has this size.
+    sized = terminal.cols === session.cols && terminal.rows === session.rows;
     terminal.focus();
     const poll = async () => {
       if (!alive) return;
@@ -143,6 +210,8 @@ function TerminalScreen({
         await new Promise<void>((resolve) => terminal.write(output.text, resolve));
         if (!alive) return;
         cursor = output.cursor;
+        prompted ||= Boolean(output.text);
+        typeCommand();
         failures = 0;
         setError("");
         status.current(output);
@@ -187,37 +256,7 @@ function TerminalScreen({
           <Search />
         </Button>
         {finding && (
-          <>
-            <Input
-              autoFocus
-              aria-label="Search terminal output"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                search.current?.findNext(e.target.value, { incremental: true });
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") search.current?.findNext(query);
-                if (e.key === "Escape") setFinding(false);
-              }}
-            />
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              aria-label="Previous terminal match"
-              onClick={() => search.current?.findPrevious(query)}
-            >
-              <ArrowUp />
-            </Button>
-            <Button
-              size="icon-sm"
-              variant="ghost"
-              aria-label="Next terminal match"
-              onClick={() => search.current?.findNext(query)}
-            >
-              <ArrowDown />
-            </Button>
-          </>
+          <TerminalFind search={search} query={query} onQuery={setQuery} onClose={() => setFinding(false)} />
         )}
         <span>
           {session.owner === "agent" ? "Agent task" : "Interactive shell"} ·{" "}
@@ -236,12 +275,13 @@ function TerminalScreen({
   );
 }
 
-export function TerminalView({ thread }: { thread: CodingThread }) {
-  return <ThreadTerminals key={thread.id} thread={thread} />;
+/** A chat's terminals. A terminal opened from the chat (`opened`) shows them afresh, with it selected. */
+export function TerminalView({ thread, opened }: { thread: CodingThread; opened?: string | null }) {
+  return <ThreadTerminals key={`${thread.id}:${opened ?? ""}`} thread={thread} />;
 }
 
 function ThreadTerminals({ thread }: { thread: CodingThread }) {
-  const key = `harness.terminal.local.${thread.id}`;
+  const key = selectedTerminalKey(thread.id);
   const [sessions, setSessions] = useState<TerminalSession[]>([]);
   const [selected, setSelected] = useState<string | null>(() => localStorage.getItem(key));
   const [loading, setLoading] = useState(true);

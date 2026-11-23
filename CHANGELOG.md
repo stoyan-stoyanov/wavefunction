@@ -6,6 +6,10 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Added
 
+- A shell command the agent shares in a chat has a play button. Clicking it runs the command in a new terminal in the chat's folder, in the Terminal tab beside the chat. ([#70](https://github.com/stoyan-stoyanov/wavefunction/pull/70))
+- Replies show what they link, the way messaging apps do: web links get a card with the page's picture, title and description, pictures show as thumbnails you can open larger, and videos play in place. ([#71](https://github.com/stoyan-stoyanov/wavefunction/pull/71))
+- The agent can create and edit images. Turn on image models in **Settings › Models** (Gemini's Nano Banana models, OpenAI's GPT Image models, or the image models OpenRouter and the Vercel AI Gateway offer) and ask for a picture. The images are saved in the chat's folder and shown in the conversation; click one to see it full size. ([#72](https://github.com/stoyan-stoyanov/wavefunction/pull/72))
+- Designs change how the whole app looks. Pick one in Settings › General › Design: the built-in Nostalgia design, with a glass title bar, a classic navigation pane and 2009-era controls, the built-in Retro design, a dark terminal room with mono type, gold keycaps and pixel icons, or your own, made of CSS, images and fonts in the themes folder Settings shows. Ask the agent and it makes one for you. ([#73](https://github.com/stoyan-stoyanov/wavefunction/pull/73))
 - Wavefunction builds and runs on Linux from source, with the agent's commands confined by a Bubblewrap sandbox as they are on macOS. Linux is community-supported: there are no Linux downloads or updates yet, and computer use, notifications and dictation stay macOS-only. The README says how to build it. ([#74](https://github.com/stoyan-stoyanov/wavefunction/pull/74))
 
 ## 0.4.0 - 2026-11-07

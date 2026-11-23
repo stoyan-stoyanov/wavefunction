@@ -14,6 +14,7 @@ mod notifications;
 mod quit;
 #[cfg(target_os = "macos")]
 mod terminate;
+mod window_controls;
 
 #[derive(Clone, Serialize)]
 struct BackendInfo {
@@ -618,6 +619,7 @@ pub fn run() {
             restart_app,
             align_window_controls,
             set_window_theme,
+            window_controls::set_native_window_controls,
             start_dictation,
             notifications::notification_context,
             notifications::notification_permission,

@@ -227,6 +227,15 @@ export const api = {
       method: "PUT",
       body: JSON.stringify({ models }),
     }),
+  listImageModels: (provider: string) =>
+    request<Schemas["ImageModels"]>(`/api/connections/image-models/${provider}`).then(
+      (response) => response.models,
+    ),
+  updateImageModels: (models: string[]) =>
+    request<Schemas["EnabledImageModels"]>("/api/connections/image-models", {
+      method: "PUT",
+      body: JSON.stringify({ models }),
+    }),
   saveSecret: (key: SecretKey, value: string) =>
     request<void>(`/api/connections/secrets/${key}`, {
       method: "PUT",

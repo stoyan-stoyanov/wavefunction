@@ -34,8 +34,9 @@ from .coding_questions import register_questions
 from .coding_recovery import Recovery
 from .computer import screenshot_folder, screenshots_root
 from .document_images import preview_png
-from .file_previews import register_file_previews
+from .file_previews import attachment_image, register_file_previews
 from .hands import COMMAND_ACCESS_SETTING, command_access, file_operation, saved_access
+from .image_models import enabled as enabled_image_models
 from .local_coding import runner_for
 from .repository import now_iso
 from .responses import ProjectIcon
@@ -49,6 +50,18 @@ from .toolkit import TOOL_REGISTRY, find_folded
 from .worktree_access import linked_worktree_grants
 
 ACTIVE = {"queued", "running", "waiting_approval", "waiting_connector", "waiting_computer"}
+# What Plan mode offers: reading and research, nothing that changes files or runs commands.
+PLAN_TOOLS = {
+    "read_file",
+    "find_files",
+    "search_files",
+    "read_documents",
+    "list_documents",
+    "search_documents",
+    "web_search",
+    "fetch_page",
+    "calculator",
+}
 CODING_PROMPT = """You are Wavefunction, one coding agent with independent chats. Complete the agreed
 task and required checks, then stop. Follow user/repository instructions; preserve unrelated
 work. Never use destructive commands like git reset --hard or git checkout -- unless the user
@@ -653,17 +666,6 @@ class CodingWorkspace:
         prompt = CODING_PROMPT + "\n\nConversation instructions:\n" + thread["instructions"]
         if thread["mode"] == "plan":
             prompt += "\nPlan mode: inspect and explain. Do not modify files or execute commands."
-        plan_tools = {
-            "read_file",
-            "find_files",
-            "search_files",
-            "read_documents",
-            "list_documents",
-            "search_documents",
-            "web_search",
-            "fetch_page",
-            "calculator",
-        }
         folder = self.effective_folder(thread, resolve=False)
         # By default a message goes to the chat's current task: steering while it runs, a reply
         # while it waits on the user. Otherwise it is a follow-up queued behind it.
@@ -758,12 +760,13 @@ class CodingWorkspace:
             description="Your coding agent",
             system_prompt=prompt,
             model=ModelSpec.model_validate(thread["model"]),
+            image_models=enabled_image_models(repo),
             working_directory=folder,
             tools=[
                 ToolBinding(
                     name=n,
                     policy=ToolPolicy.DENY
-                    if thread["mode"] == "plan" and n not in plan_tools
+                    if thread["mode"] == "plan" and n not in PLAN_TOOLS
                     else ToolPolicy.ALLOW,
                 )
                 for n in sorted(names)
@@ -1460,25 +1463,7 @@ def register_coding_workspace(app, get_services, auth):
     @router.get("/threads/{thread_id}/attachments/{file_id}")
     async def attachment_content(thread_id: str, file_id: str):
         """A small preview of an image in this conversation's draft or sent messages."""
-        ws = workspace()
-        repo = ws.services.repository
-        with ws.db() as db:
-            drafted = db.execute(
-                "SELECT 1 FROM coding_attachments WHERE thread_id = ? AND file_id = ?", (thread_id, file_id)
-            ).fetchone()
-        record = (
-            repo.get_project_file(ws.agent_id, file_id)
-            if drafted
-            else repo.conversation_file(ws.agent_id, ws.thread(thread_id)["conversation_id"], file_id)
-        )
-        if record is None:
-            raise KeyError("Attachment not found in this conversation")
-        if not record["media_type"].startswith("image/"):
-            raise ValueError("Only image attachments have a preview.")
-        root = ws.services.files.project_dir(ws.agent_id).resolve()
-        path = (root / record["relative_path"]).resolve()
-        if not path.is_relative_to(root) or not path.is_file():
-            raise KeyError("Attachment not found in this conversation")
+        path, _ = attachment_image(workspace(), thread_id, file_id)
         stat = path.stat()
         # Never the original: a large photo would be buffered whole by the webview.
         thumbnail = await asyncio.to_thread(preview_png, path, stat.st_mtime_ns, stat.st_size)

@@ -59,6 +59,17 @@ class AgentSpecV2(BaseModel):
     model: ModelSpec = Field(default_factory=ModelSpec)
     tools: list[ToolBinding] = Field(default_factory=list)
 
+    # The image models turned on when the task started (`provider::model`, the default first).
+    # A task with any, and allowed to write, is offered generate_image and edit_image.
+    image_models: list[str] = Field(default_factory=list)
+
+    @field_validator("image_models")
+    @classmethod
+    def known_image_models(cls, value):
+        from .image_models import valid_key
+
+        return [key for key in dict.fromkeys(value) if valid_key(key)]
+
     # Written guidance the agent may consult, by name. Only the name and description of each are
     # ever in the prompt; the body is read when the agent decides the skill applies. Validated by
     # shape, like a connector's tool, so a captured spec stays valid when a skill has been

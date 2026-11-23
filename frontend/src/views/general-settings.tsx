@@ -1,10 +1,22 @@
 import { NativeSection, NativeView, ViewHeading } from "@/components/native-view";
 import { SegmentedControl } from "@/components/segmented-control";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { bundledDesigns, refreshDesigns, useDesign } from "@/lib/design";
 import { useZoom } from "@/lib/zoom";
 import { readSidebarTransparency, setSidebarTransparency } from "@/lib/sidebar-transparency";
-import { useId, useState } from "react";
-import { Minus, Monitor, Moon, Plus, RotateCcw, Sun, type LucideIcon } from "lucide-react";
+import { useEffect, useId, useState } from "react";
+import { Info, Minus, Monitor, Moon, Plus, RotateCcw, Sun, type LucideIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 
 const themeOptions: Array<{ value: string; label: string; icon: LucideIcon }> = [
@@ -16,8 +28,9 @@ const themeOptions: Array<{ value: string; label: string; icon: LucideIcon }> = 
 import { SettingsRow } from "./settings-row";
 
 export function GeneralSettings() {
-  const { theme, resolvedTheme, setTheme } = useTheme();
-  const appearance = resolvedTheme === "dark" ? "dark" : "light";
+  const { theme, resolvedTheme, forcedTheme, setTheme } = useTheme();
+  const appearance = (forcedTheme ?? resolvedTheme) === "dark" ? "dark" : "light";
+  const design = useDesign((state) => state.active);
   const transparencyId = useId();
   const [transparency, setTransparency] = useState(() => ({
     light: readSidebarTransparency("light"),
@@ -30,15 +43,22 @@ export function GeneralSettings() {
       <ViewHeading title="General" />
       <NativeSection title="Appearance" description="Applies immediately across every view.">
         <div className="overflow-hidden rounded-xl bg-card">
+          <DesignRow />
           <SettingsRow
+            className="border-t border-hairline"
             title="Theme"
-            description="System follows your macOS appearance setting."
+            description={
+              forcedTheme
+                ? `${design.name} has a ${forcedTheme} look only.`
+                : "System follows your macOS appearance setting."
+            }
             control={
               <SegmentedControl
                 label="Theme"
-                value={theme ?? "system"}
+                value={forcedTheme ?? theme ?? "system"}
                 options={themeOptions}
                 onChange={setTheme}
+                disabled={Boolean(forcedTheme)}
               />
             }
           />
@@ -112,5 +132,94 @@ export function GeneralSettings() {
         </div>
       </NativeSection>
     </NativeView>
+  );
+}
+
+/** The design picker: the bundled designs, then the person's own from the themes folder. */
+function DesignRow() {
+  const active = useDesign((state) => state.active);
+  const userDesigns = useDesign((state) => state.userDesigns);
+  const folder = useDesign((state) => state.folder);
+  const error = useDesign((state) => state.error);
+  // Choosing the design already chosen is no change to the picker, so opening this page is what
+  // re-reads it from disk.
+  useEffect(() => {
+    void refreshDesigns().catch(() => undefined);
+  }, []);
+  const broken = userDesigns?.filter((design) => design.error) ?? [];
+  return (
+    <>
+      <SettingsRow
+        title="Design"
+        description={error ?? active.description}
+        control={
+          <div className="flex items-center gap-1.5">
+            {folder ? <ThemesFolder folder={folder} /> : null}
+            <Select
+              value={active.id}
+              onValueChange={(id) =>
+                void useDesign
+                  .getState()
+                  .select(id)
+                  .catch(() => undefined)
+              }
+            >
+              <SelectTrigger aria-label="Design" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {bundledDesigns.map((design) => (
+                  <SelectItem key={design.id} value={design.id}>
+                    {design.name}
+                  </SelectItem>
+                ))}
+                {userDesigns?.length ? (
+                  <>
+                    <SelectSeparator />
+                    <SelectGroup>
+                      <SelectLabel>Your themes</SelectLabel>
+                      {userDesigns.map((design) => (
+                        <SelectItem key={design.id} value={design.id} disabled={Boolean(design.error)}>
+                          {design.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </>
+                ) : null}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
+      {broken.length ? (
+        <div className="px-4 pb-3.5 text-xs leading-5 text-destructive">
+          {broken.map((design) => (
+            <p key={design.id}>
+              {design.name}: {design.error}
+            </p>
+          ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+/** Where a person's own designs go, behind an info button so the row stays short. */
+function ThemesFolder({ folder }: { folder: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon-sm" aria-label="Where your own designs go">
+          <Info />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-3 text-xs leading-5">
+        <p>
+          Add your own: a folder with <code>theme.json</code> and <code>theme.css</code> in
+        </p>
+        <p className="mt-1 font-mono break-all select-text">{folder}</p>
+        <p className="mt-2 text-muted-foreground">Or ask the agent to make one for you.</p>
+      </PopoverContent>
+    </Popover>
   );
 }

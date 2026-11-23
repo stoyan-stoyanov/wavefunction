@@ -230,11 +230,14 @@ export function Workbench({
   thread,
   tab,
   onTab,
+  terminal,
   onClose,
 }: {
   thread: CodingThread;
   tab?: WorkbenchTab;
   onTab?: (tab: WorkbenchTab) => void;
+  /** A terminal the chat just opened, for the Terminal tab to select. */
+  terminal?: string | null;
   onClose?: () => void;
 }) {
   const [localTab, setLocalTab] = useState<WorkbenchTab>("files");
@@ -317,7 +320,7 @@ export function Workbench({
         ) : thread.folder ? (
           activeTab === "files" ? (
             <>
-              <div className="flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+              <div className="workbench-files-header flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground">
                 <span>Repository</span>
                 <Button
                   size="icon-xs"
@@ -344,7 +347,7 @@ export function Workbench({
           ) : activeTab === "changes" ? (
             <ChangesView thread={thread} />
           ) : (
-            <TerminalView thread={thread} />
+            <TerminalView thread={thread} opened={terminal} />
           )
         ) : (
           <div className="p-6 text-sm text-muted-foreground">

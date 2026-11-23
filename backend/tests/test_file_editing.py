@@ -175,6 +175,8 @@ async def test_file_boundary_and_concurrent_edit_protection(coding, tmp_path, mo
         "kind"
     ] == "table"
     assert not (await client.get(preview, params={"path": "run.command"})).json()["openable"]
+    (folder / "out" / "demo.mp4").write_bytes(b"synthetic")
+    assert (await client.get(preview, params={"path": "out/demo.mp4"})).json()["kind"] == "video"
     assert (
         await client.get(preview + "/content", params={"path": "out/report.pdf"})
     ).content == b"%PDF-1.4 synthetic"

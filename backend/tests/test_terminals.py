@@ -23,8 +23,9 @@ async def test_interactive_terminal_input_resize_reconnect_and_isolation(coding,
     pid = session.process.pid
     url = base + "/" + terminal["id"]
     try:
+        # A comment in typed input is a comment, as in a script: printf doesn't get its words.
         assert (
-            await client.post(url + "/input", json={"text": "printf 'PTY-ready\\n'; stty size\n"})
+            await client.post(url + "/input", json={"text": "stty size; printf 'PTY-%s\\n' ready # a note\n"})
         ).status_code == 204
         cursor, text = 0, ""
         for _ in range(20):
@@ -32,9 +33,9 @@ async def test_interactive_terminal_input_resize_reconnect_and_isolation(coding,
             assert output.status_code == 200, output.text
             body = output.json()
             cursor, text = body["cursor"], text + body["text"]
-            if "31 91" in text:
+            if "PTY-ready" in text:
                 break
-        assert "PTY-ready" in text and "31 91" in text, text
+        assert "PTY-ready" in text and "31 91" in text and "PTY-#" not in text, text
         assert (await client.get(url + "/output", params={"cursor": 0})).json()["text"]
         assert len((await client.get(base)).json()) == 1
         assert (

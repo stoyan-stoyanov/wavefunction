@@ -162,3 +162,27 @@ class ProjectFileStore:
         except BaseException:
             destination.unlink(missing_ok=True)
             raise
+
+    def save_image(self, project_id: str, name: str, data: bytes, media_type: str) -> dict[str, Any]:
+        """An image an agent made, kept as an attachment of its chat: read, shown and removed as one."""
+        file_id = new_id()
+        relative = Path("sources") / f"{file_id}-{safe_filename(name)}"
+        destination = self.project_dir(project_id) / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(data)
+        try:
+            return self.repository.add_project_file(
+                {
+                    "id": file_id,
+                    "project_id": project_id,
+                    "name": name,
+                    "media_type": media_type,
+                    "relative_path": str(relative),
+                    "extracted_text": extract_text(destination, media_type, name),
+                    "size_bytes": len(data),
+                    "created_at": now_iso(),
+                }
+            )
+        except BaseException:
+            destination.unlink(missing_ok=True)
+            raise

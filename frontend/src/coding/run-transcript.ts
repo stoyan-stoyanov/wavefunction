@@ -12,8 +12,28 @@ type TranscriptItem =
   | { kind: "helper"; id: string; agentId: string; name: string; task: string }
   /** The conversation compacted mid-task, where it happened. */
   | { kind: "compaction"; id: string; state: "running" | "done" | "failed" }
+  /** Images an image tool saved, where it saved them. */
+  | { kind: "images"; id: string; images: GeneratedImage[] }
   | Answer;
 type QuestionGroup = { id: string; questions: Array<{ id: string; title: string }> };
+/** An image a tool saved: a path in the chat's folder, or an attachment of the chat. */
+export type GeneratedImage = { path: string } | { attachment: string; id: string };
+
+/** The images in an image tool's result, or none when it is not one. */
+function generatedImages(result: unknown): GeneratedImage[] {
+  try {
+    const parsed: unknown = typeof result === "string" ? JSON.parse(result) : null;
+    const images = (parsed as { images?: unknown } | null)?.images;
+    if (!Array.isArray(images)) return [];
+    return images.filter(
+      (image): image is GeneratedImage =>
+        typeof image?.path === "string" ||
+        (typeof image?.attachment === "string" && typeof image?.id === "string"),
+    );
+  } catch {
+    return [];
+  }
+}
 
 /** The pause a run is waiting on: its latest question set or approval request. */
 export function latestPause(events: RunEvent[]): RunEvent | undefined {
@@ -89,6 +109,12 @@ export function runTranscript(run: CodingRun): TranscriptItem[] {
       items.push(compaction);
     } else if ((type === "summarization_finished" || type === "summarization_failed") && compaction) {
       compaction.state = type === "summarization_finished" ? "done" : "failed";
+    } else if (
+      type === "tool_completed" &&
+      (payload.tool === "generate_image" || payload.tool === "edit_image")
+    ) {
+      const images = generatedImages(payload.result);
+      if (images.length) items.push({ kind: "images", id: event.id, images });
     } else if (type === "tool_started" && payload.tool === "write_todos") {
       planCalls.add(String(payload.id));
     } else if (type === "tool_completed" && planCalls.has(String(payload.id)) && !planPlaced) {

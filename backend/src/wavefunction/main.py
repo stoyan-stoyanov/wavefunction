@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-from . import notifications
+from . import image_models, notifications
 from . import responses as api
 from .anthropic_provider import AnthropicCatalog
 from .codex import AUTH_FILE_NAME, CodexAuth, CodexAuthError, CodexAuthStore
@@ -40,6 +40,7 @@ from .files import ProjectFileStore
 from .gemini_provider import GeminiCatalog
 from .github_cli import GitHubSignIn
 from .github_proxy import GitHubProxy
+from .image_routes import register_image_settings
 from .integration_setup import EmailSetup, GoogleSetup
 from .local_integrations import Connectable as ConnectableIntegration
 from .local_integrations import Kind as LocalIntegrationKind
@@ -63,6 +64,7 @@ from .schemas import (
 )
 from .secrets import ENV_KEYS, SECRET_FILE_NAME, EnvFileSecretStore
 from .spec_common import ModelSpec
+from .themes import register_theme_routes, themes_folder
 from .vercel_gateway import VercelGatewayCatalog
 
 logger = logging.getLogger(__name__)
@@ -294,6 +296,8 @@ async def authorize(authorization: Annotated[str | None, Header()] = None) -> No
 Auth = Annotated[None, Depends(authorize)]
 
 register_computer_control(app, lambda: services, authorize)
+register_image_settings(app, lambda: services, authorize)
+register_theme_routes(app, lambda: themes_folder(services.settings.data_dir), authorize)
 
 
 def not_found(error: KeyError) -> HTTPException:
@@ -1179,6 +1183,7 @@ async def get_connections(_: Auth) -> dict[str, Any]:
     return {
         "model": default_model,
         "enabled_models": enabled_models,
+        "enabled_image_models": image_models.enabled(services.repository),
         "coding_models": services.repository.get_setting("coding_models", []),
         "secrets": {
             "openai_api_key": openai_key,

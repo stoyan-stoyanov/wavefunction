@@ -210,3 +210,44 @@ async def test_repository_global_skills_precedence_validation_and_immutable_capt
     assert services.skills.get("code-review") is None
     assert large.exists()
     assert (await client.get("/api/coding/skills", params={"thread_id": "missing"})).status_code == 404
+
+
+async def test_the_agent_saves_a_design_only_once_it_loads_as_settings_loads_it(coding, tmp_path):
+    client, ws, services = coding
+    folder = tmp_path / "repo"
+    folder.mkdir()
+    (folder / ".git").mkdir()
+    thread = await create(client, folder=str(folder))
+    icon = "<svg/>"
+    seen: list = []
+    script_gateway(
+        services.models,
+        [
+            tool_call_message("search_available_tools", {"query": "designs"}, "find"),
+            tool_call_message("save_design", {"name": "Retro", "css": '@import "x.css";'}, "bad"),
+            tool_call_message(
+                "save_design",
+                {
+                    "name": "Retro",
+                    "css": ".close { background: url(icons/close.svg); }",
+                    "appearances": ["light"],
+                    "assets": {"icons/close.svg": icon},
+                },
+                "good",
+            ),
+            AIMessage(content="Saved"),
+        ],
+        seen=seen,
+    )
+    run = await ws.send(thread["id"], "Make me a retro design")
+    await services.runtime.wait(run["id"])
+
+    replies = {m.tool_call_id: m.content for m in seen[-1] if getattr(m, "tool_call_id", None)}
+    assert "Not saved: @import is not allowed" in replies["bad"]
+    assert "Settings > General > Design" in replies["good"]
+    themes = (await client.get("/api/themes")).json()["themes"]
+    assert [(theme["id"], theme["appearances"], theme["error"]) for theme in themes] == [
+        ("retro", ["light"], None)
+    ]
+    css = (await client.get("/api/themes/retro/stylesheet")).json()["css"]
+    assert "data:image/svg+xml;base64," in css

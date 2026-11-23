@@ -41,7 +41,8 @@
   overflow: auto;
   padding: 16px;
 }
-.file-preview-image img {
+.file-preview-image img,
+.file-preview-image video {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
