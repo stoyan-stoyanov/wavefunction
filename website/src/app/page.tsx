@@ -625,36 +625,32 @@ function Designs() {
           Designs restyle the whole app. Pick a built-in one, like Nostalgia
           or Retro, or ask the agent to make one for you.
         </p>
-        <div className="mt-12 grid gap-4 sm:mt-16 lg:grid-cols-2">
+        <div className="mt-12 grid gap-4 sm:mt-16 lg:grid-cols-3">
           {[
+            {
+              src: "/wavefunction-design-nostalgia.jpg",
+              alt: "The Nostalgia design: a glass title bar, an Explorer-style sidebar and classic controls.",
+            },
             {
               src: "/wavefunction-design-retro.jpg",
               alt: "The Retro design: pixel type, pixel icons and pixel art of a desk on the new-session screen.",
-              caption: "Retro, built in",
             },
             {
               src: "/wavefunction-design-night-light.jpg",
               alt: "Night Light, a design the agent made in a chat: warm charcoal colours and a sleeping moon on the new-session screen.",
-              caption: "Night Light, made by the agent in a chat",
             },
-          ].map(({ src, alt, caption }) => (
-            <figure key={src} className="reveal flex min-w-0 flex-col gap-4">
-              <Image
-                src={src}
-                alt={alt}
-                width={1920}
-                height={1440}
-                sizes="(min-width: 1200px) 560px, (min-width: 1024px) 50vw, 100vw"
-                className="w-full rounded-[20px] sm:rounded-[28px]"
-              />
-              <figcaption className="text-[15.5px] text-soft">{caption}</figcaption>
-            </figure>
+          ].map(({ src, alt }) => (
+            <Image
+              key={src}
+              src={src}
+              alt={alt}
+              width={1920}
+              height={1440}
+              sizes="(min-width: 1200px) 368px, (min-width: 1024px) 33vw, 100vw"
+              className="reveal w-full rounded-[20px] sm:rounded-[24px]"
+            />
           ))}
         </div>
-        <p className="reveal mt-10 text-sm text-faint">
-          A design is CSS, images and fonts. It changes how the app looks and
-          never runs code.
-        </p>
       </Container>
     </section>
   );
