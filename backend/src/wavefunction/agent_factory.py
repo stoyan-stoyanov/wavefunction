@@ -285,6 +285,11 @@ def build_agent(spec: AgentSpecV2, models: ModelGateway, context: ToolContext, *
                 from .skills import build_save_skill
 
                 tools.append(build_save_skill(context.skills, spec.skill_versions))
+    # Images are files a task saves, which Plan mode does not do.
+    if spec.image_models and "write_file" in tool_names:
+        from .image_tools import build_image_tools
+
+        tools.extend(build_image_tools(context, spec.image_models))
     from .coding_access import build_request_folder_access
 
     if context.choose_folder and context.folder_grants is None:

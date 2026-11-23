@@ -2,7 +2,7 @@ import { useSettings } from "@/store/settings";
 import { api } from "@/lib/api";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
-import { codingApi } from "./api";
+import { codingApi, type TerminalSession } from "./api";
 import { makeOpenChat, makeProject, makeRun, type OpenChat as ThreadDetail } from "@/test/fixtures";
 import { CodingApp } from "./app";
 import { useCoding } from "./store";
@@ -18,9 +18,18 @@ vi.mock("@/views/connectors-view", () => ({
   ConnectorsView: () => <section aria-label="Connector management">Connector catalog</section>,
 }));
 vi.mock("./workbench", () => ({
-  Workbench: ({ tab, onTab }: { tab?: string; onTab?: (tab: string) => void }) => (
+  Workbench: ({
+    tab,
+    onTab,
+    terminal,
+  }: {
+    tab?: string;
+    onTab?: (tab: string) => void;
+    terminal?: string | null;
+  }) => (
     <aside className="coding-workbench" aria-label="Repository workbench">
       <span>Tool: {tab}</span>
+      {terminal ? <span>Opened terminal: {terminal}</span> : null}
       {[
         ["Files", "files"],
         ["Terminal", "terminal"],
@@ -131,6 +140,15 @@ it("opens web links natively and previews linked files beside a still-usable com
   });
   vi.spyOn(codingApi, "filePreviewText").mockResolvedValue('region,total\nNorth,"1,200"\n');
   const openFile = vi.spyOn(codingApi, "openFile").mockResolvedValue(undefined);
+  vi.spyOn(codingApi, "linkPreview").mockImplementation(async (url) => ({
+    url,
+    kind: "page",
+    title: "Wave docs",
+    description: null,
+    site_name: "example.com",
+    image: null,
+    icon: null,
+  }));
   const reply = "Read [the docs](https://example.com/docs?q=wave) and [totals.csv](out/totals.csv).";
   useCoding.setState({
     details: {
@@ -149,6 +167,8 @@ it("opens web links natively and previews linked files beside a still-usable com
     },
   });
   render(<CodingApp />);
+  // A finished reply shows a card for the page it links.
+  expect(await screen.findByRole("link", { name: "Open Wave docs" })).toBeVisible();
   fireEvent.click(await screen.findByRole("link", { name: "the docs" }));
   expect(window.open).toHaveBeenCalledWith("https://example.com/docs?q=wave", "_blank", "noopener");
   fireEvent.click(screen.getByRole("link", { name: "totals.csv" }));
@@ -162,6 +182,59 @@ it("opens web links natively and previews linked files beside a still-usable com
   await waitFor(() => expect(openFile).toHaveBeenCalledWith(thread.id, "/repo/out/totals.csv", "app"));
   fireEvent.click(within(pane).getByRole("button", { name: "Close preview" }));
   expect(screen.queryByRole("complementary", { name: "Preview of totals.csv" })).toBeNull();
+});
+
+it("runs a command the agent shared in a new terminal of its chat, shown in the Terminal tab", async () => {
+  const shared = (overrides: Partial<ThreadDetail>) => ({
+    [thread.id]: {
+      ...thread,
+      ...overrides,
+      runs: [makeRun({ id: "run-command", output: { text: "Run the tests:\n\n```bash\nnpm test\n```" } })],
+    },
+  });
+  useCoding.setState({ details: shared({ folder: null }) });
+  let created!: (session: TerminalSession) => void;
+  const createTerminal = vi
+    .spyOn(codingApi, "createTerminal")
+    .mockImplementation(() => new Promise((resolve) => (created = resolve)));
+  render(<CodingApp />);
+  // A chat with no folder yet has nowhere to run it.
+  expect(screen.getByRole("button", { name: "Run in terminal" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Run in terminal" })).toHaveAttribute(
+    "title",
+    "Choose a folder for this chat to run commands.",
+  );
+  act(() => useCoding.setState({ details: shared({ folder: "/work/parser" }) }));
+  expect(createTerminal).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Run in terminal" }));
+  expect(createTerminal).toHaveBeenCalledExactlyOnceWith(thread.id, "npm test");
+  expect(screen.getByRole("button", { name: "Run in terminal" })).toBeDisabled();
+  await act(async () =>
+    created({
+      id: "terminal-run",
+      thread_id: thread.id,
+      title: "npm test",
+      cwd: "/work/parser",
+      command: null,
+      owner: "user",
+      run_id: null,
+      cols: 80,
+      rows: 24,
+      created_at: "",
+      status: "running",
+      exit_code: null,
+    }),
+  );
+  const workbench = screen.getByRole("complementary", { name: "Repository workbench" });
+  expect(workbench).toHaveTextContent("Tool: terminal");
+  expect(workbench).toHaveTextContent("Opened terminal: terminal-run");
+  // An archived chat runs nothing until it is restored.
+  act(() => useCoding.setState({ details: shared({ folder: "/work/parser", archived: true }) }));
+  expect(screen.getByRole("button", { name: "Run in terminal" })).toHaveAttribute(
+    "title",
+    "Restore this chat to run commands.",
+  );
+  expect(screen.getByRole("button", { name: "Run in terminal" })).toBeDisabled();
 });
 
 it("preserves a collapsed sidebar when returning from settings", async () => {

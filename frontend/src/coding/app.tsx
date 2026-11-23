@@ -47,7 +47,8 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CodingMarkdown } from "./markdown";
-import { FileLinks } from "./file-links";
+import { ChatFileLinks } from "./link-previews";
+import { GeneratedImages } from "./generated-images";
 import { RunChecklist } from "@/components/task-checklist";
 import { RunActivity } from "@/components/trace-event";
 import { groupRunActivity } from "@/lib/run-activity";
@@ -74,9 +75,9 @@ import {
 } from "./api";
 import { useCoding } from "./store";
 import { useThreadActivity } from "./thread-activity";
-import type { WorkbenchTab } from "./workbench";
 import { ResizableSidebar } from "./sidebar-resize";
-import { useWorkbenchPreference } from "./workbench-preference";
+import { RunCommand } from "./run-command";
+import { useWorkbenchPanel } from "./workbench-panel";
 import "./coding.css";
 import "./shell-layout.css";
 
@@ -642,6 +643,23 @@ function HelperRequest({ request, chatId }: { request: HelperPause; chatId: stri
     </div>
   );
 }
+/** Where the conversation was compacted mid-task, and how that went. */
+function CompactionNote({ state, active }: { state: "running" | "done" | "failed"; active: boolean }) {
+  return (
+    <div className="context-compacted" role="status">
+      {state === "running" && active ? <LoaderCircle className="size-3 animate-spin" /> : null}
+      <span>
+        {state === "done"
+          ? "Context compacted"
+          : state === "failed"
+            ? "Compaction failed"
+            : active
+              ? "Compacting the conversation…"
+              : "Compaction stopped"}
+      </span>
+    </div>
+  );
+}
 const RunMessage = memo(function RunMessage({
   run,
   threadId,
@@ -776,18 +794,9 @@ const RunMessage = memo(function RunMessage({
             </Button>
           </div>
         ) : item.kind === "compaction" ? (
-          <div key={item.id} className="context-compacted" role="status">
-            {item.state === "running" && active ? <LoaderCircle className="size-3 animate-spin" /> : null}
-            <span>
-              {item.state === "done"
-                ? "Context compacted"
-                : item.state === "failed"
-                  ? "Compaction failed"
-                  : active
-                    ? "Compacting the conversation…"
-                    : "Compaction stopped"}
-            </span>
-          </div>
+          <CompactionNote key={item.id} state={item.state} active={active} />
+        ) : item.kind === "images" ? (
+          <GeneratedImages key={item.id} threadId={threadId} images={item.images} />
         ) : item.kind === "plan" ? (
           <div className="agent-message" key={item.id}>
             <RunChecklist events={run.events} active={active} />
@@ -1000,7 +1009,7 @@ function Chat({
   }, [sentAt]);
   return (
     <div className="coding-chat-layout">
-      <FileLinks.Provider value={setPreview}>
+      <ChatFileLinks threadId={thread.id} open={setPreview}>
         <section className="coding-conversation">
           <div
             className="conversation-scroll"
@@ -1125,7 +1134,7 @@ function Chat({
             <FilePreviewPane key={preview} threadId={thread.id} path={preview} onClose={closePreview} />
           ) : null}
         </section>
-      </FileLinks.Provider>
+      </ChatFileLinks>
     </div>
   );
 }
@@ -1181,7 +1190,6 @@ function Shell() {
   const loading = useCoding((s) => s.loading);
   const error = useCoding((s) => s.error);
   const clearError = useCoding((s) => s.clearError);
-  const { enabled: workbenchEnabled } = useWorkbenchPreference();
   const [page, setPage] = useState<Page>("chat");
   const [sidebar, setSidebar] = useState(true);
   const unreadThreads = useThreadActivity(workspace, page === "chat" ? selected : null);
@@ -1200,8 +1208,6 @@ function Shell() {
       }),
     [],
   );
-  const [panel, setPanel] = useState(false);
-  const [workbenchTab, setWorkbenchTab] = useState<WorkbenchTab>("files");
   const [search, setSearch] = useState(false);
   const [projectEditor, setProjectEditor] = useState<{
     project?: CodingProject;
@@ -1279,6 +1285,7 @@ function Shell() {
     return () => window.removeEventListener("keydown", keys);
   }, []);
   const thread = detail ?? workspace?.threads.find((item) => item.id === selected);
+  const workbench = useWorkbenchPanel(thread);
   const openingThread = Boolean(thread && !detail && !loading);
   const openModels = () => {
     setModelsPage(true);
@@ -1358,9 +1365,9 @@ function Shell() {
                 <ConversationToolbar
                   key={thread.id}
                   thread={thread}
-                  panel={panel}
-                  workbenchEnabled={workbenchEnabled}
-                  onPanel={() => setPanel((value) => !value)}
+                  panel={workbench.open}
+                  workbenchEnabled={workbench.enabled}
+                  onPanel={() => workbench.setOpen((value) => !value)}
                 />
               ) : (
                 <span className="chat-title">{loading ? "Wavefunction" : "New session"}</span>
@@ -1406,13 +1413,15 @@ function Shell() {
                 <p>This chat could not load.</p>
               </div>
             ) : thread ? (
-              <Chat
-                key={`${thread.id}:${thread.conversation_id}`}
-                thread={thread}
-                onSettings={() => setThreadEditor(thread)}
-                onModels={openModels}
-                attachRef={attachRef}
-              />
+              <RunCommand.Provider value={workbench.commands}>
+                <Chat
+                  key={`${thread.id}:${thread.conversation_id}`}
+                  thread={thread}
+                  onSettings={() => setThreadEditor(thread)}
+                  onModels={openModels}
+                  attachRef={attachRef}
+                />
+              </RunCommand.Provider>
             ) : (
               <div className="loading-screen">
                 <p>Your workspace could not open.</p>
@@ -1420,7 +1429,7 @@ function Shell() {
               </div>
             )}
           </main>
-          {page === "chat" && workbenchEnabled && panel && thread && detail && !loading ? (
+          {page === "chat" && workbench.enabled && workbench.open && thread && detail && !loading ? (
             <ResizableSidebar side="right">
               <Suspense
                 fallback={
@@ -1432,9 +1441,8 @@ function Shell() {
                 <Workbench
                   key={`${thread.id}:${thread.conversation_id}:${thread.folder}`}
                   thread={detail ?? thread}
-                  tab={workbenchTab}
-                  onTab={setWorkbenchTab}
-                  onClose={() => setPanel(false)}
+                  {...workbench.tabs}
+                  onClose={() => workbench.setOpen(false)}
                 />
               </Suspense>
             </ResizableSidebar>

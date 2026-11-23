@@ -75,6 +75,7 @@ BUILTIN_GROUPS = {
         ("choose_repository_folder", "request_folder_access", "configure_github"),
     ),
     "calculation": ("Calculator", ("calculator",)),
+    "images": ("Generate or edit images with the image models turned on", ("generate_image", "edit_image")),
     "skills": ("Create or update the user's Global skills", ("save_skill",)),
     "designs": ("Create or update the user's own designs (themes) for this app's look", ("save_design",)),
     "routines": (

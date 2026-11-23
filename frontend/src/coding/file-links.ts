@@ -2,6 +2,8 @@ import { createContext } from "react";
 
 /** Opens a file the chat links (by its path) in the chat's preview. */
 export const FileLinks = createContext<((path: string) => void) | null>(null);
+/** The chat whose folders the files a reply links are read from. */
+export const LinkedFilesThread = createContext<string | null>(null);
 /** The path a link names, or null for web links, anchors and other schemes. */
 export function linkedFile(href: string | undefined) {
   if (!href || href.startsWith("#") || /^[a-z][a-z0-9+.-]*:/i.test(href)) return null;

@@ -171,6 +171,8 @@ class SavedSecrets(TypedDict):
 class Connections(TypedDict):
     model: ModelChoice
     enabled_models: list[str]
+    # `provider::model`, the default first. Always sent; tests that build connections leave it out.
+    enabled_image_models: NotRequired[list[str]]
     coding_models: list[ModelChoice]
     secrets: SavedSecrets
     codex: CodexStatus
@@ -186,6 +188,19 @@ class DefaultModel(TypedDict):
 class EnabledModels(TypedDict):
     models: list[str]
     model: ModelChoice
+
+
+class ImageModelOption(TypedDict):
+    id: str
+    name: str
+
+
+class ImageModels(TypedDict):
+    models: list[ImageModelOption]
+
+
+class EnabledImageModels(TypedDict):
+    models: list[str]
 
 
 class ZeroDataRetention(TypedDict):
@@ -986,11 +1001,24 @@ class TerminalOutput(TerminalSession):
 class FilePreview(TypedDict):
     path: str
     name: str
-    kind: Literal["pdf", "image", "table", "text", "other"]
+    kind: Literal["pdf", "image", "video", "table", "text", "other"]
     size: int
     previewable: bool
     # False for files that would run when opened; those can only be shown in Finder.
     openable: bool
+
+
+class LinkPreview(TypedDict):
+    # The address asked for; the card describes the page it led to.
+    url: str
+    # "none" when the link has no card: it stays a plain link.
+    kind: Literal["page", "image", "video", "none"]
+    title: str | None
+    description: str | None
+    site_name: str | None
+    # Web addresses of the card's picture and the site's icon, loaded through /link-preview/media.
+    image: str | None
+    icon: str | None
 
 
 class Theme(TypedDict):
