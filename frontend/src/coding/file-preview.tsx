@@ -28,7 +28,7 @@ function Body({ threadId, preview }: { threadId: string; preview: Preview }) {
   const [url, setUrl] = useState<string | null>(null);
   const [text, setText] = useState<string | null>(null);
   const [failed, setFailed] = useState("");
-  const binary = preview.kind === "image";
+  const binary = preview.kind === "image" || preview.kind === "video";
   const pdf = useCallback(
     (signal: AbortSignal) => codingApi.filePreviewBytes(threadId, preview.path, signal),
     [threadId, preview.path],
@@ -89,6 +89,12 @@ function Body({ threadId, preview }: { threadId: string; preview: Preview }) {
     return (
       <div className="file-preview-image">
         <img src={url!} alt={preview.name} />
+      </div>
+    );
+  if (preview.kind === "video")
+    return (
+      <div className="file-preview-image">
+        <video src={url!} controls aria-label={preview.name} />
       </div>
     );
   if (preview.kind === "table") {

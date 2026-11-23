@@ -47,7 +47,7 @@ import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CodingMarkdown } from "./markdown";
-import { FileLinks } from "./file-links";
+import { ChatFileLinks } from "./link-previews";
 import { RunChecklist } from "@/components/task-checklist";
 import { RunActivity } from "@/components/trace-event";
 import { groupRunActivity } from "@/lib/run-activity";
@@ -998,7 +998,7 @@ function Chat({
   }, [sentAt]);
   return (
     <div className="coding-chat-layout">
-      <FileLinks.Provider value={setPreview}>
+      <ChatFileLinks threadId={thread.id} open={setPreview}>
         <section className="coding-conversation">
           <div
             className="conversation-scroll"
@@ -1123,7 +1123,7 @@ function Chat({
             <FilePreviewPane key={preview} threadId={thread.id} path={preview} onClose={closePreview} />
           ) : null}
         </section>
-      </FileLinks.Provider>
+      </ChatFileLinks>
     </div>
   );
 }

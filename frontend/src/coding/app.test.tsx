@@ -140,6 +140,15 @@ it("opens web links natively and previews linked files beside a still-usable com
   });
   vi.spyOn(codingApi, "filePreviewText").mockResolvedValue('region,total\nNorth,"1,200"\n');
   const openFile = vi.spyOn(codingApi, "openFile").mockResolvedValue(undefined);
+  vi.spyOn(codingApi, "linkPreview").mockImplementation(async (url) => ({
+    url,
+    kind: "page",
+    title: "Wave docs",
+    description: null,
+    site_name: "example.com",
+    image: null,
+    icon: null,
+  }));
   const reply = "Read [the docs](https://example.com/docs?q=wave) and [totals.csv](out/totals.csv).";
   useCoding.setState({
     details: {
@@ -158,6 +167,8 @@ it("opens web links natively and previews linked files beside a still-usable com
     },
   });
   render(<CodingApp />);
+  // A finished reply shows a card for the page it links.
+  expect(await screen.findByRole("link", { name: "Open Wave docs" })).toBeVisible();
   fireEvent.click(await screen.findByRole("link", { name: "the docs" }));
   expect(window.open).toHaveBeenCalledWith("https://example.com/docs?q=wave", "_blank", "noopener");
   fireEvent.click(screen.getByRole("link", { name: "totals.csv" }));

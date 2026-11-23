@@ -13,6 +13,35 @@ from pathlib import Path
 
 import uvicorn
 
+# A two-second synthetic H.264 clip (a bar filling), zlib-compressed, for `fixture: media`.
+DEMO_MP4 = (
+    "eNpjYGCQSSupLMgtMDFiYGBgzCzOzwWyDWH83JTEEgYwYPUGEqZsrLruYV53Ynyc7ae8Pypoc9F5BSMDAzMDIzOYZGJg0HvA"
+    "DWKCEK8JD/NEe8YGoEZv1R0KjP6n5qjY38ubf7PN6bqXAdvJh+bMbNPFHjNKfWyvvmZrvXzf0y0Zm6sYpN2MZlu0iC/8MmGT"
+    "/rbZb8/sdzWuYjCMy/85wUeSX0m0EmhckuJDAaf4f0EsDeH9/7/M/pz2X+vFK7u+h6+F75fM2KKy/Md3hccPvR4/mZa7tFF8"
+    "+4wrZ0yi19qxLxIuNZzd9Or4rP//rf5F5wQ/NJo0M8My0rxmydtFsWfmce65s+O4xHOV3y0d/jUOQFtsFVc0tSj+/3ye1a2H"
+    "/wN3+3YervcX9//i8Ptw2oRx+zTfAxO2zglki5nNW3HA0TqkV/Rxp3d46ey65bPvNstuB/lai3HFwY7g///Sv+rEOB1013x+"
+    "rEOoyFiqus/r5fZlM6cIPs075hvT0rOH/coeoGopxhWHO7z//052ExRaKsxTM+VzwsHH03z7hS0/AGUDFR8rLlK2v9SedCLB"
+    "VI5/QlW3sdbN+pVpSfOuyqZcOr+0YJWdtc8n5jkKprfcyk5yKfL63l3Sv3n6vg2Jc/mf9t85v9/SQrXDmf+Uw4mHXPv5F5h8"
+    "XQU0VFJxJVtL+LtVax7m7uFY/eHhNolSVtNFJtzuXEBJWcaVrkD3fPhqe/nPAa75arN1UpYdPalxT+WVwsyzIO9ZMa5073D+"
+    "/+NhOduN1voL79vlesvW7t0457pfX0ejoojUozMhIjum29oVPinfuGDROsW7t5bdzo7fd0T86g+gbj/Fp5qLtP/v+KSwtVWC"
+    "JeKlz6uH7ja7bFmDFad6z3JQ7poRK9CcKseX43EofZV+cpsS81kTr+mes9V6A4723DLdGzkz6Lzxva/XJrB3JQmcWLkB5BvG"
+    "lZ0d78+xzI25Eb5x7qfUxx2nznmeYWddB3KsnOIzg/pz2nKLuiRio5t3brSUUro5r9O9RPrZ93LhQDOQCsaVpzv637Ceir9Q"
+    "emg9//EJhX+POrGVWd1uubShnx+UIGQUn1vUKz0Utjd/EFGrt7JBZ8Fc49t3fc0mvlB8fgEob8m4irejf4212UdeiZ+nj1bN"
+    "v5u+Vyna97u9tue9jDVTj9VO11739g5PWfCJC9367+/+EM7trYl+kBDzCOT6ZMUXDvX6qoukJhXMqym3lQiOr+2V/M6y8ynb"
+    "ig27NlYk/80rEOU5PLlc998lT/3jiiIsts6eLZqLetVlFz5Xeqt3Wu7CbgYLyxeL7T8Usyx1C1GQPF92aMEzJra5XAcSWLoS"
+    "9+jybvYDWiPBuMq/o3/xNX25CSGP7omq6EXvV14dYnlnBygFKr70qFf8rCVRdCvC2dXaIoX51H2f1V8C2W57AWVNGFdN7Oif"
+    "t6b8I6/41ym7WgrE7Mvc+Nq8f8/bfaLmvbzfyYy+4xLfO8US3L3vRC1deT+7RaTDBxxqrwLqBe2mFZQ/iDASj4hvLQn5Pn2L"
+    "6t3nLxSfbICE2uWO/knx3lO5a1FCTWfpZHNwqLWEnHx2Ni3stFDqZPbdH9RuS/3Y/ujAzgMKQM0Kiq9j4oUsW7k3r/e4kDiB"
+    "j9FI6NhW57szUqu3qnAHzHNdAFSTqrharPV/+ZEfMQK83G+miUuEfP6y9vOtH7Y/VufqGc/qDVm4106eWXz2QTc515Wr/6Z5"
+    "pAS9fB8udGnb7+p/Sx29WM11J3qtSq75e1HyYOpUOQb/A9evy7C3nufc8NKBX877rwV32GFBmxBw2K4O7dzfaV9t+kJr/frD"
+    "1mqJt1vLJkm6A4tQFrbc/PwyoJqc3LKMFFCB+ly9/BQIMzAwRQDlNzAAC1JGBiSAwsHkOzDgBcCimHlSSVFiNpAdU5INtpMR"
+    "YSfMNJYNGDqJsReUozzAXJXUlJJiUCyn5hSXIHSAzU2B6GXmyk3JTARFVm4Kdr+HHgHrM8xIySmC2VOWmZKKbK9zflGqgm8q"
+    "0CSFMKBUPsiPG3Mz89KADJGyXIgHkdSrpEDkZFKKUtOQvMJTWpSjAGEzFRaXJOUA2QuLS4pTkNRMTCxLNsQRHCDPe4A974FT"
+    "BTqQ+P8fSKoDTXVmTGHg/v+QgUcdSK8JCzhcodjrwMjAovHOZsPfH6BykYErLTM1B2wmV3JGUS7EgOIScCjDrJMAYlAFfSEZ"
+    "IS4BlYMFxC80PkyvEZHy02jMP4HFfhFgRCD7E4RVilNKCkACCgICEhJgjAwFQP6WAepLRtPHA6VLgHJVyJEBxB1ADEoUjkCs"
+    "Byr7gTgUVOcBsSIQ2wFxEJSvBMWgRGMLxOkg+6B6LJDEVYA4EyoHjK/kfEROZNAB5gJOAHI0x8w="
+)
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--port", type=int, default=8787)
 args = parser.parse_args()
@@ -300,6 +329,35 @@ class FixtureModel(ScriptedModel):
                         "A loop, run as written:\n\n"
                         '```sh\nfor name in one two; do\n  echo "hello $name"\ndone\n```\n\n'
                         "Python has no button:\n\n```python\nprint('not a shell command')\n```"
+                    )
+                ]
+            elif prompt.startswith("fixture: media"):
+                # Pictures, a video and links, shared as the agent shares them, for their previews.
+                import base64
+                import zlib
+
+                from PIL import Image, ImageDraw
+
+                out = folder / "out"
+                out.mkdir(exist_ok=True)
+                chart = Image.new("RGB", (640, 360), "white")
+                draw = ImageDraw.Draw(chart)
+                draw.text((40, 24), "Synthetic quarterly totals", fill="black")
+                for index, height in enumerate((120, 210, 160, 280)):
+                    left = 60 + index * 140
+                    draw.rectangle((left, 330 - height, left + 90, 330), fill=(37, 99, 235))
+                chart.save(out / "chart.png")
+                (out / "demo.mp4").write_bytes(zlib.decompress(base64.b64decode(DEMO_MP4)))
+                self.script = [
+                    AIMessage(
+                        # Absolute: a chat that started in a worktree reads relative paths from it.
+                        content=f"Here is the chart:\n\n![Quarterly totals]({out}/chart.png)\n\n"
+                        f"I recorded [the demo]({out}/demo.mp4), and the dev server is at "
+                        "http://localhost:5173/dashboard. The language's logo is "
+                        "https://www.python.org/static/img/python-logo.png, its source is at "
+                        "[CPython on GitHub](https://github.com/python/cpython), and background is on "
+                        "<https://en.wikipedia.org/wiki/Wave_function>.\n\n"
+                        "```sh\ncurl https://example.com/not-a-card\n```"
                     )
                 ]
             elif prompt.startswith("fixture: transcript"):

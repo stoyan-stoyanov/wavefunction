@@ -17,7 +17,8 @@ import {
 } from "streamdown";
 import { toast } from "sonner";
 import { openExternal } from "@/lib/api";
-import { FileLinks, linkedFile } from "./file-links";
+import { FileLinks, LinkedFilesThread, linkedFile } from "./file-links";
+import { ImageThumbnail, ReplyPreviews } from "./link-previews";
 import { shellLanguages } from "./run-command";
 import { ShellBlock } from "./shell-block";
 import "./markdown.css";
@@ -99,8 +100,22 @@ function ChatLink({ href, children, title, ...props }: ComponentProps<"a"> & Ext
     </a>
   );
 }
+/** A Markdown image as a thumbnail that opens larger; its alt text if it can't be shown. */
+function ChatImage(props: ComponentProps<"img"> & ExtraProps & { "data-file-src"?: string }) {
+  const { src, alt } = props;
+  const openFile = useContext(FileLinks);
+  const fallback = alt ? <span className="text-muted-foreground">{alt}</span> : null;
+  const path = linkedFile(props["data-file-src"]);
+  // A file is read from the chat's folders, so only where the chat's file links open.
+  if (path) return openFile ? <ImageThumbnail media={{ path }} alt={alt} fallback={fallback} /> : fallback;
+  if (typeof src === "string" && /^https?:\/\//i.test(src))
+    return <ImageThumbnail media={{ url: src }} alt={alt} fallback={fallback} />;
+  if (typeof src === "string" && src.startsWith("data:image/")) return <img src={src} alt={alt} />;
+  return fallback;
+}
 const components: Components = {
   a: ChatLink,
+  img: ChatImage,
   table: ChatTable,
   tbody: ChatTableBody,
   thead: ({ children }) => <thead>{children}</thead>,
@@ -122,9 +137,12 @@ type HastNode = {
   properties?: Record<string, unknown>;
   children?: HastNode[];
 };
+// Passes link hardening in place of an image's path; the path itself is read from the chat's folders.
+const BLANK_IMAGE = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 /**
  * Link hardening blocks a relative path such as out/report.pdf and rewrites ./out/report.pdf to
  * /out/report.pdf. Keep the path the agent wrote for the file preview; the anchor only needs a fragment.
+ * An image's path, absolute ones too, is read from the chat's folders, never the app's own origin.
  */
 function relativeFileLinks() {
   const visit = (node: HastNode) => {
@@ -132,6 +150,11 @@ function relativeFileLinks() {
     if (typeof href === "string" && href && !/^([a-z][a-z0-9+.-]*:|[#/?])/i.test(href)) {
       node.properties!.dataFileHref = href;
       node.properties!.href = "#file";
+    }
+    const src = node.tagName === "img" ? node.properties?.src : undefined;
+    if (typeof src === "string" && src && !/^[a-z][a-z0-9+.-]*:/i.test(src)) {
+      node.properties!.dataFileSrc = src;
+      node.properties!.src = BLANK_IMAGE;
     }
     node.children?.forEach(visit);
   };
@@ -149,7 +172,10 @@ export const CodingMarkdown = memo(function CodingMarkdown({
   children: string;
   streaming?: boolean;
 }) {
-  return (
+  // In a chat's transcript, a finished message shows what it links below it.
+  const opensFiles = useContext(FileLinks) !== null;
+  const inChat = useContext(LinkedFilesThread) !== null && opensFiles;
+  const markdown = (
     <Streamdown
       className="coding-markdown"
       components={components}
@@ -163,5 +189,12 @@ export const CodingMarkdown = memo(function CodingMarkdown({
     >
       {children}
     </Streamdown>
+  );
+  if (!inChat || streaming) return markdown;
+  return (
+    <>
+      {markdown}
+      <ReplyPreviews text={children} />
+    </>
   );
 });
