@@ -4,8 +4,9 @@
    the macOS window buttons stay.
 
    Fonts (fonts/, SIL Open Font License 1.1, licences beside them), subset to what the app shows:
-   Pixelify Sans for text, VT323 for code, and Retro Emoji, the emoji and symbols of GNU Unifont,
-   one colour and 16 pixels square. Emoji sequences show their parts: skin tones and joiners are
+   Pixelify Sans for the chrome (bands, headings, names, buttons, tabs, labels), Retro Reading (IBM
+   Plex Mono, renamed as its Reserved Font Name requires) for everything read at length, and Retro
+   Emoji, the emoji and symbols of GNU Unifont, one colour and 16 pixels square. Emoji sequences show their parts: skin tones and joiners are
    blank, so a family or a toned hand shows its people or the plain hand. */
 
 @font-face {
@@ -15,8 +16,15 @@
   font-display: block;
 }
 @font-face {
-  font-family: "Retro Terminal";
-  src: url("fonts/vt323.woff2") format("woff2");
+  font-family: "Retro Reading";
+  src: url("fonts/reading.woff2") format("woff2");
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: "Retro Reading";
+  src: url("fonts/reading-bold.woff2") format("woff2");
+  font-weight: 700;
   font-display: block;
 }
 @font-face {
@@ -76,10 +84,11 @@
   --elevation-5: 0 0 0 2px #2a2a33, 8px 8px 0 0 #000;
   --elevation-6: 0 0 0 2px #2a2a33, 10px 10px 0 0 #000;
 
-  --font-sans: "Retro Emoji", "Retro Pixel", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Retro Emoji", "Retro Terminal", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-heading: var(--font-sans);
-  --retro-chrome: var(--font-sans);
+  /* Reading text in a period terminal mono; the pixel face for the short chrome. */
+  --font-sans: "Retro Emoji", "Retro Reading", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: var(--font-sans);
+  --retro-chrome: "Retro Emoji", "Retro Pixel", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--retro-chrome);
   --retro-step: 3px 3px 0 0 #000;
 
   /* Pixel type reads best a little larger than the default ladder. */
@@ -157,7 +166,7 @@
   font-family: var(--retro-chrome);
   font-size: 13px;
   font-weight: 400;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 :root[data-design] .shell-titlebar svg.lucide-message-square {
   width: 16px;
@@ -498,6 +507,18 @@
   color: var(--retro-ink);
 }
 /* A prompt mark before what you typed. */
+/* Long text: a step larger and looser than the default, so the mono reads easily. */
+:root[data-design] :is(.coding-answer, .coding-markdown) {
+  font-size: 14px;
+  line-height: 1.75;
+}
+:root[data-design] .user-message-bubble > div:not(.context-chips),
+:root[data-design] .coding-composer > textarea {
+  font-size: 14px;
+  /* Whole pixels: a fractional line can leave the one-line input a pixel taller than its box,
+     which shows a scroll bar. */
+  line-height: 23px;
+}
 :root[data-design] .user-message-bubble > div:not(.context-chips)::before {
   content: "> ";
   color: var(--retro-gold);
@@ -507,7 +528,7 @@
   color: var(--retro-ink);
   font-family: var(--retro-chrome);
   font-weight: 400;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 :root[data-design] .coding-markdown :is(h1, h2) {
   color: var(--retro-gold);
@@ -541,7 +562,10 @@
 :root[data-design] .coding-markdown :is(pre, code),
 :root[data-design] .coding-markdown [data-streamdown="inline-code"] {
   font-family: var(--font-mono);
-  font-size: 16px;
+  font-size: 13px;
+}
+:root[data-design] .chat-table :is(th, td) {
+  line-height: 1.55;
 }
 :root[data-design] .chat-table-scroll {
   border-color: var(--retro-line);
@@ -644,7 +668,7 @@
   color: var(--retro-ink);
   font-family: var(--retro-chrome);
   font-weight: 400;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 :root[data-design] .native-view h3 {
   color: var(--retro-label);
@@ -698,7 +722,7 @@
 :root[data-design] .repository-change-files button {
   border-radius: 0;
   color: var(--foreground);
-  font-family: var(--retro-chrome);
+  font-family: var(--font-sans);
   font-size: 12px;
 }
 :root[data-design] .workbench-content .workbench-file:hover,
@@ -728,7 +752,7 @@
 :root[data-design] .review-diff {
   border-bottom-color: var(--retro-line);
   font-family: var(--font-mono);
-  font-size: 15px;
+  font-size: 13px;
 }
 :root[data-design] .diff-number {
   color: #5b5b68;
