@@ -34,6 +34,7 @@ import type { Connector, ConnectorProbe } from "@/lib/types";
 import { listConnectorCatalog } from "@/lib/api";
 import { useSettings } from "@/store/settings";
 import "./connectors-view.css";
+import { words } from "@/lib/platform";
 
 function ConnectorError() {
   const error = useSettings((state) => state.error);
@@ -52,7 +53,7 @@ function ConnectorError() {
 }
 /** What a connector is reached through, in the words someone adding one would use. */
 const TRANSPORTS = {
-  stdio: "Runs on this Mac",
+  stdio: `Runs on ${words.thisComputer()}`,
   http: "A URL",
   sse: "A URL (SSE)",
 } as const;
@@ -432,7 +433,7 @@ export function AddConnector({
             {stage === "address"
               ? "An MCP server brings tools the agent can use. Name it and give its address."
               : stage === "local"
-                ? "A server that runs on this Mac, started by a command."
+                ? `A server that runs on ${words.thisComputer()}, started by a command.`
                 : stage === "done"
                   ? `${connected?.name ?? "The server"} is ready for Wavefunction to use.`
                   : probe?.url || address}

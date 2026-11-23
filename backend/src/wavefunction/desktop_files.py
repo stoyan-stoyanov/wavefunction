@@ -14,11 +14,9 @@ names a file, its size and where it went, and its bytes go nowhere but where the
 from __future__ import annotations
 
 import asyncio
-import fcntl
 import os
 import posixpath
 import stat
-import sys
 import unicodedata
 from pathlib import Path
 from typing import Any
@@ -26,18 +24,10 @@ from typing import Any
 from langchain_core.tools import BaseTool, tool
 from langgraph.types import interrupt
 
-from . import computer
+from . import computer, platforms
 from .folder_setup import FOLDER, _covered, _row
 from .sandbox import GRANTS_SETTING, load_grants, private_folders
 from .toolkit import ToolContext, _desktop
-
-
-def _where(descriptor: int) -> Path:
-    """Where an open file or folder really is, whatever links or letter case led to it."""
-    if sys.platform == "darwin":
-        found = fcntl.fcntl(descriptor, fcntl.F_GETPATH, bytes(1024))
-        return Path(os.fsdecode(found.split(b"\0", 1)[0]))
-    return Path(os.readlink(f"/proc/self/fd/{descriptor}"))
 
 
 def _grants(context: ToolContext) -> list[Any]:
@@ -99,7 +89,7 @@ def _read_mac(context: ToolContext, path: Path) -> bytes:
         raise ValueError(f"Could not open {path}: {error.strerror}.") from None
     with os.fdopen(descriptor, "rb") as source:
         # What was opened is checked, not what was named: a link swapped in meanwhile leads nowhere.
-        real = _not_private(_where(descriptor))
+        real = _not_private(platforms.path_of(descriptor))
         if not _covered(str(real), False, _grants(context)):
             raise ValueError(f"{real} is not in a folder the user allowed.")
         info = os.fstat(descriptor)
@@ -121,7 +111,7 @@ def _write_mac(
     directory = os.open(folder, os.O_RDONLY | os.O_DIRECTORY)
     try:
         # The folder as opened is what is checked, and the file is made inside that very folder.
-        real = _not_private(_where(directory))
+        real = _not_private(platforms.path_of(directory))
         if not _covered(str(real), True, _grants(context) if grants is None else grants):
             raise ValueError(f"{real} is not a folder the user allowed agents to save to.")
         stem, extension = os.path.splitext(name)

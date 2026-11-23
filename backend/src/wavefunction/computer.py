@@ -53,6 +53,7 @@ import httpx
 from langchain.agents.middleware import AgentMiddleware, ModelRequest
 from langchain_core.messages import HumanMessage, ToolMessage
 
+from . import platforms
 from .desktop_bridge import DesktopBridge
 
 logger = logging.getLogger(__name__)
@@ -60,9 +61,7 @@ logger = logging.getLogger(__name__)
 IMAGE_REPO = "wavefunction-desktop"
 # Linux builds start without computer use: the desktop, its files and its Docker handling are made
 # for Docker Desktop on macOS. Said wherever computer use would otherwise be set up or started.
-UNSUPPORTED = (
-    "Computer use needs macOS for now. Linux builds come without it." if sys.platform == "linux" else None
-)
+UNSUPPORTED = platforms.unavailable("computer_use")
 # On the desktop containers, and on the volumes that keep chats' homes.
 CONTAINER_LABEL = "wavefunction.computer=1"
 INSTALLATION_LABEL = "wavefunction.installation"

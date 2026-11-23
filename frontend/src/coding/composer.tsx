@@ -34,6 +34,7 @@ import { ComposerContext } from "./composer-context";
 import { WorktreeBranchPicker } from "./worktree-branch-picker";
 import { contextDraftKey, emptyContext, readContextDraft } from "./context-draft";
 import "./composer-ui.css";
+import { has } from "@/lib/platform";
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 /** Uploads each file to the chat, shows what arrived, and names any file that did not.
  *
@@ -50,8 +51,6 @@ async function attach(threadId: string, files: File[]) {
   if (failed.length) toast.error(failed.join(" "));
   else toast.success("Files attached");
 }
-// macOS dictation is the desktop app's; a browser tab has its own.
-const canDictate = () => "__TAURI_INTERNALS__" in window;
 // Managed worktrees are named `<repository>-<chat id>`; four characters of the id tell them apart.
 const chatIdSuffix = /-([0-9a-f]{4})[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const repositoryLabel = (folder: string) =>
@@ -520,7 +519,7 @@ function ComposerBody({
           >
             {uploading ? <LoaderCircle className="animate-spin" /> : <Paperclip />}
           </Button>
-          {canDictate() ? (
+          {has.dictation() ? (
             <Button
               variant="ghost"
               size="icon-sm"

@@ -26,6 +26,7 @@ const themeOptions: Array<{ value: string; label: string; icon: LucideIcon }> = 
 ];
 
 import { SettingsRow } from "./settings-row";
+import { words } from "@/lib/platform";
 
 export function GeneralSettings() {
   const { theme, resolvedTheme, forcedTheme, setTheme } = useTheme();
@@ -50,7 +51,7 @@ export function GeneralSettings() {
             description={
               forcedTheme
                 ? `${design.name} has a ${forcedTheme} look only.`
-                : "System follows your macOS appearance setting."
+                : `System follows your ${words.system()} appearance setting.`
             }
             control={
               <SegmentedControl
@@ -92,7 +93,7 @@ export function GeneralSettings() {
           <SettingsRow
             className="border-t border-hairline"
             title="Zoom"
-            description="Scales the whole window. Also on ⌘+, ⌘- and ⌘0."
+            description={`Scales the whole window. Also on ${words.shortcutKey()}+, ${words.shortcutKey()}- and ${words.shortcutKey()}0.`}
             control={
               <div className="flex items-center gap-1">
                 <Button

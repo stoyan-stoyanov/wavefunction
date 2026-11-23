@@ -19,7 +19,6 @@ import hashlib
 import json
 import os
 import re
-import shutil
 import stat
 import subprocess
 import sys
@@ -176,11 +175,9 @@ def _save(path: str, data: bytes, unchanged=None, *, mode=None) -> None:
     os.close(fd)
     try:
         if os.path.exists(path):
-            if sys.platform == "darwin":
-                # macOS cp -p preserves ACLs and extended attributes as well as POSIX metadata.
-                subprocess.run(["/bin/cp", "-p", path, temporary], check=True)
-            else:
-                shutil.copy2(path, temporary)
+            from .platforms import copy_with_metadata
+
+            copy_with_metadata(path, temporary)
             original, copied = os.stat(path), os.stat(temporary)
             if (original.st_uid, original.st_gid) != (copied.st_uid, copied.st_gid):
                 os.chown(temporary, original.st_uid, original.st_gid)
@@ -972,22 +969,11 @@ OPERATIONS = {
 
 
 def _left_out(path: str | None) -> bool:
-    """Whether the Linux sandbox did not mount `path`, which Seatbelt would have refused: then its
-    nearest folder that exists is part of the sandbox's own empty root, where folders exist only
-    to mount others through. Without restricted reads the root is the disk's, and nothing is."""
-    if not path or sys.platform != "linux":
-        return False
-    with suppress(OSError):
-        with open("/proc/self/mountinfo") as mounts:
-            root = [line for line in mounts if line.split()[4] == "/"][-1]
-        if root.split(" - ")[1].split()[0] != "tmpfs":
-            return False
-        # Followed, so a link to a file the sandbox doesn't show counts as that file.
-        folder = Path(os.path.realpath(path))
-        while not folder.exists() and folder != folder.parent:
-            folder = folder.parent
-        return os.stat(folder).st_dev == os.stat("/").st_dev
-    return False
+    """Whether the Linux sandbox hid `path` (`sandbox_linux.left_out`). Imported only when a path
+    is missing: every file tool call starts this module."""
+    from .sandbox_linux import left_out
+
+    return left_out(path)
 
 
 def run(request: dict) -> dict:
@@ -1018,7 +1004,9 @@ def run(request: dict) -> dict:
             }
         return {"ok": False, "error": "denied", "message": f"Permission denied: {path}"}
     except OSError as error:
-        if error.errno == errno.EROFS and sys.platform == "linux":
+        from .sandbox_linux import refused_write
+
+        if refused_write(error):
             # The Linux sandbox's refusal: what it shows but may not change is mounted read-only.
             return {
                 "ok": False,

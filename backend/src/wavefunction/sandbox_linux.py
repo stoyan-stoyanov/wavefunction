@@ -21,6 +21,7 @@ import errno
 import os
 import platform
 import struct
+import sys
 import uuid
 from pathlib import Path
 
@@ -285,6 +286,46 @@ def launch(
         "--",
         *argv,
     ]
+
+
+def prepare_shared_git(common: Path) -> None:
+    """Make what a command may write in a managed worktree's shared Git folder before it is
+    granted. This sandbox mounts only what exists, and keeps what a command creates in that folder
+    for the command alone. So the granted folders are made first, or Git LFS objects and reflogs
+    would vanish with the command; and `packed-refs` too, or a `pack-refs` would prune loose refs
+    into a file that is then gone. Empty, each is what git and git-lfs read when there is none.
+    Seatbelt grants by path, so nothing is needed on macOS."""
+    if sys.platform != "linux":
+        return
+    for name in ("lfs", "logs/refs"):
+        (common / name).mkdir(parents=True, exist_ok=True)
+    if not (common / "packed-refs").exists():
+        (common / "packed-refs").touch()
+
+
+def left_out(path: str | None) -> bool:
+    """Whether this sandbox did not mount `path`, which Seatbelt would have refused: then its
+    nearest folder that exists is part of the sandbox's own empty root, where folders exist only
+    to mount others through. Without restricted reads the root is the disk's, and nothing is."""
+    if not path or sys.platform != "linux":
+        return False
+    with contextlib.suppress(OSError):
+        with open("/proc/self/mountinfo") as mounts:
+            root = [line for line in mounts if line.split()[4] == "/"][-1]
+        if root.split(" - ")[1].split()[0] != "tmpfs":
+            return False
+        # Followed, so a link to a file the sandbox doesn't show counts as that file.
+        folder = Path(os.path.realpath(path))
+        while not folder.exists() and folder != folder.parent:
+            folder = folder.parent
+        return os.stat(folder).st_dev == os.stat("/").st_dev
+    return False
+
+
+def refused_write(error: OSError) -> bool:
+    """Whether a write failed as this sandbox refuses one: what it shows but may not change is
+    mounted read-only. Seatbelt's refusal is a permission error instead."""
+    return sys.platform == "linux" and error.errno == errno.EROFS
 
 
 def unavailable_reason() -> str | None:

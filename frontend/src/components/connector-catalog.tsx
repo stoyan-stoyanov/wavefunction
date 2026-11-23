@@ -23,6 +23,7 @@ import {
 } from "@/lib/api";
 import { slackManifest } from "@/lib/slack-manifest";
 import { useSettings } from "@/store/settings";
+import { words } from "@/lib/platform";
 export function ConnectorCatalog({
   onOpen,
   setupId,
@@ -318,9 +319,9 @@ export function ConnectorCatalog({
               {selected.id === "slack" ? null : (
                 <p className="text-muted-foreground">
                   {selected.id === "n8n"
-                    ? "Connect to your n8n instance. The bundled adapter runs on your Mac."
+                    ? `Connect to your n8n instance. The bundled adapter runs on ${words.yourComputer()}.`
                     : selected.local
-                      ? `Connect to ${selected.title} running on your Mac.`
+                      ? `Connect to ${selected.title} running on ${words.yourComputer()}.`
                       : `Connect to ${selected.title} so Wavefunction can use its tools.`}
                 </p>
               )}
@@ -481,7 +482,7 @@ export function ConnectorCatalog({
                       </label>
                       <p className="text-xs text-muted-foreground">
                         Copy this exact callback URL into your {selected.title} OAuth integration. It returns
-                        sign-in to {"Wavefunction"} on this Mac.
+                        sign-in to {"Wavefunction"} on {words.thisComputer()}.
                       </p>
                       <label className="block text-xs">
                         OAuth client ID

@@ -56,4 +56,5 @@ Accepted proposal: #
 - [ ] Tests guard a real failure and stay within the [test limit](https://github.com/stoyan-stoyanov/wavefunction/blob/main/CONTRIBUTING.md#tests)
 - [ ] Tests, examples and screenshots use synthetic data only
 - [ ] A change users will notice has its line under `Unreleased` in `CHANGELOG.md`
+- [ ] On Linux it works too, is hidden, or has a linked follow-up issue ([macOS and Linux](https://github.com/stoyan-stoyanov/wavefunction/blob/main/docs/ARCHITECTURE.md#macos-and-linux))
 - [ ] Anything I couldn't verify is listed above

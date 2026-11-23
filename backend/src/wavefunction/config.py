@@ -1,22 +1,19 @@
 from __future__ import annotations
 
 import os
-import sys
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from . import platforms
+
 
 def _default_data_dir() -> Path:
     if os.getenv("WAVEFUNCTION_DEVELOPMENT_AUTH_BYPASS", "true").lower() == "true":
         return Path.cwd() / ".wavefunction-data"
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / "Harness"
-    if sys.platform == "win32":
-        return Path(os.getenv("LOCALAPPDATA", Path.home() / "AppData" / "Local")) / "Harness"
-    return Path(os.getenv("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "harness"
+    return platforms.data_dir()
 
 
 class Settings(BaseSettings):

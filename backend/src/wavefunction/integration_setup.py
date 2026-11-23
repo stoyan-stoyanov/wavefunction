@@ -6,7 +6,6 @@ import asyncio
 import hashlib
 import json
 import os
-import platform
 import shutil
 import stat
 import tarfile
@@ -21,6 +20,7 @@ from typing import Literal
 import httpx
 from pydantic import BaseModel, Field, SecretStr
 
+from . import platforms
 from .local_integrations import Kind, executable, run_cli
 
 RELEASES = {
@@ -125,9 +125,10 @@ async def install(kind: Kind, root: Path):
         from .microsoft_graph import install as install_microsoft
 
         return await install_microsoft(root)
-    if platform.system() != "Darwin" or (kind, platform.machine()) not in RELEASES:
-        raise ValueError("In-app installation currently supports Intel and Apple silicon Macs.")
-    repo, version, asset, digest = RELEASES[kind, platform.machine()]
+    reason = platforms.unavailable("integration_install")
+    if reason or (kind, platforms.machine()) not in RELEASES:
+        raise ValueError(reason or "In-app installation currently supports Intel and Apple silicon Macs.")
+    repo, version, asset, digest = RELEASES[kind, platforms.machine()]
     with tempfile.TemporaryDirectory(prefix="wavefunction-download-") as directory:
         archive_path = Path(directory) / asset
         async with (

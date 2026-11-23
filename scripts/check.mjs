@@ -71,6 +71,9 @@ if (touched("backend/")) {
 if (all || changed.some((file) => /^(backend|frontend)\/src\//.test(file))) {
   steps.push(["Code health: file and function sizes", "node", ["scripts/check-code-health.mjs"]]);
 }
+if (all || changed.some((file) => /^(backend\/src|frontend\/src|src-tauri\/src)\/|^scripts\/check-platform\.mjs$/.test(file))) {
+  steps.push(["Platform differences in the platform modules", "node", ["scripts/check-platform.mjs"]]);
+}
 if (all || changed.some((file) => /^scripts\/.+\.py$/.test(file))) {
   steps.push(["Script lint and formatting", "sh", ["-c",
     "uv run --no-sync --project backend ruff check --config backend/pyproject.toml scripts && uv run --no-sync --project backend ruff format --check --config backend/pyproject.toml scripts"]]);

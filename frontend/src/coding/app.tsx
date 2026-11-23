@@ -80,6 +80,7 @@ import { RunCommand } from "./run-command";
 import { useWorkbenchPanel } from "./workbench-panel";
 import "./coding.css";
 import "./shell-layout.css";
+import { words } from "@/lib/platform";
 
 function preloadableScreen<Props extends object>(load: () => Promise<{ default: ComponentType<Props> }>) {
   let loaded: ComponentType<Props> | undefined;
@@ -110,6 +111,7 @@ const { Screen: RunConnectorSetup, preload: loadConnectorSetup } = preloadableSc
 const preloadScreens = [loadWorkbench, loadConnectors, loadConnectorSetup, loadSettings];
 type Page = "chat" | "settings" | "connectors";
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const OWN_TERMINAL = `It runs on ${words.thisComputer()} as in your own terminal.`;
 function ThreadSettings({ thread, onDone }: { thread: CodingThread; onDone: () => void }) {
   const projects = useCoding((s) => s.workspace?.projects ?? []);
   const [title, setTitle] = useState(thread.title);
@@ -510,7 +512,7 @@ function PauseCard({
           <p className="break-words">
             {request.danger}
             {request.kind === "outside_sandbox" || request.outside_sandbox
-              ? " It runs outside the sandbox, on this Mac."
+              ? ` It runs outside the sandbox, on ${words.thisComputer()}.`
               : null}
           </p>
         ) : null}
@@ -547,7 +549,7 @@ function PauseCard({
         <div className="approval-card" role="group" aria-label="Run outside the sandbox">
           <p className="font-medium">Run outside the sandbox</p>
           {batch}
-          <p className="text-xs text-muted-foreground">It runs on this Mac as in your own terminal.</p>
+          <p className="text-xs text-muted-foreground">{OWN_TERMINAL}</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" disabled={busy} onClick={() => void decide("approve")}>
               <Check />

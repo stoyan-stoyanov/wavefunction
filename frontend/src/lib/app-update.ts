@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Update } from "@tauri-apps/plugin-updater";
-import { linuxDesktop } from "@/lib/platform";
+import { has } from "@/lib/platform";
 
 /** Where the installed app stands against the newest published release. */
 export type UpdateState =
@@ -21,7 +21,7 @@ function set(next: UpdateState) {
 
 /** Only the packaged macOS app updates itself; a development build has nothing to replace, and
  * Linux builds come from source, with no release to update to. */
-const updatable = () => "__TAURI_INTERNALS__" in window && !import.meta.env.DEV && !linuxDesktop();
+const updatable = () => has.updates() && !import.meta.env.DEV;
 
 export async function checkForUpdate() {
   if (!updatable() || state.status === "installing" || state.status === "ready") return;

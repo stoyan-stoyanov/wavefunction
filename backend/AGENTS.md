@@ -17,7 +17,7 @@ Python 3.12, FastAPI and LangGraph. Read the root [AGENTS.md](../AGENTS.md) firs
 | Skills | `skills.py`, `skill_discovery.py`, `skills/` (built in), `coding_skills/` | `test_skill_versions.py`, `test_slash_skills.py`, `test_skill_catalog.py` |
 | Files, documents, images | `files.py`, `documents.py`, `document_images.py`, `local_images.py`, `file_previews.py` | `test_document_uploads.py` |
 | Computer use (Docker desktop) | `computer.py`, `computer_control.py`, `computer_routes.py`, `desktop_bridge.py`, `desktop_files.py`, `setup_rows.py`, `sandbox_image/` | `test_computer.py`, `test_computer_takeover.py` |
-| Settings and secrets | `config.py`, `secrets.py`, `schemas.py` | `test_secrets.py` |
+| Settings, secrets, platforms | `config.py`, `secrets.py`, `schemas.py`, `platforms.py` | `test_secrets.py` |
 | API response shapes | `responses.py` (the `response_model` of each route) | `conftest.py` checks every response against its model |
 | What the model reads | assembled by `agent_factory.py`, `local_coding.py`, `toolkit.py`; committed in `tests/fixtures/prompt_surface/default_chat.md` | `test_prompt_surface.py` |
 
@@ -25,7 +25,7 @@ The tests drive the HTTP API, so find a behavior's tests by its route or name, n
 
 ## Testing
 
-- Run pytest from this folder: `uv run --no-sync pytest tests/test_x.py -k name`. The whole suite: `npm run test:backend` from the repository root.
+- Run pytest from this folder: `uv run --no-sync pytest tests/test_x.py -k name`. The whole suite: `npm run test:backend` from the root.
 - `tests/conftest.py` gives each run a temporary data folder and signs `gh` out. Its `coding` fixture serves the API over isolated services; `ScriptedModel`, `tool_call_message` and `script_gateway` drive real tool loops without a model. The plain helpers `create`, `git` and `repository` are in `tests/support.py`. No test module imports another.
 - Markers: `sandbox` (needs Seatbelt or `bwrap`; skipped elsewhere), `destructive` (runs real deletions; CI only, never locally), `live` (real external services; opt-in with `-m live`).
 - The irreversible-command classifier's table test is in `test_sandbox.py`, which is `destructive` as a whole, so it runs only in CI: try new cases locally by passing their text to `command_danger`.

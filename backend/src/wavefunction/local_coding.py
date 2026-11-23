@@ -1,11 +1,11 @@
 """Repository and execution context for tasks with local tools."""
 
-import platform
 from pathlib import Path
 
 from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import HumanMessage
 
+from . import platforms
 from .coding_access import full_access
 from .hands import command_access, file_operation
 from .sandbox import Grant, Sandbox
@@ -60,7 +60,7 @@ def environment_context(
     else:
         place = f"Local repository folder: {folder}. Relative file paths and commands use this folder. "
     return (
-        f"Local environment: {platform.system()} {platform.machine()}; shell /bin/sh. "
+        f"Local environment: {platforms.description()}; shell /bin/sh. "
         + place
         + ("Network is enabled. " if access == "network" else "Network is disabled. ")
         + (" This is a read-only task: local writes and commands are disabled." if read_only else "")
