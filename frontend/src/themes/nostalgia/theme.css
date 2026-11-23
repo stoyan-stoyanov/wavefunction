@@ -1143,6 +1143,21 @@
 :root[data-design] .shell-titlebar :is([aria-label="Show workbench"], [aria-label="Hide workbench"]) > svg {
   background-image: url("icons/pane-preview.svg");
 }
+/* The workbench toggle belongs to the chat pane, not the title bar: it sits just below the band at
+   the pane's top-right, clear of the scroll bar, beside the workbench it opens. White on the white
+   pane, so it stays flat at rest and the transcript scrolls under it cleanly. */
+:root[data-design]
+  .coding-main
+  > .shell-titlebar
+  :is([aria-label="Show workbench"], [aria-label="Hide workbench"]) {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 6px;
+  background: #fff;
+}
+:root[data-design] .chat-titlebar ~ .coding-chat-layout .conversation-content {
+  padding-top: calc(46px + 48px);
+}
 
 /* ---- The workbench: property-sheet tabs over Explorer-style panes ---- */
 
