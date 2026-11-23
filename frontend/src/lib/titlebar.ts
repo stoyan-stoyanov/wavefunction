@@ -123,3 +123,25 @@ function pageBackground(): [number, number, number] | null {
   const [red, green, blue, alpha] = context.getImageData(0, 0, 1, 1).data;
   return alpha === 255 ? [red, green, blue] : null;
 }
+
+/**
+ * Hide the native window buttons for a design that draws its own, or bring them back. Whether the
+ * page should draw its own: in the desktop app only once the native ones are hidden (macOS; other
+ * platforms keep their window frame and its buttons), and in a plain browser, which has none, so
+ * the design can be previewed there.
+ */
+export async function replaceWindowControls(replace: boolean): Promise<boolean> {
+  if (!("__TAURI_INTERNALS__" in window)) return replace;
+  try {
+    const hidden = await invoke<boolean>("set_native_window_controls", { visible: !replace });
+    return replace && hidden;
+  } catch {
+    return false;
+  }
+}
+
+export function windowAction(action: "minimize" | "toggleMaximize" | "close"): void {
+  if (!("__TAURI_INTERNALS__" in window)) return;
+  const current = getCurrentWindow();
+  void current[action]().catch(() => undefined);
+}

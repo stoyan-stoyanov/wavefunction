@@ -320,7 +320,7 @@ export function Workbench({
         ) : thread.folder ? (
           activeTab === "files" ? (
             <>
-              <div className="flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+              <div className="workbench-files-header flex items-center justify-between px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground">
                 <span>Repository</span>
                 <Button
                   size="icon-xs"

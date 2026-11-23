@@ -57,6 +57,8 @@ import { startUpdateChecks } from "@/lib/app-update";
 import { onNotificationOpen, reportVisibleChat } from "@/lib/notifications";
 import { api } from "@/lib/api";
 import { beginWindowDrag, syncWindowTheme } from "@/lib/titlebar";
+import { forcedAppearance, useDesign } from "@/lib/design";
+import { WindowControls } from "./window-controls";
 import { useSettings } from "@/store/settings";
 import { modelSetupDone } from "@/lib/models";
 import { ChatSkeleton } from "./chat-skeleton";
@@ -1188,7 +1190,6 @@ function Shell() {
   const loading = useCoding((s) => s.loading);
   const error = useCoding((s) => s.error);
   const clearError = useCoding((s) => s.clearError);
-  const { resolvedTheme } = useTheme();
   const [page, setPage] = useState<Page>("chat");
   const [sidebar, setSidebar] = useState(true);
   const unreadThreads = useThreadActivity(workspace, page === "chat" ? selected : null);
@@ -1225,10 +1226,7 @@ function Shell() {
       .loadConnections()
       .catch(() => undefined);
   }, []);
-  useEffect(() => {
-    // Setup's left column can be wider than the sidebar's glass.
-    void syncWindowTheme(resolvedTheme === "dark", onboarding);
-  }, [resolvedTheme, onboarding]);
+  useNativeWindowTheme(onboarding);
   useEffect(() => {
     if (!workspaceReady) return;
     let stopped = false;
@@ -1470,10 +1468,29 @@ function Shell() {
     </div>
   );
 }
+/** Keep the native window's appearance and background in step with the page's theme and design. */
+function useNativeWindowTheme(onboarding: boolean) {
+  const { resolvedTheme, forcedTheme } = useTheme();
+  const design = useDesign((state) => state.active.id);
+  useEffect(() => {
+    // Setup's left column can be wider than the sidebar's glass.
+    void syncWindowTheme((forcedTheme ?? resolvedTheme) === "dark", onboarding);
+  }, [resolvedTheme, forcedTheme, design, onboarding]);
+}
+
 export function CodingApp() {
+  // A design that supports only light or only dark shows it whatever the setting says.
+  const forcedTheme = useDesign(forcedAppearance);
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" storageKey="harness.theme" enableSystem>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      storageKey="harness.theme"
+      enableSystem
+      forcedTheme={forcedTheme}
+    >
       <Shell />
+      <WindowControls />
     </ThemeProvider>
   );
 }

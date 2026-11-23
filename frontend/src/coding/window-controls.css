@@ -1,0 +1,30 @@
+/* A plain look for the app's own window buttons, for a design that asks for them without styling
+   them. A design restyles .window-controls and .window-control[data-control]. */
+.window-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+}
+.window-control {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--foreground);
+}
+.window-control > svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.5;
+}
+.window-control:hover {
+  background: var(--accent);
+}
+.window-control[data-control="close"]:hover {
+  background: var(--destructive);
+  color: var(--background);
+}

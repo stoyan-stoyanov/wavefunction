@@ -1,0 +1,1145 @@
+/* Retro: a dark terminal room. Warm off-white on near-black, a gold accent, pixel type, square
+   pixel edges with stepped shadows, keycap buttons with a pressed edge, pixel icons, a stepped
+   spinner and a pixel-art desk on the new-session screen, all drawn for this design. Dark only;
+   the macOS window buttons stay.
+
+   Fonts (fonts/, SIL Open Font License 1.1, licences beside them), subset to what the app shows:
+   Pixelify Sans for the chrome (bands, headings, names, buttons, tabs, labels), Retro Reading (IBM
+   Plex Mono, renamed as its Reserved Font Name requires) for everything read at length, and Retro
+   Emoji, the emoji and symbols of GNU Unifont, one colour and 16 pixels square. Emoji sequences show their parts: skin tones and joiners are
+   blank, so a family or a toned hand shows its people or the plain hand. */
+
+@font-face {
+  font-family: "Retro Pixel";
+  src: url("fonts/pixelify-sans.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: block;
+}
+@font-face {
+  font-family: "Retro Reading";
+  src: url("fonts/reading.woff2") format("woff2");
+  font-weight: 400;
+  font-display: block;
+}
+@font-face {
+  font-family: "Retro Reading";
+  src: url("fonts/reading-bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: block;
+}
+@font-face {
+  font-family: "Retro Emoji";
+  src: url("fonts/emoji-symbols.woff2") format("woff2");
+  unicode-range: U+2600-27BF, U+2B50, U+2B55, U+200D, U+FE0F;
+  font-display: block;
+}
+@font-face {
+  font-family: "Retro Emoji";
+  src: url("fonts/emoji.woff2") format("woff2");
+  unicode-range: U+1F300-1F64F, U+1F680-1F6FF, U+1F900-1F9FF, U+1FA70-1FAFF, U+200D, U+FE0F;
+  font-display: block;
+}
+
+:root,
+.dark {
+  --radius: 0;
+
+  --background: #0a0a0f;
+  --foreground: #d4d4d8;
+  --card: #121217;
+  --card-foreground: #e7e5e0;
+  --popover: #15151b;
+  --popover-foreground: #e7e5e0;
+  --primary: #e8c98a;
+  --primary-foreground: #1a1408;
+  --secondary: #18181f;
+  --secondary-foreground: #e7e5e0;
+  --muted: #16161c;
+  --muted-foreground: #9898a5;
+  --accent: #1f1f27;
+  --accent-foreground: #f3f0e8;
+  --destructive: #f87171;
+  --success: #34d399;
+  --warning: #fcd34d;
+  --border: rgb(255 255 255 / 10%);
+  --hairline: rgb(255 255 255 / 6%);
+  --input: rgb(255 255 255 / 14%);
+  --ring: rgb(252 211 77 / 55%);
+  --canvas: #07070a;
+  --sidebar: #0d0d12;
+  --sidebar-tint: #0d0d12;
+  --sidebar-foreground: #d4d4d8;
+  --sidebar-primary: #e8c98a;
+  --sidebar-primary-foreground: #1a1408;
+  --sidebar-accent: rgb(232 201 138 / 10%);
+  --sidebar-accent-foreground: #f3f0e8;
+  --sidebar-border: rgb(255 255 255 / 8%);
+  --sidebar-ring: rgb(252 211 77 / 55%);
+
+  /* Stepped, hard-edged shadows: no blur anywhere. */
+  --elevation-1: 0 0 0 1px var(--border);
+  --elevation-2: 0 0 0 1px var(--border), 3px 3px 0 0 #000;
+  --elevation-3: 0 0 0 2px #2a2a33, 4px 4px 0 0 #000;
+  --elevation-4: 0 0 0 2px #2a2a33, 6px 6px 0 0 #000;
+  --elevation-5: 0 0 0 2px #2a2a33, 8px 8px 0 0 #000;
+  --elevation-6: 0 0 0 2px #2a2a33, 10px 10px 0 0 #000;
+
+  /* Reading text in a period terminal mono; the pixel face for the short chrome. */
+  --font-sans: "Retro Emoji", "Retro Reading", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: var(--font-sans);
+  --retro-chrome: "Retro Emoji", "Retro Pixel", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--retro-chrome);
+  --retro-step: 3px 3px 0 0 #000;
+
+  /* Pixel type reads best a little larger than the default ladder. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: 1rem;
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 0.875rem;
+  --text-base--line-height: 1.375rem;
+  --text-lg: 0.9375rem;
+  --text-lg--line-height: 1.5rem;
+  --text-xl: 1.0625rem;
+  --text-xl--line-height: 1.625rem;
+  --text-2xl: 1.25rem;
+  --text-2xl--line-height: 1.75rem;
+  --text-3xl: 1.625rem;
+  --text-3xl--line-height: 2.125rem;
+
+  --retro-ink: #f3f0e8;
+  --retro-gold: #e8c98a;
+  --retro-gold-deep: #8a6a33;
+  --retro-amber: #fde68a;
+  --retro-label: #a08a5c;
+  --retro-line: rgb(255 255 255 / 9%);
+  /* A faint dot grid, like the dithering in old pixel art. */
+  --retro-dither: radial-gradient(rgb(255 255 255 / 4.5%) 0.6px, transparent 0.9px) 0 0 / 4px 4px;
+}
+
+/* ---- Type, selection, focus, scroll bars ---- */
+
+:root[data-design] .coding-shell {
+  background: var(--background);
+  font-family: var(--font-sans);
+}
+:root[data-design] body {
+  font-feature-settings: normal;
+  /* The pixel face's "fi" ligature does not survive subsetting; plain letters read better anyway. */
+  font-variant-ligatures: none;
+}
+::selection {
+  background: var(--retro-gold);
+  color: #1a1408;
+}
+:root[data-design] :focus-visible {
+  outline: 1px solid var(--retro-gold);
+  outline-offset: 1px;
+}
+/* The chat input shows focus with its caret alone; buttons and pickers keep the outline. */
+:root[data-design] .coding-composer > textarea:focus-visible {
+  outline: none;
+}
+:root[data-design] * {
+  scrollbar-color: #34343f transparent;
+}
+
+/* ---- The bands across the top ---- */
+
+:root[data-design] .coding-shell :is(.navigation-topbar, .shell-titlebar, .workbench-toolbar) {
+  border-bottom: 0;
+  background: var(--retro-dither), var(--background);
+  box-shadow: inset 0 -1px 0 var(--retro-line);
+  color: var(--retro-ink);
+}
+:root[data-design] .coding-main > .floating-titlebar > * {
+  opacity: 1;
+}
+:root[data-design] .coding-main > .floating-titlebar::after,
+:root[data-design] .coding-conversation::before {
+  display: none;
+}
+:root[data-design] .shell-titlebar .chat-title {
+  color: var(--retro-ink);
+  font-family: var(--retro-chrome);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+:root[data-design] .shell-titlebar svg.lucide-message-square {
+  width: 16px;
+  height: 16px;
+  background: url("icons/chat.svg") center / contain no-repeat;
+  color: transparent;
+}
+:root[data-design] .shell-titlebar svg.lucide-message-square > * {
+  display: none;
+}
+:root[data-design]
+  :is(.navigation-topbar, .shell-titlebar, .workbench-toolbar)
+  [data-slot="button"][data-variant="ghost"] {
+  color: var(--muted-foreground);
+}
+:root[data-design]
+  :is(.navigation-topbar, .shell-titlebar, .workbench-toolbar)
+  [data-slot="button"][data-variant="ghost"]:hover {
+  background: rgb(255 255 255 / 6%);
+  color: var(--retro-gold);
+}
+
+/* ---- Sidebars ---- */
+
+:root[data-design] .coding-sidebar {
+  border-right: 1px solid var(--retro-line);
+  background: var(--sidebar);
+}
+:root[data-design]
+  .coding-sidebar
+  :is(.new-project, .project-group > button:first-child, .thread-select, .sidebar-bottom > button) {
+  color: var(--foreground);
+  font-family: var(--retro-chrome);
+  font-size: 12px;
+  font-weight: 400;
+}
+:root[data-design] .coding-sidebar .coding-thread-row {
+  min-height: 30px;
+  margin: 1px 0;
+  border-radius: 0;
+}
+:root[data-design] .coding-sidebar :is(.coding-thread-row, .new-project, .sidebar-bottom > button):hover {
+  background: rgb(255 255 255 / 5%);
+}
+:root[data-design] .coding-sidebar :is(.coding-thread-row.selected, .new-project[aria-current="page"]) {
+  background: rgb(232 201 138 / 10%);
+  box-shadow: inset 2px 0 0 var(--retro-gold);
+}
+:root[data-design] .coding-sidebar .coding-thread-row.selected .thread-select,
+:root[data-design] .coding-sidebar .new-project[aria-current="page"] {
+  color: var(--retro-gold);
+}
+:root[data-design] .coding-sidebar .sidebar-projects-heading h2 {
+  color: var(--retro-label);
+  font-family: var(--retro-chrome);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+:root[data-design] .coding-sidebar .project-group > button:first-child {
+  color: var(--retro-ink);
+}
+:root[data-design] .coding-sidebar .unread-dot {
+  border-radius: 0;
+  background: var(--retro-gold);
+}
+:root[data-design] .coding-sidebar .sidebar-bottom {
+  border-top: 1px solid var(--retro-line);
+}
+/* Pixel icons in place of the line icons. */
+:root[data-design]
+  :is(.coding-sidebar, .composer-footer, .workbench-content, .workbench-tab)
+  :is(
+    svg.lucide-folder,
+    svg.lucide-folder-open,
+    svg.lucide-chevron-down,
+    svg.lucide-chevron-right,
+    svg.lucide-square-pen,
+    svg.lucide-plug,
+    svg.lucide-settings-2,
+    svg.lucide-file-code-corner,
+    svg.lucide-file-code-2,
+    svg.lucide-files,
+    svg.lucide-terminal,
+    svg.lucide-git-compare-arrows
+  ) {
+  width: 16px;
+  height: 16px;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  color: transparent;
+  rotate: none;
+  image-rendering: pixelated;
+  -webkit-mask: none;
+  mask: none;
+}
+:root[data-design]
+  :is(.coding-sidebar, .composer-footer, .workbench-content, .workbench-tab)
+  :is(
+    svg.lucide-folder,
+    svg.lucide-folder-open,
+    svg.lucide-chevron-down,
+    svg.lucide-chevron-right,
+    svg.lucide-square-pen,
+    svg.lucide-plug,
+    svg.lucide-settings-2,
+    svg.lucide-file-code-corner,
+    svg.lucide-file-code-2,
+    svg.lucide-files,
+    svg.lucide-terminal,
+    svg.lucide-git-compare-arrows
+  )
+  > * {
+  display: none;
+}
+:root[data-design] :is(.coding-sidebar, .workbench-content) svg.lucide-folder {
+  background-image: url("icons/folder.svg");
+}
+:root[data-design] :is(.coding-sidebar, .composer-footer) svg.lucide-folder-open {
+  background-image: url("icons/folder-open.svg");
+}
+:root[data-design] :is(.coding-sidebar, .workbench-content) svg.lucide-chevron-right {
+  background-image: url("icons/tree-collapsed.svg");
+}
+:root[data-design] .coding-sidebar svg.lucide-chevron-down,
+:root[data-design] .workbench-content svg.lucide-chevron-right.rotate-90 {
+  background-image: url("icons/tree-expanded.svg");
+}
+:root[data-design] .coding-sidebar svg.lucide-square-pen {
+  background-image: url("icons/new-session.svg");
+}
+:root[data-design] .coding-sidebar svg.lucide-plug {
+  background-image: url("icons/connectors.svg");
+}
+:root[data-design] .coding-sidebar svg.lucide-settings-2 {
+  background-image: url("icons/settings.svg");
+}
+:root[data-design] .workbench-content svg:is(.lucide-file-code-corner, .lucide-file-code-2) {
+  background-image: url("icons/file.svg");
+}
+:root[data-design] .workbench-tab svg.lucide-files {
+  background-image: url("icons/folder.svg");
+}
+:root[data-design] .workbench-tab svg.lucide-terminal {
+  background-image: url("icons/console.svg");
+}
+:root[data-design] .workbench-tab svg.lucide-git-compare-arrows {
+  background-image: url("icons/compare.svg");
+}
+:root[data-design] .coding-settings-sidebar .coding-settings-nav button {
+  border-radius: 0;
+  color: var(--foreground);
+  font-family: var(--retro-chrome);
+  font-size: 12px;
+}
+:root[data-design] .coding-settings-sidebar .coding-settings-nav button:hover {
+  background: rgb(255 255 255 / 5%);
+}
+:root[data-design] .coding-settings-sidebar .coding-settings-nav button.selected {
+  background: rgb(232 201 138 / 10%);
+  box-shadow: inset 2px 0 0 var(--retro-gold);
+  color: var(--retro-gold);
+}
+
+/* The same coloured icons on every page that shows them. */
+:root[data-design]
+  :is(
+    svg.lucide-folder,
+    svg.lucide-folder-open,
+    svg.lucide-plug,
+    svg.lucide-settings-2,
+    svg.lucide-square-pen
+  ) {
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  color: transparent;
+  image-rendering: pixelated;
+  -webkit-mask: none;
+  mask: none;
+}
+:root[data-design]
+  :is(
+    svg.lucide-folder,
+    svg.lucide-folder-open,
+    svg.lucide-plug,
+    svg.lucide-settings-2,
+    svg.lucide-square-pen
+  )
+  > * {
+  display: none;
+}
+:root[data-design] svg.lucide-folder {
+  background-image: url("icons/folder.svg");
+}
+:root[data-design] svg.lucide-folder-open {
+  background-image: url("icons/folder-open.svg");
+}
+:root[data-design] svg.lucide-plug {
+  background-image: url("icons/connectors.svg");
+}
+:root[data-design] svg.lucide-settings-2 {
+  background-image: url("icons/settings.svg");
+}
+:root[data-design] svg.lucide-square-pen {
+  background-image: url("icons/new-session.svg");
+}
+
+/* ---- Keycap buttons, fields, switches ---- */
+
+:root[data-design] [data-slot="button"],
+:root[data-design] :is([data-slot="alert-dialog-action"], [data-slot="alert-dialog-cancel"]) {
+  font-family: var(--retro-chrome);
+  font-weight: 400;
+}
+:root[data-design]
+  :is([data-slot="button"][data-variant="default"], [data-slot="alert-dialog-action"], .send-button) {
+  border: 0;
+  border-radius: 0;
+  background: var(--retro-gold);
+  box-shadow: 0 3px 0 var(--retro-gold-deep);
+  color: #1a1408;
+}
+:root[data-design]
+  :is([data-slot="button"][data-variant="default"], [data-slot="alert-dialog-action"], .send-button):not(
+    :disabled
+  ):hover {
+  background: #f0d59e;
+}
+:root[data-design]
+  :is([data-slot="button"][data-variant="default"], [data-slot="alert-dialog-action"], .send-button):not(
+    :disabled
+  ):active {
+  box-shadow: 0 1px 0 var(--retro-gold-deep);
+  translate: 0 2px;
+}
+:root[data-design]
+  :is(
+    [data-slot="button"]:is([data-variant="secondary"], [data-variant="outline"]),
+    [data-slot="alert-dialog-cancel"],
+    [data-slot="select-trigger"]
+  ) {
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--retro-ink);
+  font-family: var(--retro-chrome);
+}
+:root[data-design]
+  :is(
+    [data-slot="button"]:is([data-variant="secondary"], [data-variant="outline"]),
+    [data-slot="alert-dialog-cancel"],
+    [data-slot="select-trigger"]
+  ):not(:disabled):hover {
+  border-color: rgb(232 201 138 / 55%);
+  background: rgb(232 201 138 / 6%);
+}
+:root[data-design] [data-slot="button"][data-variant="ghost"]:not(:disabled):hover {
+  background: rgb(255 255 255 / 6%);
+}
+:root[data-design] [data-slot="button"][data-variant="link"] {
+  color: var(--retro-gold);
+}
+:root[data-design] :is([data-slot="input"], [data-slot="textarea"]) {
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 0;
+  background: #0d0d12;
+  box-shadow: none;
+}
+:root[data-design] :is([data-slot="input"], [data-slot="textarea"]):focus {
+  border-color: rgb(232 201 138 / 60%);
+  box-shadow: 0 0 0 3px rgb(252 211 77 / 12%);
+}
+:root[data-design] [data-slot="switch"][data-state="checked"] {
+  background: var(--retro-gold);
+}
+:root[data-design] [data-slot="switch"] [data-slot="switch-thumb"] {
+  border-radius: 0;
+}
+:root[data-design] input[type="range"] {
+  accent-color: var(--retro-gold);
+}
+:root[data-design] div[role="radiogroup"] {
+  border: 1px solid var(--retro-line);
+  background: #0d0d12;
+}
+:root[data-design] div[role="radiogroup"] > button[role="radio"] {
+  font-family: var(--retro-chrome);
+  font-weight: 400;
+}
+:root[data-design] div[role="radiogroup"] > button[role="radio"][aria-checked="true"] {
+  background: rgb(255 255 255 / 8%);
+  color: var(--retro-gold);
+}
+
+/* ---- Menus and dialogs ---- */
+
+:root[data-design]
+  :is(
+    [data-slot="dropdown-menu-content"],
+    [data-slot="select-content"],
+    [data-slot="popover-content"],
+    [data-slot="dialog-content"],
+    [data-slot="alert-dialog-content"]
+  ) {
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 0;
+  background: var(--popover);
+}
+:root[data-design]
+  :is([data-slot="dropdown-menu-item"], [data-slot="select-item"], [data-slot="command-item"]) {
+  font-family: var(--retro-chrome);
+  font-size: 12px;
+}
+:root[data-design]
+  :is([data-slot="dropdown-menu-item"], [data-slot="select-item"], [data-slot="command-item"]):is(
+    [data-highlighted],
+    [data-selected="true"]
+  ) {
+  background: rgb(232 201 138 / 12%);
+  color: var(--retro-gold);
+}
+:root[data-design] :is([data-slot="dialog-title"], [data-slot="alert-dialog-title"]) {
+  color: var(--retro-ink);
+  font-family: var(--retro-chrome);
+  font-weight: 400;
+}
+
+/* ---- The conversation ---- */
+
+:root[data-design] .user-message-bubble {
+  border: 1px solid var(--retro-line);
+  border-radius: 0;
+  background: var(--card);
+  color: var(--retro-ink);
+}
+/* A prompt mark before what you typed. */
+/* Long text: a step larger and looser than the default, so the mono reads easily. */
+:root[data-design] :is(.coding-answer, .coding-markdown) {
+  font-size: 14px;
+  line-height: 1.75;
+}
+:root[data-design] .user-message-bubble > div:not(.context-chips),
+:root[data-design] .coding-composer > textarea {
+  font-size: 14px;
+  /* Whole pixels: a fractional line can leave the one-line input a pixel taller than its box,
+     which shows a scroll bar. */
+  line-height: 23px;
+}
+:root[data-design] .user-message-bubble > div:not(.context-chips)::before {
+  content: "> ";
+  color: var(--retro-gold);
+  font-family: var(--retro-chrome);
+}
+:root[data-design] .coding-markdown :is(h1, h2, h3, h4) {
+  color: var(--retro-ink);
+  font-family: var(--retro-chrome);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+:root[data-design] .coding-markdown :is(h1, h2) {
+  color: var(--retro-gold);
+}
+:root[data-design] .coding-markdown a {
+  color: var(--retro-amber);
+}
+:root[data-design] .coding-markdown [data-streamdown="inline-code"] {
+  border: 1px solid var(--retro-line);
+  border-radius: 0;
+  background: #16161c;
+  color: var(--retro-amber);
+}
+:root[data-design] .coding-markdown [data-streamdown="code-block"] {
+  border: 1px solid var(--retro-line);
+  border-radius: 0;
+  background: #0d0d12;
+}
+:root[data-design] .coding-markdown [data-streamdown="code-block-header"] {
+  border-bottom: 1px solid var(--retro-line);
+  color: var(--retro-label);
+  font-family: var(--retro-chrome);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+:root[data-design] .coding-markdown [data-streamdown="code-block-copy-button"] {
+  border: 1px solid rgb(232 201 138 / 40%);
+  border-radius: 0;
+  color: var(--retro-gold);
+}
+:root[data-design] .coding-markdown :is(pre, code),
+:root[data-design] .coding-markdown [data-streamdown="inline-code"] {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+:root[data-design] .chat-table :is(th, td) {
+  line-height: 1.55;
+}
+:root[data-design] .chat-table-scroll {
+  border-color: var(--retro-line);
+}
+:root[data-design] .chat-table th {
+  background: #16161c;
+  color: var(--retro-label);
+  font-family: var(--retro-chrome);
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+:root[data-design] .trace-toggle {
+  color: var(--retro-label);
+  font-family: var(--retro-chrome);
+  letter-spacing: 0.06em;
+}
+:root[data-design] .trace-toggle:hover {
+  color: var(--retro-gold);
+}
+:root[data-design] .run-time {
+  font-family: var(--retro-chrome);
+}
+:root[data-design] .coding-trace {
+  border-color: var(--retro-line);
+  border-radius: 0;
+  background: #0d0d12;
+}
+:root[data-design] .coding-trace summary {
+  font-family: var(--retro-chrome);
+}
+:root[data-design] .coding-trace summary:hover {
+  color: var(--retro-gold);
+}
+:root[data-design] :is(.approval-card, .question-card, .routine-report-card) {
+  border: 1px solid rgb(232 201 138 / 30%);
+  border-radius: 0;
+  background: var(--card);
+  box-shadow: none;
+}
+
+/* ---- The composer ---- */
+
+:root[data-design] .composer-dock {
+  border-top: 1px solid var(--retro-line);
+  background: var(--retro-dither), var(--background);
+}
+:root[data-design] .composer-dock::before {
+  display: none;
+}
+:root[data-design] .composer-wrap {
+  padding-top: 12px;
+}
+:root[data-design] .coding-composer {
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 0;
+  background: var(--card);
+  box-shadow: none;
+}
+:root[data-design] .coding-composer > textarea {
+  color: var(--retro-ink);
+  caret-color: var(--retro-gold);
+}
+:root[data-design] .coding-composer .composer-toolbar :is(.model-selector, .composer-chip) {
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 0;
+  color: var(--foreground);
+  font-family: var(--retro-chrome);
+  font-size: 11px !important;
+}
+:root[data-design] .coding-composer .composer-toolbar :is(.model-selector, .composer-chip):hover,
+:root[data-design]
+  .coding-composer
+  .composer-toolbar
+  :is(.model-selector, .composer-chip)[data-state="open"] {
+  border-color: rgb(232 201 138 / 55%);
+  color: var(--retro-gold);
+}
+:root[data-design] .send-button {
+  width: 30px;
+  height: 27px;
+}
+:root[data-design] .send-button:disabled {
+  opacity: 0.35;
+}
+:root[data-design] .composer-footer,
+:root[data-design] .composer-footer .composer-repository {
+  color: var(--retro-label);
+  font-family: var(--retro-chrome);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+:root[data-design] .composer-footer .composer-repository:hover {
+  color: var(--retro-gold);
+}
+
+/* ---- Settings ---- */
+
+:root[data-design] .native-view h2 {
+  color: var(--retro-ink);
+  font-family: var(--retro-chrome);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+:root[data-design] .native-view h3 {
+  color: var(--retro-label);
+  font-family: var(--retro-chrome);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+:root[data-design] .native-view .rounded-xl.bg-card {
+  border: 1px solid var(--retro-line);
+  border-radius: 0;
+}
+
+/* ---- The workbench: underlined tabs over a tree, a terminal and a diff ---- */
+
+:root[data-design] .coding-workbench {
+  border-left: 1px solid var(--retro-line);
+  background: var(--background);
+}
+:root[data-design] .coding-workbench .workbench-tab {
+  min-height: 30px;
+  gap: 6px;
+  padding: 0 8px;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 -2px 0 transparent;
+  color: var(--muted-foreground);
+  font-family: var(--retro-chrome);
+  font-size: 12px;
+  font-weight: 400;
+}
+:root[data-design] .coding-workbench .workbench-tab:hover {
+  background: transparent;
+  color: var(--retro-ink);
+}
+:root[data-design] .coding-workbench .workbench-tab.selected {
+  background: transparent;
+  box-shadow: inset 0 -2px 0 var(--retro-gold);
+  color: var(--retro-gold);
+}
+:root[data-design] .workbench-files-header,
+:root[data-design] .repository-changes-toolbar,
+:root[data-design] .split-labels {
+  border-bottom: 1px solid var(--retro-line);
+  color: var(--retro-label);
+  font-family: var(--retro-chrome);
+  letter-spacing: 0.12em;
+}
+:root[data-design] .workbench-content .workbench-file,
+:root[data-design] .repository-change-files button {
+  border-radius: 0;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+:root[data-design] .workbench-content .workbench-file:hover,
+:root[data-design] .repository-change-files button:hover {
+  background: rgb(255 255 255 / 5%);
+  color: var(--retro-gold);
+}
+:root[data-design] .terminal-tabs {
+  border-bottom-color: var(--retro-line);
+}
+:root[data-design] .terminal-tab {
+  border-radius: 0;
+  font-family: var(--retro-chrome);
+}
+:root[data-design] .terminal-tab.active {
+  background: rgb(232 201 138 / 10%);
+  color: var(--retro-gold);
+}
+:root[data-design] .terminal-tab i {
+  border-radius: 0;
+  background: var(--retro-gold);
+}
+:root[data-design] .terminal-surface {
+  background: #050507;
+  color: #d4d4d8;
+}
+:root[data-design] .review-diff {
+  border-bottom-color: var(--retro-line);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+:root[data-design] .diff-number {
+  color: #5b5b68;
+}
+:root[data-design] :is(.diff-row, .diff-half).add {
+  background: rgb(52 211 153 / 11%);
+}
+:root[data-design] :is(.diff-row, .diff-half).delete {
+  background: rgb(248 113 113 / 11%);
+}
+:root[data-design] .diff-row.hunk {
+  background: rgb(232 201 138 / 7%);
+  color: var(--retro-label);
+}
+
+/* ---- Pixel icons: one-colour 8x8 masks over the line icons, in the text's colour ---- */
+
+:root[data-design]
+  :is(
+    svg.lucide-panel-left,
+    svg.lucide-panel-right,
+    svg.lucide-copy,
+    svg.lucide-git-fork,
+    svg.lucide-rotate-ccw,
+    svg.lucide-refresh-cw,
+    svg.lucide-paperclip,
+    svg.lucide-arrow-up,
+    svg.lucide-arrow-left,
+    svg.lucide-chevron-down,
+    svg.lucide-chevron-up,
+    svg.lucide-chevron-right,
+    svg.lucide-x,
+    svg.lucide-plus,
+    svg.lucide-minus,
+    svg.lucide-search,
+    svg.lucide-pencil,
+    svg.lucide-square,
+    svg.lucide-code,
+    svg.lucide-check,
+    svg.lucide-clock,
+    svg.lucide-wrench,
+    svg.lucide-bell,
+    svg.lucide-cpu,
+    svg.lucide-chart-column,
+    svg.lucide-book-open,
+    svg.lucide-monitor,
+    svg.lucide-info,
+    svg.lucide-sun,
+    svg.lucide-moon,
+    svg.lucide-mic,
+    svg.lucide-bot,
+    svg.lucide-sliders-horizontal,
+    svg.lucide-ellipsis,
+    svg.lucide-trash-2,
+    svg.lucide-git-branch,
+    svg.lucide-external-link,
+    svg.lucide-download,
+    svg.lucide-send,
+    svg.lucide-mail,
+    svg.lucide-clock-3
+  ) {
+  background: currentColor;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  rotate: none;
+}
+:root[data-design]
+  :is(
+    svg.lucide-panel-left,
+    svg.lucide-panel-right,
+    svg.lucide-copy,
+    svg.lucide-git-fork,
+    svg.lucide-rotate-ccw,
+    svg.lucide-refresh-cw,
+    svg.lucide-paperclip,
+    svg.lucide-arrow-up,
+    svg.lucide-arrow-left,
+    svg.lucide-chevron-down,
+    svg.lucide-chevron-up,
+    svg.lucide-chevron-right,
+    svg.lucide-x,
+    svg.lucide-plus,
+    svg.lucide-minus,
+    svg.lucide-search,
+    svg.lucide-pencil,
+    svg.lucide-square,
+    svg.lucide-code,
+    svg.lucide-check,
+    svg.lucide-clock,
+    svg.lucide-wrench,
+    svg.lucide-bell,
+    svg.lucide-cpu,
+    svg.lucide-chart-column,
+    svg.lucide-book-open,
+    svg.lucide-monitor,
+    svg.lucide-info,
+    svg.lucide-sun,
+    svg.lucide-moon,
+    svg.lucide-mic,
+    svg.lucide-bot,
+    svg.lucide-sliders-horizontal,
+    svg.lucide-ellipsis,
+    svg.lucide-trash-2,
+    svg.lucide-git-branch,
+    svg.lucide-external-link,
+    svg.lucide-download,
+    svg.lucide-send,
+    svg.lucide-mail,
+    svg.lucide-clock-3
+  )
+  > * {
+  display: none;
+}
+:root[data-design] svg.lucide-panel-left {
+  -webkit-mask-image: url("icons/px/panel-left.svg");
+  mask-image: url("icons/px/panel-left.svg");
+}
+:root[data-design] svg.lucide-panel-right {
+  -webkit-mask-image: url("icons/px/panel-right.svg");
+  mask-image: url("icons/px/panel-right.svg");
+}
+:root[data-design] svg.lucide-copy {
+  -webkit-mask-image: url("icons/px/copy.svg");
+  mask-image: url("icons/px/copy.svg");
+}
+:root[data-design] svg.lucide-git-fork {
+  -webkit-mask-image: url("icons/px/git-fork.svg");
+  mask-image: url("icons/px/git-fork.svg");
+}
+:root[data-design] svg.lucide-rotate-ccw {
+  -webkit-mask-image: url("icons/px/rotate-ccw.svg");
+  mask-image: url("icons/px/rotate-ccw.svg");
+}
+:root[data-design] svg.lucide-refresh-cw {
+  -webkit-mask-image: url("icons/px/refresh-cw.svg");
+  mask-image: url("icons/px/refresh-cw.svg");
+}
+:root[data-design] svg.lucide-paperclip {
+  -webkit-mask-image: url("icons/px/paperclip.svg");
+  mask-image: url("icons/px/paperclip.svg");
+}
+:root[data-design] svg.lucide-arrow-up {
+  -webkit-mask-image: url("icons/px/arrow-up.svg");
+  mask-image: url("icons/px/arrow-up.svg");
+}
+:root[data-design] svg.lucide-arrow-left {
+  -webkit-mask-image: url("icons/px/arrow-left.svg");
+  mask-image: url("icons/px/arrow-left.svg");
+}
+:root[data-design] svg.lucide-chevron-down {
+  -webkit-mask-image: url("icons/px/chevron-down.svg");
+  mask-image: url("icons/px/chevron-down.svg");
+}
+:root[data-design] svg.lucide-chevron-up {
+  -webkit-mask-image: url("icons/px/chevron-up.svg");
+  mask-image: url("icons/px/chevron-up.svg");
+}
+:root[data-design] svg.lucide-chevron-right {
+  -webkit-mask-image: url("icons/px/chevron-right.svg");
+  mask-image: url("icons/px/chevron-right.svg");
+}
+:root[data-design] svg.lucide-x {
+  -webkit-mask-image: url("icons/px/x.svg");
+  mask-image: url("icons/px/x.svg");
+}
+:root[data-design] svg.lucide-plus {
+  -webkit-mask-image: url("icons/px/plus.svg");
+  mask-image: url("icons/px/plus.svg");
+}
+:root[data-design] svg.lucide-minus {
+  -webkit-mask-image: url("icons/px/minus.svg");
+  mask-image: url("icons/px/minus.svg");
+}
+:root[data-design] svg.lucide-search {
+  -webkit-mask-image: url("icons/px/search.svg");
+  mask-image: url("icons/px/search.svg");
+}
+:root[data-design] svg.lucide-pencil {
+  -webkit-mask-image: url("icons/px/pencil.svg");
+  mask-image: url("icons/px/pencil.svg");
+}
+:root[data-design] svg.lucide-square {
+  -webkit-mask-image: url("icons/px/square.svg");
+  mask-image: url("icons/px/square.svg");
+}
+:root[data-design] svg.lucide-code {
+  -webkit-mask-image: url("icons/px/code.svg");
+  mask-image: url("icons/px/code.svg");
+}
+:root[data-design] svg.lucide-check {
+  -webkit-mask-image: url("icons/px/check.svg");
+  mask-image: url("icons/px/check.svg");
+}
+:root[data-design] svg.lucide-clock {
+  -webkit-mask-image: url("icons/px/clock.svg");
+  mask-image: url("icons/px/clock.svg");
+}
+:root[data-design] svg.lucide-wrench {
+  -webkit-mask-image: url("icons/px/wrench.svg");
+  mask-image: url("icons/px/wrench.svg");
+}
+:root[data-design] svg.lucide-bell {
+  -webkit-mask-image: url("icons/px/bell.svg");
+  mask-image: url("icons/px/bell.svg");
+}
+:root[data-design] svg.lucide-cpu {
+  -webkit-mask-image: url("icons/px/cpu.svg");
+  mask-image: url("icons/px/cpu.svg");
+}
+:root[data-design] svg.lucide-chart-column {
+  -webkit-mask-image: url("icons/px/chart-column.svg");
+  mask-image: url("icons/px/chart-column.svg");
+}
+:root[data-design] svg.lucide-book-open {
+  -webkit-mask-image: url("icons/px/book-open.svg");
+  mask-image: url("icons/px/book-open.svg");
+}
+:root[data-design] svg.lucide-monitor {
+  -webkit-mask-image: url("icons/px/monitor.svg");
+  mask-image: url("icons/px/monitor.svg");
+}
+:root[data-design] svg.lucide-info {
+  -webkit-mask-image: url("icons/px/info.svg");
+  mask-image: url("icons/px/info.svg");
+}
+:root[data-design] svg.lucide-sun {
+  -webkit-mask-image: url("icons/px/sun.svg");
+  mask-image: url("icons/px/sun.svg");
+}
+:root[data-design] svg.lucide-moon {
+  -webkit-mask-image: url("icons/px/moon.svg");
+  mask-image: url("icons/px/moon.svg");
+}
+:root[data-design] svg.lucide-mic {
+  -webkit-mask-image: url("icons/px/mic.svg");
+  mask-image: url("icons/px/mic.svg");
+}
+:root[data-design] svg.lucide-bot {
+  -webkit-mask-image: url("icons/px/bot.svg");
+  mask-image: url("icons/px/bot.svg");
+}
+:root[data-design] svg.lucide-sliders-horizontal {
+  -webkit-mask-image: url("icons/px/sliders-horizontal.svg");
+  mask-image: url("icons/px/sliders-horizontal.svg");
+}
+:root[data-design] svg.lucide-ellipsis {
+  -webkit-mask-image: url("icons/px/ellipsis.svg");
+  mask-image: url("icons/px/ellipsis.svg");
+}
+:root[data-design] svg.lucide-trash-2 {
+  -webkit-mask-image: url("icons/px/trash-2.svg");
+  mask-image: url("icons/px/trash-2.svg");
+}
+:root[data-design] svg.lucide-git-branch {
+  -webkit-mask-image: url("icons/px/git-branch.svg");
+  mask-image: url("icons/px/git-branch.svg");
+}
+:root[data-design] svg.lucide-external-link {
+  -webkit-mask-image: url("icons/px/external-link.svg");
+  mask-image: url("icons/px/external-link.svg");
+}
+:root[data-design] svg.lucide-download {
+  -webkit-mask-image: url("icons/px/download.svg");
+  mask-image: url("icons/px/download.svg");
+}
+:root[data-design] svg.lucide-mail {
+  -webkit-mask-image: url("icons/px/mail.svg");
+  mask-image: url("icons/px/mail.svg");
+}
+:root[data-design] svg.lucide-clock-3 {
+  -webkit-mask-image: url("icons/px/clock.svg");
+  mask-image: url("icons/px/clock.svg");
+}
+:root[data-design] svg.lucide-send {
+  -webkit-mask-image: url("icons/px/send.svg");
+  mask-image: url("icons/px/send.svg");
+}
+/* Any line icon still drawn: square ends and mitred joins, so it reads as pixels too. */
+:root[data-design] svg.lucide {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  shape-rendering: crispEdges;
+}
+
+/* ---- A stepped spinner: eight frames of a dot running round, no smooth rotation ---- */
+
+@keyframes retro-spinner {
+  to {
+    background-position: 114.2857% 0;
+  }
+}
+:root[data-design] svg.animate-spin {
+  background: url("icons/spinner.svg") 0 0 / 800% 100% no-repeat;
+  color: transparent;
+  -webkit-mask: none;
+  mask: none;
+  rotate: none;
+  transform: none;
+  image-rendering: pixelated;
+  animation: retro-spinner 0.8s steps(8) infinite;
+}
+:root[data-design] svg.animate-spin > * {
+  display: none;
+}
+/* The composer's context meter: its ring seen through eight square blocks, which light up as the
+   context fills. */
+:root[data-design] .composer-toolbar svg.-rotate-90 {
+  -webkit-mask: url("icons/meter-mask.svg") center / contain no-repeat;
+  mask: url("icons/meter-mask.svg") center / contain no-repeat;
+}
+:root[data-design] .composer-toolbar svg.-rotate-90 circle {
+  stroke-width: 4;
+  stroke-linecap: butt;
+}
+/* Loading placeholders blink in two steps instead of fading. */
+:root[data-design] .animate-pulse {
+  animation-timing-function: steps(2, jump-none);
+}
+
+/* ---- Chunky scroll bars ---- */
+
+:root[data-design] * {
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+:root[data-design] .coding-workbench .workbench-tabs {
+  scrollbar-width: none;
+}
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+  background: #0d0d12;
+}
+::-webkit-scrollbar-thumb {
+  border: 3px solid #0d0d12;
+  background: #3a3a45;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--retro-gold);
+}
+::-webkit-scrollbar-corner {
+  background: #0d0d12;
+}
+
+/* ---- Hard pixel edges and stepped shadows on the surfaces ---- */
+
+:root[data-design]
+  :is(
+    .coding-composer,
+    .user-message-bubble,
+    .coding-trace,
+    .coding-markdown [data-streamdown="code-block"],
+    .native-view .rounded-xl.bg-card
+  ) {
+  border-width: 2px;
+  box-shadow: var(--retro-step);
+}
+:root[data-design]
+  :is([data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="popover-content"]) {
+  border-width: 2px;
+  box-shadow: 4px 4px 0 0 #000;
+}
+
+/* ---- The new-session screen: a desk at night, drawn in pixels ---- */
+
+:root[data-design] .coding-welcome.coding-welcome-simple::before {
+  content: "";
+  width: min(384px, 80%);
+  aspect-ratio: 2;
+  margin-bottom: 22px;
+  background: url("art/desk.svg") center / contain no-repeat;
+  image-rendering: pixelated;
+}
+:root[data-design] .coding-welcome.coding-welcome-simple > h1 {
+  color: var(--retro-ink);
+  font-family: var(--retro-chrome);
+  font-weight: 400;
+  letter-spacing: 0;
+}
+:root[data-design] .coding-welcome.coding-welcome-simple > h1 > svg {
+  color: var(--retro-gold);
+}
+:root[data-design] .coding-welcome.coding-welcome-simple > .welcome-project {
+  color: var(--retro-label);
+  font-family: var(--retro-chrome);
+}

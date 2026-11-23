@@ -1,0 +1,1352 @@
+/* Nostalgia: a glass title bar, a classic navigation pane and the push buttons of 2009.
+   Drawn in CSS from scratch. No system fonts or icon files are bundled: the fonts fall back
+   through open ones, and the icons in icons/ are drawn for this design.
+   Rules that must outrank the app's own carry :root[data-design] (see ../README.md). */
+
+:root {
+  --radius: 0.1875rem;
+
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #2b6cb0;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f0f0;
+  --secondary-foreground: #000000;
+  --muted: #f0f0f0;
+  --muted-foreground: #5c5c5c;
+  --accent: #e5f3fb;
+  --accent-foreground: #000000;
+  --destructive: #c42b1c;
+  --success: #2c7a2c;
+  --warning: #9a5b00;
+  --border: #ccd7e4;
+  --hairline: #e2e8f0;
+  --input: #abadb3;
+  --ring: #3399ff;
+  --canvas: #f0f0f0;
+  --sidebar: #ffffff;
+  --sidebar-tint: #ffffff;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #2b6cb0;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e5f3fb;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: #d6e5f5;
+  --sidebar-ring: #3399ff;
+
+  /* Structure comes from borders; only menus and windows cast shadows. */
+  --elevation-1: 0 0 0 1px var(--border);
+  --elevation-2: 0 0 0 1px var(--border);
+  --elevation-3: 0 0 0 1px #979797, 2px 2px 3px rgb(0 0 0 / 0.3);
+  --elevation-4: 0 0 0 1px #979797, 2px 3px 6px rgb(0 0 0 / 0.3);
+  --elevation-5: 0 0 0 1px #6f7f94, 0 6px 24px rgb(0 0 0 / 0.35);
+  --elevation-6: 0 0 0 1px #6f7f94, 0 8px 32px rgb(0 0 0 / 0.45);
+
+  --font-sans: "Segoe UI", Selawik, "Noto Sans", "Open Sans", Tahoma, ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: Consolas, "Lucida Console", "DejaVu Sans Mono", ui-monospace, monospace;
+
+  /* 9pt body text, 8pt small print, 12pt for main instructions. */
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.875rem;
+  --text-xs: 0.6875rem;
+  --text-xs--line-height: 0.9375rem;
+  --text-sm: 0.75rem;
+  --text-sm--line-height: 1rem;
+  --text-base: 0.75rem;
+  --text-base--line-height: 1.0625rem;
+  --text-lg: 0.8125rem;
+  --text-lg--line-height: 1.125rem;
+  --text-xl: 0.9375rem;
+  --text-xl--line-height: 1.375rem;
+  --text-2xl: 1rem;
+  --text-2xl--line-height: 1.5rem;
+  --text-3xl: 1.25rem;
+  --text-3xl--line-height: 1.75rem;
+
+  /* Sky-blue glass: soft light streaks over a blue that lets a little
+     through. Fixed to the window, so the bands and the frame read as one sheet of glass. */
+  --nostalgia-glass:
+    linear-gradient(to bottom, rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.12) 22px, transparent 46px),
+    linear-gradient(
+      112deg,
+      transparent 0 14%,
+      rgb(255 255 255 / 0.2) 16% 19%,
+      transparent 21% 47%,
+      rgb(255 255 255 / 0.16) 49% 55%,
+      transparent 57% 78%,
+      rgb(255 255 255 / 0.14) 80% 82%,
+      transparent 84%
+    ),
+    linear-gradient(to bottom, rgb(164 199 238 / 0.95), rgb(112 158 220 / 0.95));
+  --nostalgia-glass-edge: rgb(36 58 92 / 0.55);
+  --nostalgia-glow: 0 0 9px #fff, 0 0 9px #fff, 0 0 3px #fff;
+
+  --nostalgia-button: linear-gradient(#f2f2f2 0%, #ebebeb 50%, #dddddd 51%, #cfcfcf 100%);
+  --nostalgia-button-hover: linear-gradient(#eaf6fd 0%, #d9f0fc 50%, #bee6fd 51%, #a7d9f5 100%);
+  --nostalgia-button-active: linear-gradient(#e5f4fc 0%, #c4e5f6 50%, #98d1ef 51%, #68b3db 100%);
+  --nostalgia-hot: linear-gradient(#fafbfd, #ebf3fd);
+  --nostalgia-hot-border: #b8d6fb;
+  --nostalgia-selected: linear-gradient(#dcebfc, #c1dbfc);
+  --nostalgia-selected-border: #7da2ce;
+  --nostalgia-header: linear-gradient(#ffffff, #f1f2f4);
+  --nostalgia-pane: linear-gradient(#fafcfe, #e9f0f8);
+  --nostalgia-heading: #1e395b;
+  --nostalgia-instruction: #003399;
+  --nostalgia-link: #0066cc;
+}
+
+/* ---- Text, selection, focus ---- */
+
+:root[data-design] .coding-shell {
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+:root[data-design] body {
+  -webkit-font-smoothing: subpixel-antialiased;
+  font-feature-settings: normal;
+}
+::selection {
+  background: #3399ff;
+  color: #fff;
+}
+:root[data-design] :focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -3px;
+}
+/* The chat input shows focus with its caret alone; buttons and pickers keep the dotted outline. */
+:root[data-design] .coding-composer > textarea:focus-visible {
+  outline: none;
+}
+
+/* ---- Scroll bars ---- */
+
+:root[data-design] * {
+  scrollbar-width: auto;
+  scrollbar-color: auto;
+}
+:root[data-design] .coding-workbench .workbench-tabs {
+  scrollbar-width: none;
+}
+::-webkit-scrollbar {
+  width: 17px;
+  height: 17px;
+  background: linear-gradient(to right, #e3e3e3, #f4f4f4 25%, #f4f4f4 75%, #e3e3e3);
+}
+::-webkit-scrollbar:horizontal {
+  background: linear-gradient(to bottom, #e3e3e3, #f4f4f4 25%, #f4f4f4 75%, #e3e3e3);
+}
+::-webkit-scrollbar-thumb {
+  min-height: 20px;
+  border: 1px solid #959595;
+  border-radius: 3px;
+  background:
+    linear-gradient(#cfcfcf, #cfcfcf) center calc(50% - 3px) / 7px 1px no-repeat,
+    linear-gradient(#cfcfcf, #cfcfcf) center 50% / 7px 1px no-repeat,
+    linear-gradient(#cfcfcf, #cfcfcf) center calc(50% + 3px) / 7px 1px no-repeat,
+    linear-gradient(to right, #f5f5f5, #ececec 45%, #dcdcdc 46%, #d6d6d6);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.75);
+}
+::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(to bottom, #f5f5f5, #ececec 45%, #dcdcdc 46%, #d6d6d6);
+}
+::-webkit-scrollbar-thumb:hover {
+  border-color: #3c7fb1;
+  background:
+    linear-gradient(#7ab4dc, #7ab4dc) center calc(50% - 3px) / 7px 1px no-repeat,
+    linear-gradient(#7ab4dc, #7ab4dc) center 50% / 7px 1px no-repeat,
+    linear-gradient(#7ab4dc, #7ab4dc) center calc(50% + 3px) / 7px 1px no-repeat,
+    linear-gradient(to right, #e3f4fc, #d6eefb 45%, #a9dbf6 46%, #a4d6f3);
+}
+::-webkit-scrollbar-button:single-button {
+  display: block;
+  width: 17px;
+  height: 17px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background: url("icons/arrow-up.svg") center / 15px no-repeat;
+}
+::-webkit-scrollbar-button:single-button:vertical:increment {
+  background: url("icons/arrow-down.svg") center / 15px no-repeat;
+}
+::-webkit-scrollbar-button:single-button:horizontal {
+  display: none;
+}
+::-webkit-scrollbar-button:single-button:vertical:hover {
+  border-color: #3c7fb1;
+  background-color: #d9f0fc;
+}
+::-webkit-scrollbar-corner {
+  background: #f0f0f0;
+}
+:root[data-design] [data-slot="scroll-area-scrollbar"] {
+  background: linear-gradient(to right, #e3e3e3, #f4f4f4 25%, #f4f4f4 75%, #e3e3e3);
+}
+:root[data-design] [data-slot="scroll-area-thumb"] {
+  border: 1px solid #959595;
+  border-radius: 3px;
+  background: linear-gradient(to right, #f5f5f5, #ececec 45%, #dcdcdc 46%, #d6d6d6);
+}
+
+/* ---- The window: a glass frame and one band of glass across the top ---- */
+
+#root {
+  box-sizing: border-box;
+  padding: 0 7px 7px;
+  background: var(--nostalgia-glass);
+  background-attachment: fixed;
+}
+:root[data-design] .coding-shell {
+  height: calc(100dvh / var(--css-zoom, 1) - 7px);
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--nostalgia-glass-edge);
+}
+:root[data-design] .coding-shell :is(.navigation-topbar, .shell-titlebar, .workbench-toolbar) {
+  height: 46px;
+  border-bottom: 0;
+  background: var(--nostalgia-glass);
+  background-attachment: fixed;
+  box-shadow: inset 0 -1px 0 var(--nostalgia-glass-edge);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  color: #000;
+}
+/* The window's icon and name, top left. */
+:root[data-design] .navigation-topbar {
+  padding: 0 6px 0 9px;
+}
+:root[data-design] .navigation-topbar::before {
+  content: "Wavefunction";
+  margin-right: auto;
+  padding-left: 22px;
+  background: url("icons/chat.svg") left center / 16px no-repeat;
+  font-size: 12px;
+  line-height: 16px;
+  text-shadow: var(--nostalgia-glow);
+  white-space: nowrap;
+}
+/* The toolbar floats over the chat as glass, always in sight. */
+:root[data-design] .coding-main > .floating-titlebar {
+  right: 17px;
+}
+:root[data-design] .coding-main > .floating-titlebar > * {
+  opacity: 1;
+}
+:root[data-design] .coding-main > .floating-titlebar::before {
+  inset: 0 -17px 0 100%;
+}
+:root[data-design] .coding-main > .floating-titlebar::after,
+:root[data-design] .coding-conversation::before {
+  display: none;
+}
+:root[data-design] .shell-titlebar :is(.chat-title, svg) {
+  color: #000;
+}
+:root[data-design] .shell-titlebar .chat-title {
+  font-size: 12px;
+  font-weight: 400;
+  text-shadow: var(--nostalgia-glow);
+}
+:root[data-design] .shell-titlebar svg.lucide-message-square {
+  background: url("icons/chat.svg") center / contain no-repeat;
+  width: 16px;
+  height: 16px;
+}
+:root[data-design] .shell-titlebar svg.lucide-message-square > * {
+  display: none;
+}
+:root[data-design] .shell-titlebar [data-slot="button"][data-variant="ghost"],
+:root[data-design] .navigation-topbar [data-slot="button"][data-variant="ghost"],
+:root[data-design] .workbench-toolbar [data-slot="button"][data-variant="ghost"] {
+  color: #1b2a3f;
+}
+/* Room for the caption buttons when the chat's band reaches the right edge. The workbench's tabs
+   sit low in its band, under the buttons, so it needs none. */
+:root[data-window-controls] .coding-main:not(:has(~ .coding-workbench-frame)) > .shell-titlebar {
+  padding-right: 140px;
+}
+:root[data-window-controls].tauri .sidebar-hidden .shell-titlebar {
+  padding-left: 14px;
+}
+
+/* ---- Caption buttons ---- */
+
+:root[data-design] .window-controls {
+  top: 1px;
+  right: 12px;
+  z-index: 45;
+  border: 1px solid rgb(40 56 80 / 0.75);
+  border-radius: 0 0 5px 5px;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.55),
+    inset 0 0 0 1px rgb(255 255 255 / 0.45);
+}
+:root[data-design] .window-control {
+  width: 27px;
+  height: 19px;
+  border: 0;
+  border-left: 1px solid rgb(40 56 80 / 0.55);
+  background:
+    linear-gradient(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.15) 50%, transparent 51%),
+    linear-gradient(#bfd3ea, #a6c0e0 50%, #8eadd6 51%, #b2cdec);
+}
+:root[data-design] .window-control:first-child {
+  border-left: 0;
+}
+:root[data-design] .window-control > svg {
+  display: none;
+}
+:root[data-design] .window-control::after {
+  content: "";
+  width: 11px;
+  height: 10px;
+  background: center / contain no-repeat;
+}
+:root[data-design] .window-control[data-control="minimize"]::after {
+  background-image: url("icons/caption-minimize.svg");
+}
+:root[data-design] .window-control[data-control="maximize"]::after {
+  background-image: url("icons/caption-maximize.svg");
+}
+:root[data-design] .window-control[data-control="close"] {
+  width: 47px;
+  background:
+    linear-gradient(rgb(255 255 255 / 0.45), rgb(255 255 255 / 0.1) 50%, transparent 51%),
+    linear-gradient(#e6a492, #d6684d 50%, #c4391d 51%, #d97b5e);
+}
+:root[data-design] .window-control[data-control="close"]::after {
+  width: 13px;
+  background-image: url("icons/caption-close.svg");
+}
+:root[data-design] .window-control:hover {
+  background:
+    linear-gradient(rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.2) 50%, transparent 51%),
+    linear-gradient(#d6ecfd, #a8d4f8 50%, #6eb3ef 51%, #a6dcff);
+  box-shadow: 0 0 8px rgb(150 220 255 / 0.9) inset;
+}
+:root[data-design] .window-control[data-control="close"]:hover {
+  background:
+    linear-gradient(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.15) 50%, transparent 51%),
+    linear-gradient(#f0b5a2, #e8765a 50%, #d6401f 51%, #f0997a);
+  box-shadow: 0 0 8px rgb(255 190 140 / 0.9) inset;
+  color: inherit;
+}
+:root[data-design] .window-control:active {
+  filter: brightness(0.85);
+}
+
+/* ---- The navigation pane ---- */
+
+:root[data-design] .coding-sidebar {
+  background: #fff;
+  border-right: 0;
+  box-shadow: inset -1px 0 0 var(--sidebar-border);
+  color: #000;
+}
+:root[data-design] .coding-sidebar .sidebar-new-project {
+  padding: 8px 6px 4px;
+}
+:root[data-design] .coding-sidebar .sidebar-scroll {
+  padding: 6px 6px 10px;
+}
+:root[data-design]
+  .coding-sidebar
+  :is(.new-project, .project-group > button:first-child, .coding-thread-row, .sidebar-bottom > button) {
+  min-height: 0;
+  margin: 0 0 1px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: #000;
+  font-size: 12px;
+  font-weight: 400;
+}
+:root[data-design] .coding-sidebar :is(.new-project, .sidebar-bottom > button) {
+  gap: 6px;
+  padding: 2px 6px;
+}
+:root[data-design] .coding-sidebar .project-group > button:first-child {
+  flex: 1;
+  gap: 4px;
+  padding: 2px 2px;
+}
+:root[data-design] .coding-sidebar .thread-select {
+  gap: 6px;
+  padding: 2px 6px 2px 42px;
+  color: #000;
+  font-size: 12px;
+  font-weight: 400;
+}
+:root[data-design]:not(.dark)
+  .coding-sidebar
+  :is(
+    .new-project:hover,
+    .project-group > button:first-child:hover,
+    .coding-thread-row:hover,
+    .sidebar-bottom > button:hover
+  ) {
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
+}
+:root[data-design]:not(.dark)
+  .coding-sidebar
+  :is(.coding-thread-row.selected, .new-project[aria-current="page"]) {
+  border-color: var(--nostalgia-selected-border);
+  background: var(--nostalgia-selected);
+}
+:root[data-design] .coding-sidebar .coding-thread-row .thread-more {
+  margin: 0 2px 0 0;
+}
+:root[data-design] .coding-sidebar .sidebar-projects-heading {
+  padding: 8px 4px 3px 6px;
+}
+:root[data-design] .coding-sidebar .sidebar-projects-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #000;
+  font-size: 12px;
+  font-weight: 400;
+}
+:root[data-design] .coding-sidebar .sidebar-projects-heading h2::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  background: url("icons/library.svg") center / contain no-repeat;
+}
+:root[data-design] .coding-sidebar .sidebar-project {
+  margin-bottom: 2px;
+}
+:root[data-design] .coding-sidebar .sidebar-bottom {
+  padding: 4px 6px 8px;
+  border-top: 1px solid var(--hairline);
+}
+:root[data-design] .coding-sidebar .unread-dot {
+  background: #3399ff;
+}
+
+/* Drawn, coloured icons in place of the line icons. */
+:root[data-design]
+  .coding-sidebar
+  :is(
+    svg.lucide-folder,
+    svg.lucide-folder-open,
+    svg.lucide-chevron-down,
+    svg.lucide-chevron-right,
+    svg.lucide-square-pen,
+    svg.lucide-plug,
+    svg.lucide-settings-2
+  ) {
+  width: 16px;
+  height: 16px;
+  background: center / contain no-repeat;
+  color: transparent;
+}
+:root[data-design]
+  .coding-sidebar
+  :is(
+    svg.lucide-folder,
+    svg.lucide-folder-open,
+    svg.lucide-chevron-down,
+    svg.lucide-chevron-right,
+    svg.lucide-square-pen,
+    svg.lucide-plug,
+    svg.lucide-settings-2
+  )
+  > * {
+  display: none;
+}
+:root[data-design] .coding-sidebar svg.lucide-folder {
+  background-image: url("icons/folder.svg");
+}
+:root[data-design] .coding-sidebar svg.lucide-folder-open {
+  background-image: url("icons/folder-open.svg");
+}
+:root[data-design] .coding-sidebar svg.lucide-chevron-down {
+  background-image: url("icons/tree-expanded.svg");
+}
+:root[data-design] .coding-sidebar svg.lucide-chevron-right {
+  background-image: url("icons/tree-collapsed.svg");
+}
+:root[data-design] .coding-sidebar svg.lucide-square-pen {
+  background-image: url("icons/new-session.svg");
+}
+:root[data-design] .coding-sidebar svg.lucide-plug {
+  background-image: url("icons/connectors.svg");
+}
+:root[data-design] .coding-sidebar svg.lucide-settings-2 {
+  background-image: url("icons/settings.svg");
+}
+
+/* ---- Push buttons, toolbar buttons, text boxes, check boxes ---- */
+
+:root[data-design]
+  :is(
+    [data-slot="button"]:is(
+      [data-variant="default"],
+      [data-variant="secondary"],
+      [data-variant="outline"],
+      [data-variant="destructive"]
+    ),
+    [data-slot="alert-dialog-action"],
+    [data-slot="alert-dialog-cancel"],
+    [data-slot="select-trigger"],
+    .send-button
+  ) {
+  border: 1px solid #707070;
+  border-radius: 3px;
+  background: var(--nostalgia-button);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.7);
+  color: #000;
+  font-weight: 400;
+  text-shadow: none;
+}
+:root[data-design]
+  :is(
+    [data-slot="button"]:is(
+      [data-variant="default"],
+      [data-variant="secondary"],
+      [data-variant="outline"],
+      [data-variant="destructive"]
+    ),
+    [data-slot="alert-dialog-action"],
+    [data-slot="alert-dialog-cancel"],
+    [data-slot="select-trigger"],
+    .send-button
+  ):not(:disabled):hover {
+  border-color: #3c7fb1;
+  background: var(--nostalgia-button-hover);
+}
+:root[data-design]
+  :is(
+    [data-slot="button"]:is(
+      [data-variant="default"],
+      [data-variant="secondary"],
+      [data-variant="outline"],
+      [data-variant="destructive"]
+    ),
+    [data-slot="alert-dialog-action"],
+    [data-slot="alert-dialog-cancel"],
+    [data-slot="select-trigger"],
+    .send-button
+  ):not(:disabled):active {
+  border-color: #2c628b;
+  background: var(--nostalgia-button-active);
+  box-shadow: inset 1px 1px 1px rgb(0 0 0 / 0.15);
+}
+/* The default button carries the blue edge that marks the one Enter presses. */
+:root[data-design] :is([data-slot="button"][data-variant="default"], [data-slot="alert-dialog-action"]) {
+  border-color: #3c7fb1;
+  box-shadow:
+    inset 0 0 0 1px #c4e5f6,
+    inset 0 0 0 2px rgb(255 255 255 / 0.5);
+}
+:root[data-design] [data-slot="button"][data-variant="destructive"] {
+  color: #b00000;
+}
+:root[data-design] :is([data-slot="button"], [data-slot="select-trigger"], .send-button):disabled {
+  border-color: #adb2b5;
+  background: #f4f4f4;
+  box-shadow: none;
+  color: #838383;
+  opacity: 1;
+}
+:root[data-design] [data-slot="button"][data-variant="ghost"],
+:root[data-design]
+  :is([data-slot="dropdown-menu-trigger"], [data-slot="popover-trigger"])[data-variant="ghost"] {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+}
+:root[data-design] [data-slot="button"][data-variant="ghost"]:not(:disabled):hover,
+:root[data-design]
+  :is([data-slot="dropdown-menu-trigger"], [data-slot="popover-trigger"])[data-variant="ghost"]:hover,
+:root[data-design] [data-variant="ghost"][data-state="open"] {
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
+  color: #000;
+}
+:root[data-design] [data-slot="button"][data-variant="link"] {
+  color: var(--nostalgia-link);
+}
+:root[data-design] [data-slot="button"][data-variant="link"]:hover {
+  color: #3399ff;
+}
+:root[data-design] :is([data-slot="input"], [data-slot="textarea"], .coding-composer > textarea) {
+  border: 1px solid;
+  border-color: #abadb3 #dbdfe6 #e3e9ef #e2e3ea;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: none;
+  color: #000;
+}
+:root[data-design] :is([data-slot="input"], [data-slot="textarea"]):hover {
+  border-color: #5794bf #b7d5ea #c7e2f1 #c5daed;
+}
+:root[data-design] :is([data-slot="input"], [data-slot="textarea"]):focus {
+  border-color: #3d7bad #a4c9e3 #b7d9ed #b5cfe7;
+  box-shadow: none;
+  outline: none;
+}
+:root[data-design] [data-slot="select-trigger"] svg.lucide-chevron-down {
+  background: url("icons/dropdown.svg") center / contain no-repeat;
+  color: transparent;
+  opacity: 1;
+}
+:root[data-design] [data-slot="select-trigger"] svg.lucide-chevron-down > * {
+  display: none;
+}
+:root[data-design] input[type="range"] {
+  accent-color: #3c7fb1;
+}
+/* Switches become check boxes, the period's on/off control. */
+:root[data-design] :is([data-slot="switch"], input[type="checkbox"]) {
+  flex-shrink: 0;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  border: 1px solid #8e8f8f;
+  border-radius: 0;
+  background: linear-gradient(135deg, #d3d6db, #fafafa);
+  box-shadow: inset 0 0 0 1px #fff;
+}
+:root[data-design] :is([data-slot="switch"][data-state="checked"], input[type="checkbox"]:checked) {
+  background:
+    url("icons/check.svg") center / 11px no-repeat,
+    linear-gradient(135deg, #d3d6db, #fafafa);
+}
+:root[data-design] :is([data-slot="switch"], input[type="checkbox"]):not(:disabled):hover {
+  border-color: #3c7fb1;
+  background-color: #def3fc;
+}
+:root[data-design]
+  :is([data-slot="switch"]:not([data-state="checked"]), input[type="checkbox"]:not(:checked)):not(
+    :disabled
+  ):hover {
+  background: linear-gradient(135deg, #b9dff8, #eaf6fd);
+}
+:root[data-design] [data-slot="switch-thumb"] {
+  display: none;
+}
+/* The light/dark choice as radio buttons. */
+:root[data-design] div[role="radiogroup"] {
+  gap: 14px;
+  padding: 0;
+  background: transparent;
+}
+:root[data-design] div[role="radiogroup"] > button[role="radio"] {
+  height: auto;
+  gap: 5px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #000;
+  font-size: 12px;
+  font-weight: 400;
+}
+:root[data-design] div[role="radiogroup"] > button[role="radio"] > svg {
+  display: none;
+}
+:root[data-design] div[role="radiogroup"] > button[role="radio"]::before {
+  content: "";
+  width: 13px;
+  height: 13px;
+  border: 1px solid #8e8f8f;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d3d6db, #fafafa);
+  box-shadow: inset 0 0 0 1px #fff;
+}
+:root[data-design] div[role="radiogroup"] > button[role="radio"][aria-checked="true"]::before {
+  background:
+    radial-gradient(circle at 45% 40%, #b9f0ff 0, #3aa0e8 1.6px, #1b5fa8 3.2px, transparent 3.6px),
+    linear-gradient(135deg, #d3d6db, #fafafa);
+}
+:root[data-design] div[role="radiogroup"] > button[role="radio"]:not(:disabled):hover::before {
+  border-color: #3c7fb1;
+}
+
+/* ---- Menus, lists, dialogs ---- */
+
+:root[data-design]
+  :is(
+    [data-slot="dropdown-menu-content"],
+    [data-slot="select-content"],
+    [data-slot="dropdown-menu-sub-content"]
+  ) {
+  border: 1px solid #979797;
+  border-radius: 0;
+  background: linear-gradient(to right, #f1f1f1 26px, #e2e3e3 26px 27px, #fff 27px 28px, #f0f0f0 28px);
+  box-shadow: 2px 2px 3px rgb(0 0 0 / 0.3);
+  padding: 2px;
+}
+:root[data-design]
+  :is(
+    [data-slot="dropdown-menu-item"],
+    [data-slot="select-item"],
+    [data-slot="dropdown-menu-sub-trigger"],
+    [data-slot="command-item"]
+  ) {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #000;
+  font-size: 12px;
+}
+:root[data-design]
+  :is(
+    [data-slot="dropdown-menu-item"],
+    [data-slot="select-item"],
+    [data-slot="dropdown-menu-sub-trigger"],
+    [data-slot="command-item"]
+  ):is([data-highlighted], [data-selected="true"]) {
+  border-color: #aecff7;
+  background: linear-gradient(#f2f8fe, #e1eefd);
+  color: #000;
+}
+:root[data-design] [data-slot="dropdown-menu-separator"],
+:root[data-design] [data-slot="select-separator"] {
+  margin-left: 28px;
+  background: #e0e0e0;
+}
+:root[data-design] [data-slot="popover-content"] {
+  border: 1px solid #979797;
+  border-radius: 0;
+  box-shadow: 2px 2px 3px rgb(0 0 0 / 0.3);
+}
+:root[data-design] :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  border: 1px solid rgb(30 44 66 / 0.8);
+  border-radius: 3px;
+  background: #f0f0f0;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.6),
+    0 0 0 8px rgb(150 188 230 / 0.95),
+    0 0 0 9px var(--nostalgia-glass-edge),
+    0 10px 32px rgb(0 0 0 / 0.45);
+}
+:root[data-design] :is([data-slot="dialog-overlay"], [data-slot="alert-dialog-overlay"]) {
+  background: rgb(0 0 0 / 0.15);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root[data-design] :is([data-slot="dialog-title"], [data-slot="alert-dialog-title"]) {
+  color: var(--nostalgia-instruction);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+/* ---- The conversation ---- */
+
+:root[data-design] .coding-chat-layout,
+:root[data-design] .coding-conversation {
+  background: #fff;
+}
+:root[data-design] .user-message-bubble {
+  border: 1px solid #767676;
+  border-radius: 3px;
+  background: linear-gradient(#ffffff, #e4e5f0);
+  box-shadow: 2px 2px 3px rgb(0 0 0 / 0.18);
+  padding: 6px 10px;
+  color: #000;
+}
+:root[data-design] .user-message-bubble > div:not(.context-chips) {
+  font-size: 12px;
+  line-height: 1.5;
+}
+:root[data-design] .coding-answer,
+:root[data-design] .coding-markdown {
+  font-size: 12px;
+  line-height: 1.55;
+}
+:root[data-design] .coding-markdown :is(h1, h2) {
+  color: var(--nostalgia-instruction);
+  font-size: 16px;
+  font-weight: 400;
+}
+:root[data-design] .coding-markdown :is(h3, h4) {
+  color: var(--nostalgia-heading);
+  font-size: 13px;
+  font-weight: 600;
+}
+:root[data-design] .coding-markdown a {
+  color: var(--nostalgia-link);
+  text-decoration: none;
+}
+:root[data-design] .coding-markdown a:hover {
+  color: #3399ff;
+  text-decoration: underline;
+}
+:root[data-design] .coding-markdown [data-streamdown="inline-code"] {
+  border: 1px solid #e0e4ea;
+  border-radius: 2px;
+  background: #f7f9fc;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+/* A code block as a list view: a column header over a white, bordered pane. */
+:root[data-design] .coding-markdown [data-streamdown="code-block"] {
+  gap: 0;
+  border: 1px solid #828790;
+  border-radius: 0;
+  background: #fff;
+  overflow: hidden;
+}
+:root[data-design] .coding-markdown [data-streamdown="code-block-header"] {
+  height: 23px;
+  border-bottom: 1px solid #d5d5d5;
+  background: var(--nostalgia-header);
+  color: #4c607a;
+  font-family: var(--font-sans);
+  font-size: 11px;
+}
+:root[data-design] .coding-markdown [data-streamdown="code-block-header"] > span {
+  font-family: var(--font-sans);
+  text-transform: none;
+}
+:root[data-design] .coding-markdown [data-streamdown="code-block-actions"] {
+  top: -6px;
+  border: 0;
+  background: transparent;
+}
+:root[data-design] .coding-markdown [data-streamdown="code-block-body"] {
+  padding: 6px 8px;
+}
+:root[data-design] .coding-markdown :is(pre, code) {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+:root[data-design] .chat-table-scroll {
+  border: 1px solid #828790;
+  border-radius: 0;
+}
+:root[data-design] .chat-table :is(th, td) {
+  padding: 4px 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+:root[data-design] .chat-table th {
+  border-right: 1px solid #e3e5e8;
+  border-bottom: 1px solid #d5d5d5;
+  background: var(--nostalgia-header);
+  color: #4c607a;
+  font-weight: 400;
+}
+:root[data-design] .chat-table tbody tr:hover td {
+  background: var(--nostalgia-hot);
+}
+:root[data-design] .trace-toggle {
+  color: var(--nostalgia-heading);
+  font-size: 12px;
+}
+:root[data-design] .trace-toggle:hover {
+  color: #3399ff;
+  text-decoration: underline;
+}
+:root[data-design] .run-time {
+  color: #6d6d6d;
+}
+/* Tool activity as a group box of rows that highlight like the navigation pane's. */
+:root[data-design] .coding-trace {
+  border: 1px solid #d5dfe5;
+  border-radius: 3px;
+  background: #fff;
+  padding: 4px;
+}
+:root[data-design] .coding-trace details {
+  border: 0;
+}
+:root[data-design] .coding-trace summary {
+  margin: 0 0 1px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #000;
+  font-size: 12px;
+}
+:root[data-design] .coding-trace summary:hover {
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
+}
+:root[data-design] .coding-trace details[open] > summary {
+  border-color: var(--nostalgia-selected-border);
+  background: var(--nostalgia-selected);
+}
+:root[data-design] .coding-trace :is(pre, .font-mono) {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+:root[data-design] :is(.approval-card, .question-card, .routine-report-card) {
+  border: 1px solid #d5dfe5;
+  border-radius: 3px;
+  background: var(--nostalgia-pane);
+  box-shadow: none;
+}
+
+/* ---- The composer: a small dialog panel with an edit control and real buttons ---- */
+
+:root[data-design] .composer-dock {
+  border-top: 1px solid #c2d2e4;
+  background: linear-gradient(#f6f9fd, #dde7f3);
+}
+:root[data-design] .composer-dock::before {
+  display: none;
+}
+:root[data-design] .composer-wrap {
+  padding: 10px 24px 6px;
+}
+:root[data-design] .coding-composer {
+  overflow: visible;
+  padding: 7px 7px 0;
+  border: 1px solid #a0a8b4;
+  border-radius: 3px;
+  background: linear-gradient(#fbfbfb, #ececec);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    1px 1px 2px rgb(0 0 0 / 0.08);
+}
+:root[data-design] .coding-composer > textarea {
+  min-height: 46px;
+  padding: 4px 6px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+:root[data-design] .composer-toolbar {
+  gap: 6px;
+  padding: 6px 0 7px;
+  border: 0;
+  background: transparent;
+}
+/* The pickers are drop-down lists. */
+:root[data-design] .coding-composer .composer-toolbar :is(.model-selector, .composer-chip) {
+  height: 22px !important;
+  gap: 6px;
+  padding: 0 4px 0 7px;
+  border: 1px solid #707070;
+  border-radius: 3px;
+  background: var(--nostalgia-button);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.7);
+  color: #000;
+  font-size: 12px !important;
+}
+:root[data-design] .coding-composer .composer-toolbar :is(.model-selector, .composer-chip):hover,
+:root[data-design]
+  .coding-composer
+  .composer-toolbar
+  :is(.model-selector, .composer-chip)[data-state="open"] {
+  border-color: #3c7fb1;
+  background: var(--nostalgia-button-hover);
+}
+:root[data-design]
+  .coding-composer
+  .composer-toolbar
+  :is(.model-selector, .composer-chip)
+  svg.lucide-chevron-down {
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  padding-left: 3px;
+  border-left: 1px solid #b9b9b9;
+  background: url("icons/dropdown.svg") right center / 14px no-repeat;
+  color: transparent;
+}
+:root[data-design]
+  .coding-composer
+  .composer-toolbar
+  :is(.model-selector, .composer-chip)
+  svg.lucide-chevron-down
+  > * {
+  display: none;
+}
+/* Attach and dictate are small push buttons. */
+:root[data-design]
+  .coding-composer
+  .composer-toolbar
+  [data-slot="button"]:is([data-variant="ghost"], [data-variant="secondary"]) {
+  width: 26px;
+  height: 22px;
+  border: 1px solid #707070;
+  border-radius: 3px;
+  background: var(--nostalgia-button);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.7);
+  color: #1b2a3f;
+}
+:root[data-design]
+  .coding-composer
+  .composer-toolbar
+  [data-slot="button"]:is([data-variant="ghost"], [data-variant="secondary"]):not(:disabled):hover {
+  border-color: #3c7fb1;
+  background: var(--nostalgia-button-hover);
+}
+/* Send is the dialog's default button, with its label. */
+:root[data-design] .send-button {
+  width: 70px;
+  height: 22px;
+  margin-left: 2px;
+  border-color: #3c7fb1;
+  box-shadow:
+    inset 0 0 0 1px #c4e5f6,
+    inset 0 0 0 2px rgb(255 255 255 / 0.5);
+  color: #000;
+  font-size: 12px;
+}
+:root[data-design] .send-button:has(svg.lucide-arrow-up) > svg {
+  display: none;
+}
+:root[data-design] .send-button:has(svg.lucide-arrow-up)::after {
+  content: "Send";
+}
+:root[data-design] .send-button:disabled {
+  opacity: 1;
+}
+/* Below it, a status bar. */
+:root[data-design] .composer-footer {
+  margin: 6px 0 0;
+  padding: 2px 4px;
+  border-top: 1px solid #c9d6e6;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7);
+}
+:root[data-design] .composer-footer,
+:root[data-design] .composer-footer .composer-repository {
+  color: var(--nostalgia-heading);
+  font-size: 11px;
+}
+:root[data-design] .composer-footer .composer-repository:hover {
+  color: #3399ff;
+  text-decoration: underline;
+}
+:root[data-design] .composer-footer svg.lucide-folder-open {
+  background: url("icons/folder-open.svg") center / contain no-repeat;
+  color: transparent;
+}
+:root[data-design] .composer-footer svg.lucide-folder-open > * {
+  display: none;
+}
+
+/* ---- Settings, with a task pane ---- */
+
+:root[data-design] .coding-settings-sidebar {
+  background: linear-gradient(#f7fafd, #dce7f5);
+  box-shadow: inset -1px 0 0 #c9d7e8;
+}
+:root[data-design] .coding-settings-sidebar .coding-settings-nav button {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--nostalgia-heading);
+  font-size: 12px;
+  font-weight: 400;
+}
+:root[data-design] .coding-settings-sidebar .coding-settings-nav button:hover {
+  background: transparent;
+  color: #3399ff;
+  text-decoration: underline;
+}
+:root[data-design] .coding-settings-sidebar .coding-settings-nav button.selected {
+  border-color: var(--nostalgia-selected-border);
+  background: var(--nostalgia-selected);
+  color: #000;
+  text-decoration: none;
+}
+:root[data-design] .native-view h2 {
+  color: var(--nostalgia-instruction);
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+:root[data-design] .native-view h3 {
+  color: var(--nostalgia-heading);
+  font-size: 13px;
+  font-weight: 400;
+}
+:root[data-design] .native-view .rounded-xl.bg-card {
+  border: 1px solid #d5dfe5;
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+/* ---- Pane toggles: flat toolbar buttons in the band, outlined in light blue on hover ---- */
+
+:root[data-design]
+  :is(
+    .sidebar-toggle,
+    .shell-titlebar [aria-label="Show workbench"],
+    .shell-titlebar [aria-label="Hide workbench"]
+  ) {
+  align-self: center;
+  width: 28px;
+  height: 24px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  box-shadow: none;
+}
+:root[data-design]
+  :is(
+    .sidebar-toggle,
+    .shell-titlebar [aria-label="Show workbench"],
+    .shell-titlebar [aria-label="Hide workbench"]
+  ):hover {
+  border-color: rgb(60 110 160 / 0.6);
+  background: linear-gradient(
+    rgb(255 255 255 / 0.85),
+    rgb(233 242 252 / 0.75) 50%,
+    rgb(214 230 248 / 0.75) 51%,
+    rgb(236 244 253 / 0.8)
+  );
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.75);
+}
+:root[data-design]
+  :is(
+    .sidebar-toggle,
+    .shell-titlebar [aria-label="Show workbench"],
+    .shell-titlebar [aria-label="Hide workbench"]
+  ):active {
+  border-color: rgb(44 82 130 / 0.7);
+  background: linear-gradient(rgb(214 230 248 / 0.9), rgb(196 218 244 / 0.9));
+  box-shadow: inset 1px 1px 2px rgb(0 0 0 / 0.15);
+}
+:root[data-design]
+  :is(
+    .sidebar-toggle,
+    .shell-titlebar [aria-label="Show workbench"],
+    .shell-titlebar [aria-label="Hide workbench"]
+  )
+  > svg {
+  width: 13px;
+  height: 11px;
+  background-position: center;
+  background-size: contain;
+  background-repeat: no-repeat;
+  color: transparent;
+}
+:root[data-design]
+  :is(
+    .sidebar-toggle,
+    .shell-titlebar [aria-label="Show workbench"],
+    .shell-titlebar [aria-label="Hide workbench"]
+  )
+  > svg
+  > * {
+  display: none;
+}
+:root[data-design] .sidebar-toggle > svg {
+  background-image: url("icons/pane-navigation.svg");
+}
+:root[data-design] .shell-titlebar :is([aria-label="Show workbench"], [aria-label="Hide workbench"]) > svg {
+  background-image: url("icons/pane-preview.svg");
+}
+/* The workbench toggle belongs to the chat pane, not the title bar: it sits just below the band at
+   the pane's top-right, clear of the scroll bar, beside the workbench it opens. White on the white
+   pane, so it stays flat at rest and the transcript scrolls under it cleanly. */
+:root[data-design]
+  .coding-main
+  > .shell-titlebar
+  :is([aria-label="Show workbench"], [aria-label="Hide workbench"]) {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 6px;
+  background: #fff;
+}
+:root[data-design] .chat-titlebar ~ .coding-chat-layout .conversation-content {
+  padding-top: calc(46px + 48px);
+}
+
+/* ---- The workbench: property-sheet tabs over Explorer-style panes ---- */
+
+:root[data-design] .coding-workbench {
+  background: #fff;
+}
+:root[data-design] .coding-workbench .workbench-toolbar {
+  align-items: flex-end;
+  gap: 4px;
+  padding: 0 8px;
+}
+:root[data-design] .coding-workbench .workbench-tabs {
+  align-self: stretch;
+  align-items: flex-end;
+  gap: 2px;
+}
+:root[data-design] .coding-workbench .workbench-tab {
+  min-height: 0;
+  height: 22px;
+  gap: 5px;
+  padding: 0 9px;
+  border: 1px solid #898c95;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(#f5f5f5, #ececec 50%, #dfdfdf 51%, #d6d6d6);
+  color: #000;
+  font-size: 12px;
+  font-weight: 400;
+}
+:root[data-design] .coding-workbench .workbench-tab:hover {
+  background: var(--nostalgia-button-hover);
+  color: #000;
+}
+:root[data-design] .coding-workbench .workbench-tab.selected {
+  height: 25px;
+  background: #fff;
+}
+:root[data-design] .coding-workbench .workbench-tab svg {
+  width: 16px;
+  height: 16px;
+  background: center / contain no-repeat;
+  color: transparent;
+}
+:root[data-design] .coding-workbench .workbench-tab svg > * {
+  display: none;
+}
+:root[data-design] .coding-workbench .workbench-tab svg.lucide-files {
+  background-image: url("icons/folder.svg");
+}
+:root[data-design] .coding-workbench .workbench-tab svg.lucide-terminal {
+  background-image: url("icons/console.svg");
+}
+:root[data-design] .coding-workbench .workbench-tab svg.lucide-git-compare-arrows {
+  background-image: url("icons/compare.svg");
+}
+:root[data-design] .coding-workbench .workbench-overlay-close {
+  margin-bottom: 2px;
+}
+/* Files: a tree, as in the navigation pane. */
+:root[data-design] .workbench-files-header,
+:root[data-design] .repository-changes-toolbar,
+:root[data-design] .split-labels {
+  border-bottom: 1px solid #d5d5d5;
+  background: var(--nostalgia-header);
+  color: #4c607a;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root[data-design] .workbench-files-header {
+  padding: 2px 6px 2px 8px;
+}
+:root[data-design] .workbench-content .workbench-file {
+  width: calc(100% - 8px);
+  margin: 0 4px 1px;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #000;
+  font-size: 12px;
+}
+:root[data-design] .workbench-content .workbench-file:hover {
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
+}
+:root[data-design] .workbench-content .workbench-file:focus-visible {
+  border-color: var(--nostalgia-selected-border);
+  background: var(--nostalgia-selected);
+}
+:root[data-design] .workbench-content .workbench-file svg {
+  width: 16px;
+  height: 16px;
+  background: center / contain no-repeat;
+  color: transparent;
+  rotate: none;
+  transform: none;
+}
+:root[data-design] .workbench-content .workbench-file svg > * {
+  display: none;
+}
+:root[data-design] .workbench-content .workbench-file svg.lucide-chevron-right {
+  background-image: url("icons/tree-collapsed.svg");
+}
+:root[data-design] .workbench-content .workbench-file svg.lucide-chevron-right.rotate-90 {
+  background-image: url("icons/tree-expanded.svg");
+}
+:root[data-design] .workbench-content .workbench-file svg.lucide-folder {
+  background-image: url("icons/folder.svg");
+}
+:root[data-design] .workbench-content .workbench-file svg:is(.lucide-file-code-corner, .lucide-file-code-2) {
+  background-image: url("icons/file.svg");
+}
+/* Terminal: a console window, light grey on black. */
+:root[data-design] .terminal-tabs {
+  min-height: 0;
+  padding: 3px 6px;
+  border-bottom: 1px solid #c2d2e4;
+  background: var(--nostalgia-pane);
+}
+:root[data-design] .terminal-tab {
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #000;
+  font-size: 12px;
+}
+:root[data-design] .terminal-tab:hover {
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
+}
+:root[data-design] .terminal-tab.active {
+  border-color: var(--nostalgia-selected-border);
+  background: var(--nostalgia-selected);
+}
+:root[data-design] :is(.terminal-actions, .terminal-rename, .terminal-search) {
+  border-bottom: 1px solid #e3e8ef;
+  background: #f5f7fa;
+}
+:root[data-design] .terminal-actions code {
+  white-space: nowrap;
+  color: #4c607a;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+:root[data-design] .terminal-surface {
+  padding: 4px 2px 4px 6px;
+  background: #000;
+  color: #c0c0c0;
+}
+:root[data-design] .terminal-empty-state h3 {
+  color: var(--nostalgia-instruction);
+  font-size: 15px;
+  font-weight: 400;
+}
+/* Changes: a list of files over a diff with line numbers in their own column. */
+:root[data-design] .repository-changes-toolbar {
+  padding: 3px 8px;
+}
+:root[data-design] .repository-change-files button {
+  margin-bottom: 1px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: #000;
+  font-size: 12px;
+}
+:root[data-design] .repository-change-files button:hover {
+  border-color: var(--nostalgia-hot-border);
+  background: var(--nostalgia-hot);
+}
+:root[data-design] .review-diff {
+  border-bottom-color: #d5d5d5;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+}
+:root[data-design] .diff-number {
+  border-right: 1px solid #e3e3e3;
+  background: #f7f7f7;
+  color: #2b91af;
+  font-size: 11px;
+}
+:root[data-design] :is(.diff-row, .diff-half).add {
+  background: #dff6dd;
+}
+:root[data-design] :is(.diff-row, .diff-half).delete {
+  background: #fde7e9;
+}
+:root[data-design] .diff-row.hunk {
+  background: #eef3fa;
+  color: #4c607a;
+}

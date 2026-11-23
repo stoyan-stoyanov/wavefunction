@@ -274,8 +274,13 @@ def build_agent(spec: AgentSpecV2, models: ModelGateway, context: ToolContext, *
             tools.extend(build_agent_tools(context))
             # Routines and projects are changes that outlive the task, which Plan mode does not make.
             if "write_file" in tool_names:
+                from .themes import build_save_design, themes_folder
+
                 tools.extend(build_routine_tools(context))
                 tools.extend(build_project_tools(context))
+                tools.append(
+                    build_save_design(themes_folder(context.coding_workspace.services.settings.data_dir))
+                )
             if context.skills is not None and "write_file" in tool_names:
                 from .skills import build_save_skill
 

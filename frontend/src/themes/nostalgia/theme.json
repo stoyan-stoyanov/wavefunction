@@ -1,0 +1,6 @@
+{
+  "name": "Nostalgia",
+  "description": "Glass title bar, a classic navigation pane and 2009-era controls.",
+  "appearances": ["light"],
+  "windowControls": "theme"
+}

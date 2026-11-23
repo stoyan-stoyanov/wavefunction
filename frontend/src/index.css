@@ -36,7 +36,9 @@ body {
   margin: 0;
 }
 
-@theme inline {
+/* Not inline, unlike the block below: utilities read these through their variables, so a design
+   (lib/design.ts) can change the fonts and the size ladder by setting them on :root. */
+@theme {
   --font-heading: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
@@ -59,7 +61,9 @@ body {
   --text-2xl--line-height: 1.625rem;
   --text-3xl: 1.5rem;
   --text-3xl--line-height: 1.875rem;
+}
 
+@theme inline {
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

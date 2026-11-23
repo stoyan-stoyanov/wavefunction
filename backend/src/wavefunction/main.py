@@ -64,6 +64,7 @@ from .schemas import (
 )
 from .secrets import ENV_KEYS, SECRET_FILE_NAME, EnvFileSecretStore
 from .spec_common import ModelSpec
+from .themes import register_theme_routes, themes_folder
 from .vercel_gateway import VercelGatewayCatalog
 
 logger = logging.getLogger(__name__)
@@ -296,6 +297,7 @@ Auth = Annotated[None, Depends(authorize)]
 
 register_computer_control(app, lambda: services, authorize)
 register_image_settings(app, lambda: services, authorize)
+register_theme_routes(app, lambda: themes_folder(services.settings.data_dir), authorize)
 
 
 def not_found(error: KeyError) -> HTTPException:

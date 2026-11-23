@@ -192,7 +192,7 @@ function TerminalScreen({
     const themeObserver = new MutationObserver(updateTheme);
     themeObserver.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["class", "style"],
+      attributeFilter: ["class", "style", "data-design"],
     });
     updateTheme();
     // Fitting resized the terminal, unless the shell already has this size.

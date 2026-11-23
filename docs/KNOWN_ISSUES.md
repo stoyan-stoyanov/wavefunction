@@ -103,3 +103,7 @@ Accepted limitations. A review reports one of these again only if a change makes
 - A route answers 500 rather than passing through saved data in a shape its response model doesn't allow, for example a provider removed from the model list. Migrate such data in the change that invalidates it.
 - `POST …/runs/{id}/answers` returns the run's captured spec; the other run routes leave it out.
 - The prompt-surface test runs only where the macOS sandbox does.
+
+## Designs
+
+- A design from your own themes folder is applied once the engine answers, so the app shows its default look for that moment at startup. A bundled design is in place before the first paint.

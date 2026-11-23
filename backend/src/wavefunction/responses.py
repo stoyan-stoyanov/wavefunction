@@ -1019,3 +1019,23 @@ class LinkPreview(TypedDict):
     # Web addresses of the card's picture and the site's icon, loaded through /link-preview/media.
     image: str | None
     icon: str | None
+
+
+class Theme(TypedDict):
+    """A theme in the themes folder. `error` says why one cannot be used."""
+
+    id: str
+    name: str
+    description: str
+    appearances: list[Literal["light", "dark"]]
+    window_controls: Literal["native", "theme"]
+    error: str | None
+
+
+class Themes(TypedDict):
+    folder: str
+    themes: list[Theme]
+
+
+class ThemeStylesheet(TypedDict):
+    css: str

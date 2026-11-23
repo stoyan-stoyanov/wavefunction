@@ -123,6 +123,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/themes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Themes
+         * @description The themes in the themes folder, each checked, so a broken one says why up front.
+         */
+        get: operations["list_themes_api_themes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/themes/{theme_id}/stylesheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Theme Stylesheet */
+        get: operations["theme_stylesheet_api_themes__theme_id__stylesheet_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/activity": {
         parameters: {
             query?: never;
@@ -4143,6 +4180,39 @@ export interface components {
             /** Text */
             text: string;
         };
+        /**
+         * Theme
+         * @description A theme in the themes folder. `error` says why one cannot be used.
+         */
+        Theme: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Appearances */
+            appearances: ("light" | "dark")[];
+            /**
+             * Window Controls
+             * @enum {string}
+             */
+            window_controls: "native" | "theme";
+            /** Error */
+            error: string | null;
+        };
+        /** ThemeStylesheet */
+        ThemeStylesheet: {
+            /** Css */
+            css: string;
+        };
+        /** Themes */
+        Themes: {
+            /** Folder */
+            folder: string;
+            /** Themes */
+            themes: components["schemas"]["Theme"][];
+        };
         /** Thread */
         Thread: {
             /** Id */
@@ -4641,6 +4711,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EnabledImageModels"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_themes_api_themes_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Themes"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    theme_stylesheet_api_themes__theme_id__stylesheet_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                theme_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThemeStylesheet"];
                 };
             };
             /** @description Validation Error */

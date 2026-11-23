@@ -399,6 +399,108 @@
         }
       }
     },
+    "/api/themes": {
+      "get": {
+        "summary": "List Themes",
+        "description": "The themes in the themes folder, each checked, so a broken one says why up front.",
+        "operationId": "list_themes_api_themes_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Themes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/themes/{theme_id}/stylesheet": {
+      "get": {
+        "summary": "Theme Stylesheet",
+        "operationId": "theme_stylesheet_api_themes__theme_id__stylesheet_get",
+        "parameters": [
+          {
+            "name": "theme_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Theme Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemeStylesheet"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/activity": {
       "get": {
         "summary": "Activity",
@@ -13914,6 +14016,97 @@
           "text"
         ],
         "title": "TerminalWrite"
+      },
+      "Theme": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "appearances": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "light",
+                "dark"
+              ]
+            },
+            "type": "array",
+            "title": "Appearances"
+          },
+          "window_controls": {
+            "type": "string",
+            "enum": [
+              "native",
+              "theme"
+            ],
+            "title": "Window Controls"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "appearances",
+          "window_controls",
+          "error"
+        ],
+        "title": "Theme",
+        "description": "A theme in the themes folder. `error` says why one cannot be used."
+      },
+      "ThemeStylesheet": {
+        "properties": {
+          "css": {
+            "type": "string",
+            "title": "Css"
+          }
+        },
+        "type": "object",
+        "required": [
+          "css"
+        ],
+        "title": "ThemeStylesheet"
+      },
+      "Themes": {
+        "properties": {
+          "folder": {
+            "type": "string",
+            "title": "Folder"
+          },
+          "themes": {
+            "items": {
+              "$ref": "#/components/schemas/Theme"
+            },
+            "type": "array",
+            "title": "Themes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "folder",
+          "themes"
+        ],
+        "title": "Themes"
       },
       "Thread": {
         "properties": {
