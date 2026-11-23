@@ -6,6 +6,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Added
 
+- A shell command the agent shares in a chat has a play button. Clicking it runs the command in a new terminal in the chat's folder, in the Terminal tab beside the chat. ([#70](https://github.com/stoyan-stoyanov/wavefunction/pull/70))
 - Replies show what they link, the way messaging apps do: web links get a card with the page's picture, title and description, pictures show as thumbnails you can open larger, and videos play in place. ([#71](https://github.com/stoyan-stoyanov/wavefunction/pull/71))
 
 ## 0.4.0 - 2026-11-07
