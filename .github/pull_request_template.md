@@ -57,4 +57,5 @@ Accepted proposal: #
 - [ ] Tests, examples and screenshots use synthetic data only
 - [ ] A change users will notice has its line under `Unreleased` in `CHANGELOG.md`
 - [ ] On Linux it works too, is hidden, or has a linked follow-up issue ([macOS and Linux](https://github.com/stoyan-stoyanov/wavefunction/blob/main/docs/ARCHITECTURE.md#macos-and-linux))
+- [ ] A change made for Linux leaves the Mac as it was: the prompt-surface fixture and `src-tauri/macos-bundle.txt` are unchanged, or the description says why they changed
 - [ ] Anything I couldn't verify is listed above

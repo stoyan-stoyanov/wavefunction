@@ -54,7 +54,7 @@ asyncio_mode = "auto"
 addopts = "-m 'not live and not destructive'"
 markers = [
     "live: optional checks against external services; run explicitly with -m live",
-    "sandbox: runs commands through the macOS sandbox; skipped where it does not exist",
+    "sandbox: runs commands through the sandbox (Seatbelt, or Bubblewrap on Linux); skipped where there is none",
     "destructive: runs real deletion commands in temporary repositories; CI runs these on macOS, never run them locally",
 ]
 

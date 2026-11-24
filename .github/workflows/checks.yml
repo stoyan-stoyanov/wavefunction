@@ -13,12 +13,14 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   # Whether a pull request changes more than docs. The macOS jobs, about ten times the cost of a
-  # Linux one, skip docs-only changes.
+  # Linux one, skip docs-only changes. `app` says whether it can change the built macOS app beyond
+  # what the test suites see: the shell, packaging, freezing the engine, and the platform modules.
   changes:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       code: ${{ steps.classify.outputs.code }}
+      app: ${{ steps.classify.outputs.app }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -28,11 +30,18 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.base_ref }}
         run: |
-          if [ "$EVENT" != "pull_request" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$EVENT" != "pull_request" ]; then printf 'code=true\napp=true\n' >> "$GITHUB_OUTPUT"; exit 0; fi
           changed=$(git diff --name-only "origin/$BASE...HEAD")
           echo "$changed"
           if echo "$changed" | grep -qvE '\.md$|^docs/|^assets/|^website/'; then code=true; else code=false; fi
           echo "code=$code" >> "$GITHUB_OUTPUT"
+          app_paths='^src-tauri/|^backend/wavefunction-backend\.spec$|^backend/(pyproject\.toml|uv\.lock)$'
+          app_paths+='|^backend/src/wavefunction/(platforms|sandbox|sandbox_linux|fileops|main|__main__)\.py$'
+          app_paths+='|^frontend/src/lib/platform\.ts$|^frontend/package(-lock)?\.json$|^\.github/workflows/'
+          app_paths+='|^scripts/(build-sidecar|release-desktop|release-notices|package-desktop|backend-links|macos-manifest)\.'
+          app_paths+='|^scripts/verify-(release|native|coding-features)\.py$'
+          if echo "$changed" | grep -qE "$app_paths"; then app=true; else app=false; fi
+          echo "app=$app" >> "$GITHUB_OUTPUT"
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -149,6 +158,55 @@ jobs:
       - run: mkdir -p backend/dist/wavefunction-backend
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
       - run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
+  # The macOS app, built as release.yml builds it but signed ad hoc, then checked where no other job
+  # looks: the frozen engine in its sandbox, the signed release files, the bundle against
+  # src-tauri/macos-bundle.txt (so Linux work can't change the Mac app unseen), and the app launching.
+  # On main and for pull requests that can change the app (`changes`); required when it runs.
+  macos-app:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: src-tauri
+      - run: npm run setup
+      - name: Freeze the engine
+        run: npm run sidecar:build
+      - name: The frozen engine passes its sandbox self-check and runs a scripted coding session
+        run: backend/.venv/bin/python scripts/verify-coding-features.py --backend backend/dist/wavefunction-backend/wavefunction-backend
+      - name: Build the app
+        run: ./frontend/node_modules/.bin/tauri build --ci --bundles app --config src-tauri/tauri.conf.json
+      - name: Collect third-party notices
+        run: |
+          cargo fetch --locked --manifest-path src-tauri/Cargo.toml --target aarch64-apple-darwin
+          backend/.venv/bin/python scripts/release-notices.py
+      - name: Sign ad hoc and package, with a throwaway updater key
+        run: |
+          ./frontend/node_modules/.bin/tauri signer generate --ci --password "" --write-keys "$RUNNER_TEMP/updater.key"
+          node scripts/release-desktop.mjs
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
+          TAURI_SIGNING_PRIVATE_KEY_PATH: ${{ runner.temp }}/updater.key
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+      - name: The release files hold together
+        run: backend/.venv/bin/python scripts/verify-release.py dist/release --ad-hoc --pubkey "$RUNNER_TEMP/updater.key.pub"
+      - name: The app matches src-tauri/macos-bundle.txt
+        run: node scripts/macos-manifest.mjs --check
+      - name: The app launches, serves its engine, edits, runs commands and restarts
+        run: backend/.venv/bin/python scripts/verify-native.py
   # Linux, built from source and community-supported (SECURITY.md): the Bubblewrap and seccomp
   # sandbox with its escape tests, then the frozen engine and the desktop app built and started.
   # Not in all-checks, so a red Linux build never blocks a change.
@@ -173,14 +231,16 @@ jobs:
           enable-cache: true
           cache-dependency-glob: backend/uv.lock
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           workspaces: src-tauri
-      - name: Bubblewrap and Tauri's system libraries
+      - name: Bubblewrap, Tauri's system libraries and a virtual display
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends bubblewrap libwebkit2gtk-4.1-dev libxdo-dev \
-            libssl-dev libayatana-appindicator3-dev librsvg2-dev
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev xvfb
       # Ubuntu's AppArmor (23.10 and later) refuses unprivileged user namespaces, which bwrap needs,
       # unless a profile allows them. README's Linux section tells users the same.
       - name: Let bwrap create user namespaces
@@ -192,6 +252,10 @@ jobs:
       - name: Sandbox tests, the Linux escape tests among them
         working-directory: backend
         run: uv run --no-sync pytest -n 4 --dist loadfile -m "sandbox and not live and not destructive"
+      # Marked destructive with the rest of its file, but this case only classifies command text.
+      - name: Commands that can't be undone are caught
+        working-directory: backend
+        run: uv run --no-sync pytest -m destructive tests/test_sandbox.py -k test_commands_that_cannot_be_undone
       - name: The desktop app (engine, then .deb and AppImage)
         run: npm run desktop:build
         env:
@@ -205,12 +269,31 @@ jobs:
           for _ in $(seq 90); do curl -fsS http://127.0.0.1:8799/health && break; sleep 1; done
           curl -fsS http://127.0.0.1:8799/health
           curl -fsS -H "Authorization: Bearer ci-token" http://127.0.0.1:8799/api/grants | jq -e '.sandbox_ok'
+      - name: The AppImage opens its window and starts its engine
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: |
+          xvfb-run -a dist/desktop/*.AppImage > "$RUNNER_TEMP/appimage.log" 2>&1 & launcher=$!
+          trap 'pkill -f -- "--parent-pid" || true; kill $launcher 2>/dev/null || true' EXIT
+          for _ in $(seq 90); do
+            engine=$(ps -ax -o args= | grep -- '--parent-pid' | grep -- '--port' | grep -v grep | head -1)
+            [ -n "$engine" ] && break; sleep 1
+          done
+          [ -n "$engine" ] || { cat "$RUNNER_TEMP/appimage.log"; exit 1; }
+          port=$(echo "$engine" | grep -oE -- '--port [0-9]+' | cut -d' ' -f2)
+          for _ in $(seq 60); do curl -fsS "http://127.0.0.1:$port/health" && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/appimage.log"; exit 1
+      # `native` lints and tests the shell on macOS only, so its Linux code is checked here.
+      - name: The shell's Linux code passes clippy and its tests
+        run: |
+          cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+          cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
   # The one check to require in branch protection: it passes only when every job passed or was
   # skipped. Any other result fails it, including "abandoned", which a job gets when GitHub never
   # finds it a runner and so runs none of its steps.
   all-checks:
     if: always()
-    needs: [changes, frontend, backend, backend-macos, native]
+    needs: [changes, frontend, backend, backend-macos, native, macos-app]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
