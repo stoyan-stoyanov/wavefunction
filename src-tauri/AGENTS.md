@@ -8,7 +8,7 @@ Tauri v2 in Rust, plus one Objective-C file for notifications. Read the root [AG
 |---|---|
 | Startup, window, starting and supervising the engine | `src/lib.rs` |
 | Quit and restart, with the active-work check | `src/quit.rs` |
-| macOS notifications (long poll to the engine) | `src/notifications.rs`, `src/notifications.m`, `build.rs` |
+| Notifications (long poll to the engine): macOS through `notifications.m`, Linux through notify-rust | `src/notifications.rs`, `src/notifications.m`, `build.rs` |
 | Configuration and bundled resources | `tauri.conf.json` (`tauri.linux.conf.json` replaces the window and bundle targets on Linux), `Cargo.toml` |
 
 ## Checking a change
@@ -23,4 +23,5 @@ Tauri v2 in Rust, plus one Objective-C file for notifications. Read the root [AG
 - `npm run desktop:dev` and the installed app share the owner's data folder (`app.harness.coding`). Set `WAVEFUNCTION_DEV_DATA_DIR` to a scratch folder to keep `desktop:dev` off it.
 - Keep the `app.harness.coding` identity and the signing setup as they are.
 - Distinguish a successful build from a verified launch.
+- A freedesktop notification server replaces only an id it issued, so Linux keeps each chat's last one; an id of our own makes a new notification.
 - Per-platform code (`#[cfg(target_os)]`) goes in a module made for it, like `notifications.rs`; `lib.rs` keeps no more than it has ([macOS and Linux](../docs/ARCHITECTURE.md#macos-and-linux)).
