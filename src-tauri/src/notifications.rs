@@ -20,7 +20,6 @@ const TEST: &str = "test";
 
 #[cfg(target_os = "macos")]
 mod native {
-    use super::*;
     use std::ffi::{c_char, c_void, CStr, CString};
     type Sender = tokio::sync::oneshot::Sender<i32>;
     extern "C" {
