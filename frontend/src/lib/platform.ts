@@ -32,6 +32,9 @@ export const has = {
   debPackage: () => desktop() && linux() && linuxPackage === "deb",
   /** The system's dictation typing into the composer. */
   dictation: () => desktop() && !linux(),
+  /** A menu bar that quits, enters full screen and copies on the usual keys. Tauri gives the macOS
+   * app one and a browser has its own; the Linux app has none, so the page handles those keys. */
+  systemMenu: () => !desktop() || !linux(),
 };
 
 /** Words that name this computer and its parts. */

@@ -29,6 +29,7 @@ React, TypeScript (strict, no `any`), Vite, zustand and Tailwind. Read the root 
 - Route late responses, streams, approvals, context and drafts to the chat that captured them.
 - Preserve unrelated file edits and recovered drafts.
 - What differs on Linux comes from `lib/platform.ts`: `has` for features, `words` for "this Mac", "Finder" and ⌘ ([macOS and Linux](../docs/ARCHITECTURE.md#macos-and-linux)).
+- The Linux app has no menu bar (`has.systemMenu`), so `lib/linux-keys.ts` handles Ctrl+Q and F11. A test reaches the Linux desktop by stubbing `__TAURI_INTERNALS__` and `navigator.userAgent`; jsdom's lower-case "linux" doesn't count.
 - Give controls accessible names, so people and browser automation use the same controls.
 - A terminal starts at 80×24 and its screen resizes it only after the shell has printed its prompt, so input sent before that resize is echoed for the wrong width. Text the app types for the user waits for both (`TerminalScreen`).
 - The desktop webview's content policy (`src-tauri/tauri.conf.json`) reaches only the engine: show a web image or video through `codingApi.linkMedia`, which fetches public addresses only, as a blob URL.

@@ -4616,6 +4616,7 @@ dependencies = [
  "tauri-plugin-window-state",
  "tokio",
  "uuid",
+ "zbus",
 ]
 
 [[package]]

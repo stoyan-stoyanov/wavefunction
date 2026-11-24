@@ -56,7 +56,7 @@ import { DesktopDock } from "./live-screen";
 import { startUpdateChecks } from "@/lib/app-update";
 import { onNotificationOpen, reportVisibleChat } from "@/lib/notifications";
 import { api } from "@/lib/api";
-import { beginWindowDrag, syncWindowTheme } from "@/lib/titlebar";
+import { beginWindowDrag, dragRegion, syncWindowTheme } from "@/lib/titlebar";
 import { forcedAppearance, useDesign } from "@/lib/design";
 import { WindowControls } from "./window-controls";
 import { useSettings } from "@/store/settings";
@@ -1354,7 +1354,7 @@ function Shell() {
             <header
               className={`shell-titlebar floating-titlebar ${page === "chat" ? "chat-titlebar" : ""}`}
               aria-label="Workspace toolbar"
-              data-tauri-drag-region
+              {...dragRegion()}
               onMouseDown={beginWindowDrag}
             >
               {!sidebar ? <SidebarToggle collapsed onToggle={() => setSidebar(true)} /> : null}

@@ -626,6 +626,17 @@ pub fn run() {
             notifications::notification_test
         ])
         .setup(|app| {
+            // tauri.linux.conf.json leaves the main window to this (`"create": false`), to build it
+            // from the same config with the page allowed to read the clipboard: WebKitGTK refuses
+            // `navigator.clipboard.readText()` otherwise, so the terminal couldn't paste on
+            // Ctrl+Shift+V. Tauri has no config key for it. The macOS window comes from the config.
+            let windows = &app.config().app.windows;
+            if let Some(main) = windows.iter().find(|w| w.label == "main" && !w.create) {
+                tauri::WebviewWindowBuilder::from_config(app.handle(), main)?
+                    .enable_clipboard_access()
+                    .build()?;
+            }
+
             #[cfg(target_os = "macos")]
             if let Some(window) = app.get_webview_window("main") {
                 use objc2_app_kit::NSWindow;
