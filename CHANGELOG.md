@@ -4,6 +4,10 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+### Added
+
+- Each release has Linux downloads for x86-64: an AppImage and a `.deb`, for Ubuntu 22.04, Debian 12 and later. They're experimental and unsigned, and don't update themselves yet; the README says how to install them. ([#83](https://github.com/stoyan-stoyanov/wavefunction/pull/83))
+
 ### Fixed
 
 - On Linux, the app says "this computer", "File manager" and Ctrl where it said "this Mac", "Finder" and ⌘, and no longer shows a dictation button, which needs macOS.
