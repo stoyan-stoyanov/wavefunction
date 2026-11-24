@@ -349,7 +349,9 @@ async def test_failed_docker_recovery_reports_the_error_or_reopens_a_hung_docker
     # A running Docker Engine whose socket this user may not open is said to be that, not stopped.
     async def denied(*args, **kwargs):
         if args[1] == "info":
-            return CommandResult(1, "", "permission denied while trying to connect to the Docker daemon socket")
+            return CommandResult(
+                1, "", "permission denied while trying to connect to the Docker daemon socket"
+            )
         return await systemd(*args, **kwargs)
 
     manager._run = denied
