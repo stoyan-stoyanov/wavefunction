@@ -158,9 +158,11 @@ def run_as_python() -> None:
         if len(rest) < 2:
             raise SystemExit("--python -m needs a module to run")
         if rest[1] in ("venv", "ensurepip"):
+            from wavefunction import platforms
+
             raise SystemExit(
                 "The app's own python3 cannot create virtual environments. Use `uv venv`, "
-                "or a Python installed on this Mac (for example `brew install python`)."
+                f"or a Python installed on {platforms.this_computer()} (for example `brew install python`)."
             )
         sys.argv = [rest[1], *rest[2:]]
         search_first(os.getcwd())

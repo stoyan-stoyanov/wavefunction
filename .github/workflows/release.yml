@@ -85,3 +85,93 @@ jobs:
         run: |
           security delete-keychain "$RUNNER_TEMP/release.keychain-db" 2>/dev/null || true
           rm -f "$RUNNER_TEMP/notarization.p8"
+  # Experimental x86-64 Linux downloads, unsigned and without updates yet. This job never touches
+  # the macos job or its files: attach-linux adds what it builds to the draft only once both jobs
+  # passed, so a Linux failure leaves the Mac release exactly as it would be without it.
+  linux:
+    # Not newer: the app and engine need at least the glibc of the system that built them.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    # Read-only: its files reach the release through attach-linux.
+    permissions:
+      contents: read
+    env:
+      # uv's own Python 3.12, which carries the shared libpython PyInstaller bundles.
+      UV_PYTHON_PREFERENCE: only-managed
+      # Tauri's AppImage tools are AppImages themselves, and the runner has no FUSE to mount them.
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+    # No dependency caches, as in the macos job: a release installs from the lockfiles.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      # The deb-src entries let release-notices.py download the bundled libraries' source packages.
+      - name: Bubblewrap, Tauri's system libraries and their sources
+        run: |
+          sed -n 's/^deb /deb-src /p' /etc/apt/sources.list | sudo tee /etc/apt/sources.list.d/deb-src.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends bubblewrap libwebkit2gtk-4.1-dev libxdo-dev \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - run: uv sync --locked --project backend --python 3.12 --extra dev
+      - run: npm --prefix frontend ci --no-audit --no-fund
+      # Before the build, unlike on macOS: a .deb or AppImage can't take files added after Tauri
+      # bundles it, so the notices go in as a resource. Only here, not in tauri.linux.conf.json,
+      # which would make every Linux build run this first.
+      - name: Collect third-party notices and sources
+        run: |
+          cargo fetch --locked --manifest-path src-tauri/Cargo.toml --target x86_64-unknown-linux-gnu
+          backend/.venv/bin/python scripts/release-notices.py x86_64-unknown-linux-gnu
+      - run: npm run sidecar:build
+      - run: ./frontend/node_modules/.bin/tauri build --ci --config '{"bundle":{"resources":{"../dist/legal/notices":"legal"}}}'
+      - run: node scripts/package-desktop.mjs
+      - name: The packaged engine starts, answers /health and passes its sandbox self-check
+        run: |
+          dpkg-deb -x dist/desktop/*.deb "$RUNNER_TEMP/app"
+          engine=$(find "$RUNNER_TEMP/app" -path '*/backend/wavefunction-backend' -type f)
+          "$engine" --port 8799 --token ci-token --data-dir "$RUNNER_TEMP/data" & engine_pid=$!
+          trap 'kill $engine_pid' EXIT
+          for _ in $(seq 90); do curl -fsS http://127.0.0.1:8799/health && break; sleep 1; done
+          curl -fsS http://127.0.0.1:8799/health
+          curl -fsS -H "Authorization: Bearer ci-token" http://127.0.0.1:8799/api/grants | jq -e '.sandbox_ok'
+      - name: Both packages carry the notices
+        working-directory: ${{ runner.temp }}
+        run: |
+          find app -path '*/legal/inventory.json' | grep -q .
+          "$GITHUB_WORKSPACE"/dist/desktop/*.AppImage --appimage-extract > /dev/null
+          find squashfs-root -path '*/legal/inventory.json' | grep -q .
+      - name: Release files and SHA256SUMS-linux
+        run: |
+          stem=$(node -p "const c = require('./src-tauri/tauri.conf.json'); c.productName + '-' + c.version + '-linux-x86_64'")
+          mkdir -p dist/release-linux
+          cp dist/desktop/*.AppImage "dist/release-linux/$stem.AppImage"
+          cp dist/desktop/*.deb "dist/release-linux/$stem.deb"
+          (cd dist && zip -qr "release-linux/$stem-notices-and-sources.zip" legal)
+          (cd dist/release-linux && sha256sum -- * > SHA256SUMS-linux && cat SHA256SUMS-linux)
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-release
+          path: dist/release-linux/
+          if-no-files-found: error
+  # Adds the Linux files to the draft the macos job created, only when both builds passed. After a
+  # Linux failure, rerunning the failed jobs retries this without rebuilding the Mac release.
+  attach-linux:
+    needs: [macos, linux]
+    if: needs.macos.result == 'success' && needs.linux.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: linux-release
+          path: linux-release
+      - run: gh release upload "$TAG" --clobber linux-release/*

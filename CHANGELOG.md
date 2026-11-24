@@ -7,10 +7,12 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 ### Added
 
 - On Linux, a chat that finishes or needs you while you're away from it shows a notification through your desktop's notification service, as on macOS. Clicking it opens the chat.
+- Each release has Linux downloads for x86-64: an AppImage and a `.deb`, for Ubuntu 22.04, Debian 12 and later. They're experimental and unsigned, and don't update themselves yet; the README says how to install them. ([#83](https://github.com/stoyan-stoyanov/wavefunction/pull/83))
 
 ### Fixed
 
 - On Linux, the app says "this computer", "File manager" and Ctrl where it said "this Mac", "Finder" and ⌘, and no longer shows a dictation button, which needs macOS.
+- On Linux, the agent asks before running disk tools that can erase a disk, such as `wipefs`, `fdisk` or `cryptsetup luksFormat`, and asks to run `gh` outside the sandbox, where it can reach GitHub. When AppArmor keeps the sandbox from starting, Settings › Access says how to allow it.
 
 ## 0.5.0 - 2026-11-23
 

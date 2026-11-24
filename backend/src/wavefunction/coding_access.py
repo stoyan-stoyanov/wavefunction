@@ -8,6 +8,7 @@ from langchain_core.tools import tool
 from langgraph.types import interrupt
 from pydantic import BaseModel
 
+from . import platforms
 from . import responses as api
 from .execution_policy import ToolCallRejected, executing_call_id
 from .hands import COMMAND_ACCESS_SETTING
@@ -84,7 +85,7 @@ def approve_command(
     else:
         request = {
             "kind": "outside_sandbox",
-            "description": f"Run outside the sandbox, on this Mac: {command}",
+            "description": f"Run outside the sandbox, on {platforms.this_computer()}: {command}",
         }
         refusal = "The user did not allow this command outside the sandbox. Do not retry it;"
     while True:

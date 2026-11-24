@@ -28,15 +28,21 @@ def runner_for(access: str, grants: list[Grant], scratch: Path) -> Sandbox:
     return Sandbox(grants, scratch=scratch, network=access == "network")
 
 
-# Said once in the system prompt of a task with local tools; what changes is in its environment.
-LOCAL_GUIDANCE = (
-    "\n\nThe macOS sandbox allows the project, granted folders, system/toolchain support, "
-    "Git config/caches and scratch. request_folder_access grants other folders; request "
-    "write access only when needed. Other restrictions: use "
-    "run_command(outside_sandbox=true, reason=...) under this chat's access mode. "
-    "Irreversible commands need approval in every mode. workdir affects one command. "
-    "Manage permissions in Settings → Access. " + EXPLORATION_GUIDANCE
-)
+def local_guidance() -> str:
+    """Said once in the system prompt of a task with local tools; what changes is in its environment."""
+    return (
+        f"\n\nThe {platforms.system()} sandbox allows the project, granted folders, system/toolchain support, "
+        "Git config/caches and scratch. request_folder_access grants other folders; request "
+        "write access only when needed. Other restrictions: use "
+        "run_command(outside_sandbox=true, reason=...) under this chat's access mode. "
+        + (
+            ""
+            if platforms.sandboxed_gh()
+            else "Run gh that way from the start: this sandbox blocks its connection to GitHub. "
+        )
+        + "Irreversible commands need approval in every mode. workdir affects one command. "
+        "Manage permissions in Settings → Access. " + EXPLORATION_GUIDANCE
+    )
 
 
 def environment_context(

@@ -15,6 +15,7 @@ from pathlib import Path
 
 from langchain_core.tools import tool
 
+from . import platforms
 from .coding_access import request_access
 from .execution_policy import ToolCallRejected
 
@@ -79,7 +80,7 @@ def build_project_tools(context):
 
     @tool
     def create_project(name: str, folder: str) -> str:
-        """Add a project: a folder on this Mac that the user's chats work in, listed in the sidebar.
+        """Add a project: a folder on {this_computer} that the user's chats work in, listed in the sidebar.
 
         The folder is created if it does not exist. To start a project from a repository, create
         the project first, then clone into its folder with run_command, workdir set to the folder:
@@ -215,4 +216,4 @@ def build_project_tools(context):
         )
 
     list_projects.metadata = {"readOnlyHint": True}
-    return [list_projects, create_project, archive_chats, remove_project]
+    return [list_projects, platforms.worded(create_project), archive_chats, remove_project]

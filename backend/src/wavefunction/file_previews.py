@@ -179,5 +179,7 @@ def register_file_previews(router, workspace):
         if payload.target == "app" and (
             target.suffix.lower() in RUNNABLE_TYPES or os.access(target, os.X_OK)
         ):
-            raise ValueError("Wavefunction won't run this file. Show it in Finder to open it yourself.")
+            raise ValueError(
+                f"Wavefunction won't run this file. Show it in {platforms.file_manager()} to open it yourself."
+            )
         await platforms.show(target, reveal=payload.target == "finder")

@@ -39,10 +39,12 @@ import urllib.parse
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from langchain_core.runnables.config import ensure_config
+
+from . import platforms
 
 logger = logging.getLogger(__name__)
 
@@ -284,7 +286,9 @@ class CodexAuthStore:
             os.replace(temporary, self.path)
             os.chmod(self.path, 0o600)
         except OSError as error:
-            raise CodexAuthError("Could not save the ChatGPT sign-in on this Mac") from error
+            raise CodexAuthError(
+                f"Could not save the ChatGPT sign-in on {platforms.this_computer()}"
+            ) from error
         finally:
             temporary.unlink(missing_ok=True)
 
@@ -861,7 +865,7 @@ class CodexTransport(httpx.HTTPTransport):
         owner = self._routing.prepare(request)
         response = super().handle_request(request)
         self._routing.remember(owner, response)
-        return _repaired(response, RepairingByteStream(response.stream))
+        return _repaired(response, RepairingByteStream(cast(httpx.SyncByteStream, response.stream)))
 
 
 class AsyncCodexTransport(httpx.AsyncHTTPTransport):
@@ -880,7 +884,7 @@ class AsyncCodexTransport(httpx.AsyncHTTPTransport):
         owner = self._routing.prepare(request)
         response = await super().handle_async_request(request)
         self._routing.remember(owner, response)
-        return _repaired(response, RepairingAsyncByteStream(response.stream))
+        return _repaired(response, RepairingAsyncByteStream(cast(httpx.AsyncByteStream, response.stream)))
 
 
 def _authenticate_codex_request(request: httpx.Request, credentials: CodexCredentials) -> None:
