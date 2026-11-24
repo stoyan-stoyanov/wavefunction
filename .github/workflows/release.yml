@@ -85,9 +85,9 @@ jobs:
         run: |
           security delete-keychain "$RUNNER_TEMP/release.keychain-db" 2>/dev/null || true
           rm -f "$RUNNER_TEMP/notarization.p8"
-  # Experimental x86-64 Linux downloads, unsigned and without updates yet. This job never touches
-  # the macos job or its files: attach-linux adds what it builds to the draft only once both jobs
-  # passed, so a Linux failure leaves the Mac release exactly as it would be without it.
+  # Experimental x86-64 Linux downloads, unsigned except for the AppImage's updater signature. This
+  # job never touches the macos job or its files: attach-linux adds what it builds to the draft only
+  # once both jobs passed, so a Linux failure leaves the Mac release exactly as it would be without it.
   linux:
     # Not newer: the app and engine need at least the glibc of the system that built them.
     runs-on: ubuntu-22.04
@@ -153,6 +153,18 @@ jobs:
           cp dist/desktop/*.deb "dist/release-linux/$stem.deb"
           (cd dist && zip -qr "release-linux/$stem-notices-and-sources.zip" legal)
           (cd dist/release-linux && sha256sum -- * > SHA256SUMS-linux && cat SHA256SUMS-linux)
+      # The AppImage people download is also what installed AppImages update to: the updater writes
+      # it over the running one. Signed with the macos job's updater key, which only this step sees,
+      # after SHA256SUMS-linux, which lists no .sig, as SHA256SUMS doesn't. attach-linux puts the
+      # signature in latest.json.
+      - name: Sign the AppImage for the updater
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          ./frontend/node_modules/.bin/tauri signer sign --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
+            dist/release-linux/*.AppImage
+          ls dist/release-linux/*.AppImage.sig
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-release
@@ -175,3 +187,20 @@ jobs:
           name: linux-release
           path: linux-release
       - run: gh release upload "$TAG" --clobber linux-release/*
+      # Installed AppImages update from the same latest.json as the Mac app, under `linux-x86_64`.
+      # Only that key is added, and the job fails unless everything else, the darwin-aarch64 entry
+      # above all, reads back exactly as the macos job wrote it, so the Mac feed can't change here.
+      - name: Add the AppImage to latest.json, leaving the Mac entries as they are
+        run: |
+          gh release download "$TAG" --pattern latest.json --dir feed
+          appimage=$(basename linux-release/*.AppImage)
+          jq --arg signature "$(cat "linux-release/$appimage.sig")" \
+            --arg url "https://github.com/$GH_REPO/releases/download/$TAG/$appimage" \
+            '.platforms["linux-x86_64"] = {signature: $signature, url: $url}' feed/latest.json > latest.json
+          jq -ce '.platforms["darwin-aarch64"]' feed/latest.json > darwin-before.json
+          jq -ce '.platforms["darwin-aarch64"]' latest.json > darwin-after.json
+          cmp darwin-before.json darwin-after.json
+          cmp <(jq -S 'del(.platforms["linux-x86_64"])' feed/latest.json) \
+            <(jq -S 'del(.platforms["linux-x86_64"])' latest.json)
+          jq '.platforms | keys' latest.json
+          gh release upload "$TAG" --clobber latest.json

@@ -269,6 +269,14 @@ jobs:
           for _ in $(seq 90); do curl -fsS http://127.0.0.1:8799/health && break; sleep 1; done
           curl -fsS http://127.0.0.1:8799/health
           curl -fsS -H "Authorization: Bearer ci-token" http://127.0.0.1:8799/api/grants | jq -e '.sandbox_ok'
+      # The app offers updates only as the AppImage, by asking Tauri which package it runs from
+      # (getBundleType), and Tauri's bundler writes that answer into each package's copy of the app.
+      - name: Each package knows which package it is
+        working-directory: ${{ runner.temp }}
+        run: |
+          grep -qa __TAURI_BUNDLE_TYPE_VAR_DEB app/usr/bin/*
+          "$GITHUB_WORKSPACE"/dist/desktop/*.AppImage --appimage-extract > /dev/null
+          grep -qa __TAURI_BUNDLE_TYPE_VAR_APP squashfs-root/usr/bin/*
       - name: The AppImage opens its window and starts its engine
         env:
           APPIMAGE_EXTRACT_AND_RUN: "1"
