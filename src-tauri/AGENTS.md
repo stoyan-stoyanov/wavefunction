@@ -25,3 +25,4 @@ Tauri v2 in Rust, plus one Objective-C file for notifications. Read the root [AG
 - Distinguish a successful build from a verified launch.
 - Linux sends every notification over one D-Bus connection kept for the app's life: GNOME removes all of an app's notifications when the connection that sent its first one closes, which rules out notify-rust (a connection per notification). A server replaces only an id it issued, so Linux keeps each chat's last one.
 - Per-platform code (`#[cfg(target_os)]`) goes in a module made for it, like `notifications.rs`; `lib.rs` keeps no more than it has ([macOS and Linux](../docs/ARCHITECTURE.md#macos-and-linux)).
+- The Linux main window is `"create": false` in `tauri.linux.conf.json`, and `setup` builds it from that config with `enable_clipboard_access()`: WebKitGTK refuses the page's clipboard reads otherwise, and no config key turns them on. Change its settings in the config.

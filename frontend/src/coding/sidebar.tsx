@@ -36,7 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { confirmAction } from "@/lib/confirm";
-import { beginWindowDrag } from "@/lib/titlebar";
+import { beginWindowDrag, dragRegion } from "@/lib/titlebar";
 import { chatTitle, codingApi, isActive, routineStatus, type CodingProject, type CodingThread } from "./api";
 import { installUpdate, restartToUpdate, useAppUpdate } from "@/lib/app-update";
 import { useCoding } from "./store";
@@ -609,7 +609,7 @@ export function Sidebar({
     <aside
       className="coding-sidebar"
       aria-label="Projects sidebar"
-      data-tauri-drag-region
+      {...dragRegion()}
       onMouseDown={beginWindowDrag}
     >
       <NavigationHeader onToggle={onToggleSidebar} />

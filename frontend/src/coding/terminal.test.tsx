@@ -9,6 +9,8 @@ const emulator = vi.hoisted(() => ({
   disposed: vi.fn(),
   // The columns the screen fits the terminal to, when set.
   width: 0,
+  keys: undefined as ((event: KeyboardEvent) => boolean) | undefined,
+  selection: "",
 }));
 type Size = { cols: number; rows: number };
 vi.mock("@xterm/xterm", () => ({
@@ -38,7 +40,18 @@ vi.mock("@xterm/xterm", () => ({
       this.resized = callback;
       return { dispose: vi.fn() };
     }
-    attachCustomKeyEventHandler() {}
+    attachCustomKeyEventHandler(handler: (event: KeyboardEvent) => boolean) {
+      emulator.keys = handler;
+    }
+    hasSelection() {
+      return emulator.selection !== "";
+    }
+    getSelection() {
+      return emulator.selection;
+    }
+    paste(text: string) {
+      emulator.inputs.at(-1)?.(text);
+    }
     focus() {}
     reset() {}
     writeln(text: string) {
@@ -104,6 +117,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   emulator.inputs.length = 0;
   emulator.width = 0;
+  emulator.keys = undefined;
+  emulator.selection = "";
   localStorage.clear();
   vi.mocked(codingApi.terminals).mockResolvedValue([session]);
   vi.mocked(codingApi.terminalOutput).mockImplementation(
@@ -254,4 +269,33 @@ it("types a command from the chat into its new terminal once the shell has the s
   // The screen polls again only after handling the prompt.
   await waitFor(() => expect(codingApi.terminalOutput).toHaveBeenCalledTimes(calls + 2));
   expect(codingApi.terminalInput).toHaveBeenCalledTimes(1);
+});
+it("copies and pastes on Ctrl+Shift+C and V only where there is no system menu", async () => {
+  const clipboard = { writeText: vi.fn().mockResolvedValue(undefined), readText: vi.fn() };
+  Object.defineProperty(navigator, "clipboard", { value: clipboard, configurable: true });
+  vi.stubGlobal("__TAURI_INTERNALS__", {});
+  render(<TerminalView thread={thread} />);
+  await waitFor(() => expect(emulator.keys).toBeDefined());
+  emulator.selection = "npm test";
+  const key = (key: string) =>
+    new KeyboardEvent("keydown", { key, ctrlKey: true, shiftKey: true, cancelable: true });
+  // The Mac's Edit menu copies; the keys stay the terminal's.
+  expect(emulator.keys!(key("C"))).toBe(true);
+  expect(clipboard.writeText).not.toHaveBeenCalled();
+
+  vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (X11; Linux x86_64)");
+  const copy = key("C");
+  expect(emulator.keys!(copy)).toBe(false);
+  expect(copy.defaultPrevented).toBe(true);
+  expect(clipboard.writeText).toHaveBeenCalledExactlyOnceWith("npm test");
+  clipboard.readText.mockResolvedValue("git status");
+  expect(emulator.keys!(key("V"))).toBe(false);
+  await waitFor(() =>
+    expect(codingApi.terminalInput).toHaveBeenCalledWith(
+      "one",
+      "shell-one",
+      "git status",
+      expect.any(AbortSignal),
+    ),
+  );
 });

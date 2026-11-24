@@ -12,7 +12,7 @@ import {
   realModelEnabled,
   type ProviderId,
 } from "@/lib/models";
-import { beginWindowDrag } from "@/lib/titlebar";
+import { beginWindowDrag, dragRegion } from "@/lib/titlebar";
 import { useSettings } from "@/store/settings";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -161,7 +161,7 @@ function Frame({ step, visual, children }: { step?: Step; visual?: ReactNode; ch
           illustration. */}
       <aside
         className="onboarding-aside flex shrink-0 flex-col lg:w-2/5 lg:pb-8"
-        data-tauri-drag-region
+        {...dragRegion()}
         onMouseDown={beginWindowDrag}
       >
         {/* Level with the window controls, and as far from the column's edge as they are from the
@@ -192,11 +192,7 @@ function Frame({ step, visual, children }: { step?: Step; visual?: ReactNode; ch
         ) : null}
       </aside>
       <div className="onboarding-pane flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto">
-        <header
-          className="hidden h-10 shrink-0 lg:block"
-          data-tauri-drag-region
-          onMouseDown={beginWindowDrag}
-        />
+        <header className="hidden h-10 shrink-0 lg:block" {...dragRegion()} onMouseDown={beginWindowDrag} />
         {/* The title stays where it is as a step's content changes below it: choosing a provider
             swaps its list for a shorter form. */}
         <main className="mx-auto w-full max-w-xl flex-1 px-6 pb-12 pt-10 lg:pt-14">
