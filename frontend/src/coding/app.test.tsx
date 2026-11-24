@@ -249,6 +249,9 @@ it("preserves a collapsed sidebar when returning from settings", async () => {
 });
 
 it("drags and zooms the window around the chat title, which renames the chat on a click", () => {
+  // The macOS window, whose page draws the title bar.
+  const desktop = window as unknown as Record<string, unknown>;
+  desktop.__TAURI_INTERNALS__ = {};
   document.documentElement.classList.add("tauri");
   try {
     render(<CodingApp />);
@@ -287,6 +290,7 @@ it("drags and zooms the window around the chat title, which renames the chat on 
     expect(within(toolbar).getByRole("textbox", { name: "Rename Fix the parser" })).toHaveFocus();
   } finally {
     document.documentElement.classList.remove("tauri");
+    delete desktop.__TAURI_INTERNALS__;
   }
 });
 

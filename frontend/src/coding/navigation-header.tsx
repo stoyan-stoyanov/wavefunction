@@ -1,5 +1,6 @@
 import { PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { dragRegion } from "@/lib/titlebar";
 
 export function SidebarToggle({
   onToggle,
@@ -25,7 +26,7 @@ export function SidebarToggle({
 export function NavigationHeader({ onToggle }: { onToggle?: () => void }) {
   return (
     <div className="navigation-header">
-      <div className="navigation-topbar" data-tauri-drag-region>
+      <div className="navigation-topbar" {...dragRegion()}>
         {onToggle ? <SidebarToggle onToggle={onToggle} /> : null}
       </div>
     </div>

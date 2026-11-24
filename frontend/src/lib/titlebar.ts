@@ -1,6 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { MouseEvent } from "react";
+import { has } from "@/lib/platform";
+
+/**
+ * Makes a toolbar part of the window's title bar: dragging it moves the window and a double-click
+ * zooms it. Only where the page draws the title bar; the Linux window has the system's own above it.
+ */
+export function dragRegion(): { "data-tauri-drag-region"?: true } {
+  return has.windowChrome() ? { "data-tauri-drag-region": true } : {};
+}
 
 export function beginWindowDrag(event: MouseEvent<HTMLElement>) {
   if (event.button !== 0 || event.detail > 2 || !document.documentElement.classList.contains("tauri")) return;

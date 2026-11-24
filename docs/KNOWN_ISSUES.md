@@ -35,7 +35,7 @@ Linux is experimental and community-supported: releases have unsigned x86-64 dow
 - In a Git worktree the app made, a command can't rewrite the shared `packed-refs` or `shallow` file: git fails with "Device or resource busy" when deleting a packed branch or tag, packing refs (`git pack-refs`, `git gc`) or deepening a shallow clone. Commits, fetches and deleting refs that aren't packed work. Seatbelt can allow one file by its path, including git's `packed-refs.lock` beside it; a mount can't, so the shared Git folder is a throwaway copy where only the granted entries are mounted back, and renaming over a mounted file fails.
 - A command without network access still has a loopback interface of its own: a server it starts there is reachable only from inside that command, so the computer-use desktop can't open it either.
 - The downloads need glibc 2.35 or later (Ubuntu 22.04, Debian 12), the version they're built against.
-- Notifications, dictation, automatic updates and the in-app installs of the Microsoft, Google and email integrations are macOS-only.
+- Dictation and the in-app installs of the Microsoft, Google and email integrations are macOS-only. The AppImage updates itself; the `.deb` doesn't.
 - Computer use starts and restarts only a Docker that systemd runs: Docker Desktop's `docker-desktop` user service, a rootless Docker Engine's `docker` user service, or the system's `docker` service, through `pkexec`, which needs the desktop's polkit agent to ask for the password. Any other Docker the user starts themselves.
 
 ## GitHub through the proxy
