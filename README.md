@@ -119,10 +119,10 @@ open src-tauri/target/release/bundle/macos/Wavefunction.app
 
 Linux support is experimental and community-supported. Computer use, notifications and dictation are macOS-only for now. Commands run in a [Bubblewrap](https://github.com/containers/bubblewrap) sandbox with a seccomp filter, from the same grants as on macOS; without `/usr/bin/bwrap` the app runs no commands at all.
 
-Each [release](https://github.com/stoyan-stoyanov/wavefunction/releases/latest) has x86-64 downloads for Ubuntu 22.04, Debian 12 and later. They aren't signed: compare them with the release's `SHA256SUMS-linux` (`sha256sum -c --ignore-missing SHA256SUMS-linux`). They don't update themselves yet, so download each new release to update.
+Each [release](https://github.com/stoyan-stoyanov/wavefunction/releases/latest) has x86-64 downloads for Ubuntu 22.04, Debian 12 and later. They aren't signed: compare them with the release's `SHA256SUMS-linux` (`sha256sum -c --ignore-missing SHA256SUMS-linux`).
 
-- **`.deb`**: `sudo apt install ./Wavefunction-<version>-linux-x86_64.deb`, which also installs Bubblewrap.
-- **AppImage**: install Bubblewrap (`sudo apt install bubblewrap`), then `chmod +x Wavefunction-<version>-linux-x86_64.AppImage` and run it.
+- **AppImage**: install Bubblewrap (`sudo apt install bubblewrap`), then `chmod +x Wavefunction-<version>-linux-x86_64.AppImage` and run it. It updates itself, as the Mac app does, from **Settings › About**, so keep it in a folder you can write to, such as `~/Applications`.
+- **`.deb`**: `sudo apt install ./Wavefunction-<version>-linux-x86_64.deb`, which also installs Bubblewrap. It doesn't update itself: install each new release's `.deb` the same way.
 
 To build it yourself, on arm64 among others, follow these steps for Ubuntu 24.04 or later:
 

@@ -19,8 +19,8 @@ function set(next: UpdateState) {
   listeners.forEach((listener) => listener());
 }
 
-/** Only the packaged macOS app updates itself; a development build has nothing to replace, and
- * Linux builds come from source, with no release to update to. */
+/** Only the packaged app updates itself, and on Linux only the AppImage (has.updates); a
+ * development build has nothing to replace. */
 const updatable = () => has.updates() && !import.meta.env.DEV;
 
 export async function checkForUpdate() {

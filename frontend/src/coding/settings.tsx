@@ -242,11 +242,19 @@ function Updates() {
     return (
       <NativeSection title="Updates">
         <div className="overflow-hidden rounded-xl bg-card">
-          <SettingsRow
-            title="Built from source"
-            description="Linux builds don't update themselves. Pull the latest code and build again to update."
-            control={null}
-          />
+          {has.debPackage() ? (
+            <SettingsRow
+              title="Installed from the .deb"
+              description="The .deb doesn't update itself. Download the newer one from the releases page and install it with your package manager."
+              control={null}
+            />
+          ) : (
+            <SettingsRow
+              title="Built from source"
+              description="This build doesn't update itself. Pull the latest code and build again to update."
+              control={null}
+            />
+          )}
         </div>
       </NativeSection>
     );

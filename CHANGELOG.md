@@ -6,7 +6,8 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ### Added
 
-- Each release has Linux downloads for x86-64: an AppImage and a `.deb`, for Ubuntu 22.04, Debian 12 and later. They're experimental and unsigned, and don't update themselves yet; the README says how to install them. ([#83](https://github.com/stoyan-stoyanov/wavefunction/pull/83))
+- Each release has Linux downloads for x86-64: an AppImage and a `.deb`, for Ubuntu 22.04, Debian 12 and later. They're experimental and unsigned; the README says how to install them. ([#83](https://github.com/stoyan-stoyanov/wavefunction/pull/83))
+- On Linux, the AppImage updates itself from Settings › About, as the Mac app does. The `.deb` says there to install the newer `.deb` with your package manager. (PR_LINK)
 
 ### Fixed
 

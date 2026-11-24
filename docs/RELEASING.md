@@ -55,13 +55,16 @@ About the real-model check:
    - `SHA256SUMS`
    The draft's description is the same changelog section.
 
-   A separate `linux` job builds the experimental x86-64 downloads on Ubuntu 22.04, unsigned. Once both it and the Mac build pass, `attach-linux` adds them to the draft:
+   A separate `linux` job builds the experimental x86-64 downloads on Ubuntu 22.04, unsigned except for the AppImage's updater signature, made with the same updater key. Once both it and the Mac build pass, `attach-linux` adds them to the draft:
    - `Wavefunction-<version>-linux-x86_64.AppImage` and `.deb`
+   - `Wavefunction-<version>-linux-x86_64.AppImage.sig`, which installed AppImages check the update against
    - `Wavefunction-<version>-linux-x86_64-notices-and-sources.zip`: the same notices for the Linux build, also inside both packages under `/usr/lib/Wavefunction/legal`, plus the bundled WebKitGTK, GTK, GLib and OpenSSL with their Ubuntu source packages
    - `SHA256SUMS-linux`, separate from `SHA256SUMS`
 
-   A Linux failure leaves the Mac draft as it is. Re-run the failed jobs to retry it without rebuilding the Mac app, or publish without Linux files.
-4. Review the draft. Install its DMG and use it for a few minutes: send a message, attach a document, and check that **Settings › About** shows the new version. Wait for `attach-linux` if you want the Linux files in the release. Then publish it.
+   It then downloads the draft's `latest.json`, adds a `linux-x86_64` entry for the AppImage, and uploads it again in place of the Mac build's. The job fails, keeping the Mac build's file, unless the `darwin-aarch64` entry and everything else in the file read back unchanged.
+
+   A Linux failure leaves the Mac draft as it is. Re-run the failed jobs to retry it without rebuilding the Mac app, or publish without Linux files; installed AppImages then report that the update has no Linux download and stay on their version.
+4. Review the draft. Install its DMG and use it for a few minutes: send a message, attach a document, and check that **Settings › About** shows the new version. Wait for `attach-linux` if you want the Linux files in the release: it replaces `latest.json`, so publishing before it finishes can leave the published release without one for a moment. Then publish it.
 5. Open an installed copy of the previous version. Shortly after launch, it should offer the update in **Settings › About**, with this release's notes, and install it. No local check can cover this step.
 
 ## The changelog
@@ -75,6 +78,8 @@ Before 1.0, a release that adds or changes behaviour raises the minor version (0
 ## Updates
 
 The app checks `https://github.com/stoyan-stoyanov/wavefunction/releases/latest/download/latest.json` shortly after launch and every six hours, but only in the packaged app, not in development builds. When a newer version is published, **Update to x.y.z** appears above Settings, and **Settings › About** offers **Install and restart** with the release's notes.
+
+On Linux only the AppImage checks: it downloads the release's AppImage and writes it over its own file. The `.deb` and builds from source say in **Settings › About** how to update them instead.
 
 The download is verified against the updater public key in `src-tauri/tauri.conf.json`, then replaces the app. The restart goes through the same check as quitting: it asks first when tasks are running, and stops the engine before the new version starts. Declining applies the update on the next launch.
 
