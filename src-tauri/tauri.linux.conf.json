@@ -17,6 +17,11 @@
     ]
   },
   "bundle": {
-    "targets": ["deb", "appimage"]
+    "targets": ["deb", "appimage"],
+    "linux": {
+      "deb": {
+        "depends": ["bubblewrap", "xdg-utils"]
+      }
+    }
   }
 }

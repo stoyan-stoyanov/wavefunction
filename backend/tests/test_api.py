@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import sys
+
+import pytest
 from fastapi.testclient import TestClient
 
 from wavefunction import main
@@ -40,6 +44,31 @@ def test_grants_are_stored_and_the_app_s_own_data_cannot_be_granted(tmp_path, mo
 
         client.request("DELETE", f"/api/grants?path={allowed}")
         assert client.get("/api/grants").json()["grants"] == []
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux's sandbox and AppArmor")
+def test_settings_says_how_to_let_bwrap_start_where_apparmor_stops_it(tmp_path, monkeypatch) -> None:
+    """Ubuntu 23.10 and later let only programs with an AppArmor profile make user namespaces, so
+    bwrap refuses every command. Settings › Access then names the cause and the fix, and says no
+    more than bwrap where AppArmor allows them."""
+    from wavefunction import sandbox, sandbox_linux
+
+    async def refused(self, command, **kwargs):
+        return sandbox.CommandResult(1, "", "bwrap: setting up uid map: Permission denied\n")
+
+    monkeypatch.setattr(sandbox_linux, "available", lambda: True)
+    monkeypatch.setattr(sandbox.Sandbox, "run", refused)
+    restricted = tmp_path / "apparmor_restrict_unprivileged_userns"
+    monkeypatch.setattr(sandbox_linux, "APPARMOR_USERNS", restricted)
+
+    restricted.write_text("1\n")
+    problem = asyncio.run(sandbox.self_test(tmp_path / "scratch"))
+    assert problem and "setting up uid map: Permission denied. AppArmor" in problem
+    assert "`sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0`" in problem
+
+    restricted.write_text("0\n")
+    problem = asyncio.run(sandbox.self_test(tmp_path / "scratch"))
+    assert problem and problem.endswith("setting up uid map: Permission denied")
 
 
 def test_user_themes_load_from_the_themes_folder_with_assets_inlined(tmp_path, monkeypatch) -> None:

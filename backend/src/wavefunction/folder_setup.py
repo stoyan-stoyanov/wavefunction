@@ -9,6 +9,7 @@ from typing import Any
 from langchain_core.tools import BaseTool, tool
 from langgraph.types import interrupt
 
+from . import platforms
 from .sandbox import Grant
 
 FOLDER, REPOSITORY = "folder-access", "repository-folder"
@@ -96,10 +97,10 @@ def build_choose_repository_folder(working_directory: str | None) -> BaseTool:
 
     @tool("choose_repository_folder")
     def choose_repository_folder() -> str:
-        """Ask the user which folder on this Mac to work in, with a card in this conversation, and wait.
+        """Ask the user which folder on {this_computer} to work in, with a card in this conversation, and wait.
 
         Call it when the task needs a repository or folder and none is chosen, or when the user
-        wants you to work in another one. They pick it in the macOS folder picker, which lets
+        wants you to work in another one. They pick it in the {system} folder picker, which lets
         you change files there, and it stays your folder in later conversations here.
         """
         interrupt(
@@ -113,4 +114,4 @@ def build_choose_repository_folder(working_directory: str | None) -> BaseTool:
         )
 
     choose_repository_folder.metadata = {"readOnlyHint": True}
-    return choose_repository_folder
+    return platforms.worded(choose_repository_folder)

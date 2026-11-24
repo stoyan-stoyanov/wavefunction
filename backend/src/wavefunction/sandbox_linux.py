@@ -328,6 +328,27 @@ def refused_write(error: OSError) -> bool:
     return sys.platform == "linux" and error.errno == errno.EROFS
 
 
+# 1 where AppArmor lets only programs it has a profile for make user namespaces, as Ubuntu 23.10
+# and later do: then bwrap can't make the ones the sandbox runs in.
+APPARMOR_USERNS = Path("/proc/sys/kernel/apparmor_restrict_unprivileged_userns")
+
+
+def explained(problem: str) -> str:
+    """`problem`, which stopped the sandbox from running, with the fix when AppArmor is the likely
+    cause. Without the notes a command's errors get, which are for the agent."""
+    problem = problem.split("\n[", 1)[0]
+    with contextlib.suppress(OSError):
+        if APPARMOR_USERNS.read_text().strip() == "1":
+            return (
+                f"{problem}. AppArmor likely caused it: it keeps bwrap from making user namespaces "
+                "unless a profile allows it (kernel.apparmor_restrict_unprivileged_userns is 1). "
+                f"Add an AppArmor profile for {BWRAP} that allows userns, or run "
+                "`sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0`, which lasts until the "
+                "next restart."
+            )
+    return problem
+
+
 def unavailable_reason() -> str | None:
     """Why commands cannot run here, or None when the pieces are in place."""
     if not os.path.exists(BWRAP):
@@ -337,4 +358,4 @@ def unavailable_reason() -> str | None:
     return None
 
 
-__all__ = ["BWRAP", "available", "filter_file", "launch", "seccomp_filter", "unavailable_reason"]
+__all__ = ["BWRAP", "available", "explained", "filter_file", "launch", "seccomp_filter", "unavailable_reason"]

@@ -39,7 +39,7 @@ async def _first_request(
     root: Path, repo: Path, mode: Literal["auto", "plan"]
 ) -> tuple[list[BaseMessage], list[dict]]:
     """Send one message in a new chat in a synthetic repository and return the first model call."""
-    from wavefunction import github_cli, main
+    from wavefunction import github_cli, main, platforms
     from wavefunction.coding_workspace import ThreadInput
     from wavefunction.config import Settings
     from wavefunction.skill_discovery import discover
@@ -57,6 +57,15 @@ async def _first_request(
         async def no_account(root=None):
             return ""
 
+        # What the macOS app says, on every computer the tests run on: the fixture is the Mac's.
+        for name, answer in (
+            ("computer", "Mac"),
+            ("file_manager", "Finder"),
+            ("system", "macOS"),
+            ("opener", "open"),
+        ):
+            patch.setattr(platforms, name, lambda answer=answer: answer)
+        patch.setattr(platforms, "sandboxed_gh", lambda: True)
         patch.setattr(github_cli, "token", signed_out)
         patch.setattr(github_cli, "signed_in_account", no_account)
         patch.setattr(github_cli, "_command_token", None)

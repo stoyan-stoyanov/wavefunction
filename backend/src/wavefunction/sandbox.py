@@ -105,14 +105,27 @@ TOOL_CACHES = {
 }
 
 DEFAULT_TIMEOUT = 120
-# Added to a failed command's errors on Linux, where the sandbox's refusals read as a missing path or
-# a read-only file system rather than macOS's "Operation not permitted".
-LINUX_REFUSALS = ("No such file or directory", "Read-only file system")
+# Added to a failed command's errors on Linux, by what they say: the sandbox's refusals read as a
+# missing path, a read-only file system or a refused socket rather than macOS's "Operation not
+# permitted", and a system that keeps bwrap from making a user namespace stops every command.
 LINUX_NOTE = (
     "\n[The Linux sandbox shows only the folders this task may use, so others look missing, and "
     "refuses writes outside writable grants as a read-only file system. If the path exists, ask "
     "for it with request_folder_access.]"
 )
+LINUX_REFUSALS = {
+    "No such file or directory": LINUX_NOTE,
+    "Read-only file system": LINUX_NOTE,
+    # Go's words, so gh's and Docker's.
+    "socket: operation not permitted": (
+        "\n[The Linux sandbox refuses Unix sockets, which gh uses to reach GitHub and Docker its "
+        "daemon. Run such commands with outside_sandbox=true.]"
+    ),
+    "setting up uid map: Permission denied": (
+        "\n[The Linux sandbox could not start: this system keeps it from making a user namespace. "
+        "Tell the user; Settings › Access says how to allow it.]"
+    ),
+}
 # How much of each output stream rides in the result. Beyond that the whole stream is kept in
 # a file under the scratch space, and the result says where — `read_file` with offsets reads
 # the rest. The 40,000-byte cap this replaced drained and discarded everything past it.
@@ -1085,8 +1098,10 @@ class Sandbox:
             stdin=stdin,
             scan_detached=scan_detached,
         )
-        if sys.platform == "linux" and result.exit_code and any(r in result.stderr for r in LINUX_REFUSALS):
-            result.stderr += LINUX_NOTE
+        if sys.platform == "linux" and result.exit_code:
+            result.stderr += "".join(
+                dict.fromkeys(n for r, n in LINUX_REFUSALS.items() if r in result.stderr)
+            )
         return result
 
 
@@ -1149,15 +1164,24 @@ async def self_test(scratch: Path) -> str | None:
     try:
         denied = await sandbox.run(f"{probe} 2>/dev/null || cat ~/.ssh/known_hosts 2>/dev/null", timeout=15)
     except Exception as error:  # noqa: BLE001 - any failure here means unproven, so unsafe
-        return f"the sandbox could not be started: {error}"
+        return _explained(f"the sandbox could not be started: {error}")
     if denied.exit_code == 0 and denied.stdout.strip():
         return "the sandbox allowed a read it should have denied"
 
     allowed = await sandbox.run("echo ok", timeout=15)
     if allowed.exit_code != 0 or allowed.stdout.strip() != "ok":
-        return f"the sandbox blocked a command it should have allowed: {allowed.stderr.strip()}"
+        return _explained(f"the sandbox blocked a command it should have allowed: {allowed.stderr.strip()}")
 
     return None
+
+
+def _explained(problem: str) -> str:
+    """Why the sandbox failed to run, with what likely caused it where that is known."""
+    if sys.platform != "linux":
+        return problem
+    from . import sandbox_linux
+
+    return sandbox_linux.explained(problem)
 
 
 def _unavailable() -> str:

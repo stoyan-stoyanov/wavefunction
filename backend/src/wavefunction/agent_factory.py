@@ -339,13 +339,13 @@ def build_agent(spec: AgentSpecV2, models: ModelGateway, context: ToolContext, *
     # Common instructions apply consistently to every captured task spec. What changes — the
     # date, the local environment, GitHub sign-in, AGENTS.md — is said in the conversation
     # (EnvironmentMiddleware), so this stays the same for the whole conversation.
-    from .local_coding import LOCAL_GUIDANCE
+    from .local_coding import local_guidance
 
     system_prompt = (
         spec.system_prompt
         + HARNESS_PREAMBLE
         + ((HELPER_GUIDANCE if context.parent_run_id else PARENT_GUIDANCE) if context.run_id else "")
-        + (LOCAL_GUIDANCE if local else "")
+        + (local_guidance() if local else "")
         + (DESKTOP_PREAMBLE if any(name in COMPUTER_TOOL_NAMES for name in tool_names) else "")
     )
 

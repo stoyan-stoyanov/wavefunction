@@ -19,6 +19,7 @@ from typing import Literal
 from langchain_core.tools import tool
 from pydantic import ValidationError
 
+from . import platforms
 from .execution_policy import ToolCallRejected, excerpt_text
 from .repository import now_iso
 from .routine_timing import Interval, Once, describe, from_words, next_due, parse
@@ -306,7 +307,7 @@ def build_routine_tools(context):
         in the project's folder, and keeps running after this chat ends. Set report_back=true
         only when this chat needs each result: then every finished run is sent here as a new
         message, and you can cancel_routine once it has done its job. Routines run while
-        Wavefunction is open on this Mac; times are this Mac's clock, 24-hour.
+        Wavefunction is open on {this_computer}; times are {this_computer}'s clock, 24-hour.
 
         Args:
             title: A short name for the routine's chat.
@@ -373,4 +374,4 @@ def build_routine_tools(context):
         return f"Stopped routine {routine_id.strip()}. Its chat stays as an ordinary chat."
 
     list_routines.metadata = {"readOnlyHint": True}
-    return [create_routine, list_routines, cancel_routine]
+    return [platforms.worded(create_routine), list_routines, cancel_routine]

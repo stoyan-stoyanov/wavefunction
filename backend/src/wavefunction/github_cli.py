@@ -17,6 +17,7 @@ import re
 import time
 from pathlib import Path
 
+from . import platforms
 from .connectors import SignInRequired
 from .local_integrations import executable, run_cli
 
@@ -47,7 +48,7 @@ async def token(root: Path | None = None) -> str:
         found = ""
     if not re.fullmatch(r"[\w.-]+", found):
         # Not gh's words: whatever it printed stays out of errors and logs.
-        raise SignInRequired("the GitHub CLI on this Mac is not signed in to GitHub")
+        raise SignInRequired(f"the GitHub CLI on {platforms.this_computer()} is not signed in to GitHub")
     return found
 
 
@@ -98,7 +99,8 @@ async def current_token() -> str:
                     _command_token = (now, stamp, await token())
                 except SignInRequired:
                     _command_token = (now, stamp, "")
-    return _command_token[2]
+    # Set by now: fresh, or just asked for.
+    return _command_token[2] if _command_token else ""
 
 
 async def commands_signed_in() -> bool:
@@ -117,11 +119,11 @@ async def inspect(root: Path | None) -> dict:
     try:
         result["version"] = (await run_cli([binary, "--version"], timeout=15)).strip().splitlines()[0]
     except (ValueError, OSError, IndexError):
-        return {**result, "error": "The GitHub CLI on this Mac did not start."}
+        return {**result, "error": f"The GitHub CLI on {platforms.this_computer()} did not start."}
     if (found := re.search(r"(\d+)\.(\d+)", result["version"])) and (int(found[1]), int(found[2])) < OLDEST:
         return {
             **result,
-            "error": f"This needs GitHub CLI 2.40 or later; this Mac has {result['version']}. "
+            "error": f"This needs GitHub CLI 2.40 or later; {platforms.this_computer()} has {result['version']}. "
             "Update it, then check again.",
         }
     said: list[str] = []

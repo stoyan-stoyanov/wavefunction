@@ -54,7 +54,14 @@ About the real-model check:
    - `Wavefunction-<version>-macos-arm64-notices-and-sources.zip`: the third-party notices, also inside the app under `Contents/Resources/legal`, and the source archives of the bundled Python and Rust dependencies
    - `SHA256SUMS`
    The draft's description is the same changelog section.
-4. Review the draft. Install its DMG and use it for a few minutes: send a message, attach a document, and check that **Settings › About** shows the new version. Then publish it.
+
+   A separate `linux` job builds the experimental x86-64 downloads on Ubuntu 22.04, unsigned. Once both it and the Mac build pass, `attach-linux` adds them to the draft:
+   - `Wavefunction-<version>-linux-x86_64.AppImage` and `.deb`
+   - `Wavefunction-<version>-linux-x86_64-notices-and-sources.zip`: the same notices for the Linux build, also inside both packages under `/usr/lib/Wavefunction/legal`, plus the bundled WebKitGTK, GTK, GLib and OpenSSL with their Ubuntu source packages
+   - `SHA256SUMS-linux`, separate from `SHA256SUMS`
+
+   A Linux failure leaves the Mac draft as it is. Re-run the failed jobs to retry it without rebuilding the Mac app, or publish without Linux files.
+4. Review the draft. Install its DMG and use it for a few minutes: send a message, attach a document, and check that **Settings › About** shows the new version. Wait for `attach-linux` if you want the Linux files in the release. Then publish it.
 5. Open an installed copy of the previous version. Shortly after launch, it should offer the update in **Settings › About**, with this release's notes, and install it. No local check can cover this step.
 
 ## The changelog
