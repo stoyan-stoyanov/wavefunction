@@ -280,6 +280,9 @@ def main(args):
 
         try:
             start()
+            # The frozen engine's own sandbox self-check, as Settings › Access shows it.
+            grants = request("GET", "/api/grants")
+            assert grants["sandbox_ok"], grants.get("sandbox_problem")
             first = request(
                 "POST", "/api/coding/threads", json={"title": "Frozen check", "folder": str(folder)}
             )

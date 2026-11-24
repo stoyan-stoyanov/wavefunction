@@ -153,7 +153,9 @@ def main(args):
             assert workspace["agent_id"] and {thread["id"], second["id"]} <= {
                 item["id"] for item in workspace["threads"]
             }
-            assert len(request("GET", "/api/skills")) >= 3
+            # The skills bundled in the app (`/api/skills` lists only the user's own, none here).
+            inventory = request("GET", "/api/coding/skills", params={"thread_id": thread["id"]})
+            assert sum(skill["source"] == "builtin" for skill in inventory["skills"]) >= 3, inventory
             base = f"/api/coding/threads/{thread['id']}"
             content = request("GET", base + "/file", params={"path": "app.py"})
             request(
