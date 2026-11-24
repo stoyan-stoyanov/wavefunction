@@ -7,6 +7,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 ### Fixed
 
 - On Linux, the app says "this computer", "File manager" and Ctrl where it said "this Mac", "Finder" and ⌘, and no longer shows a dictation button, which needs macOS.
+- On Linux, Ctrl+Q quits and F11 switches to full screen, the terminal copies and pastes with Ctrl+Shift+C and Ctrl+Shift+V, and the app's toolbars no longer move the window like a second title bar.
 
 ## 0.5.0 - 2026-11-23
 

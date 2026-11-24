@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { codingApi, type CodingThread, type TreeEntry } from "./api";
 import { TerminalView } from "./terminal";
 import { ChangesView } from "./changes";
-import { beginWindowDrag } from "@/lib/titlebar";
+import { beginWindowDrag, dragRegion } from "@/lib/titlebar";
 import "./workbench-ui.css";
 
 export type WorkbenchTab = "files" | "changes" | "terminal";
@@ -253,7 +253,7 @@ export function Workbench({
     <aside className="coding-workbench" aria-label="Repository workbench">
       <div
         className="workbench-toolbar flex shrink-0 items-center gap-1 border-b border-border px-2"
-        data-tauri-drag-region
+        {...dragRegion()}
         onMouseDown={beginWindowDrag}
       >
         <div className="workbench-tabs" role="tablist" aria-label="Repository tools">

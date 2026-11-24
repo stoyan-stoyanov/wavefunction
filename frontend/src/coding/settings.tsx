@@ -20,7 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { SettingsRow } from "@/views/settings-row";
 import { useSettings } from "@/store/settings";
 import { api } from "@/lib/api";
-import { beginWindowDrag } from "@/lib/titlebar";
+import { beginWindowDrag, dragRegion } from "@/lib/titlebar";
 import { checkForUpdate, installUpdate, restartToUpdate, useAppUpdate } from "@/lib/app-update";
 import { has, words } from "@/lib/platform";
 import { codingApi, type CodingSnapshot } from "./api";
@@ -332,7 +332,7 @@ export default function CodingSettings({
           <aside
             className="coding-sidebar coding-settings-sidebar"
             aria-label="Settings sidebar"
-            data-tauri-drag-region
+            {...dragRegion()}
             onMouseDown={beginWindowDrag}
           >
             <NavigationHeader onToggle={() => setSidebarVisible(false)} />
@@ -366,7 +366,7 @@ export default function CodingSettings({
         <header
           className="shell-titlebar floating-titlebar"
           aria-label="Settings toolbar"
-          data-tauri-drag-region
+          {...dragRegion()}
           onMouseDown={beginWindowDrag}
         >
           {!sidebarVisible ? <SidebarToggle collapsed onToggle={() => setSidebarVisible(true)} /> : null}

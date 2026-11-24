@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { has } from "@/lib/platform";
 import { ApiError } from "@/lib/transport";
 import { codingApi, type CodingThread, type TerminalSession } from "./api";
 import { selectedTerminalKey, waitingCommands } from "./run-command";
@@ -65,6 +66,32 @@ function TerminalFind({
       </Button>
     </>
   );
+}
+
+/**
+ * The shortcuts a terminal handles itself; a key they take never reaches the shell. Without a system
+ * menu there is no Edit menu to copy and paste with, and Ctrl+C and Ctrl+V belong to the shell, so
+ * Ctrl+Shift+C and V do it, as in other terminals there.
+ */
+function terminalKeys(terminal: Terminal, toggleFind: () => void, open: () => boolean) {
+  return (event: KeyboardEvent) => {
+    if (event.type !== "keydown" || !event.shiftKey) return true;
+    const key = event.key.toLowerCase();
+    if ((event.metaKey || event.ctrlKey) && key === "f") {
+      toggleFind();
+      return false;
+    }
+    if (has.systemMenu() || !event.ctrlKey || event.altKey || (key !== "c" && key !== "v")) return true;
+    event.preventDefault();
+    if (key === "v")
+      void navigator.clipboard
+        .readText()
+        .then((text) => open() && terminal.paste(text))
+        .catch(() => undefined);
+    else if (terminal.hasSelection())
+      void navigator.clipboard.writeText(terminal.getSelection()).catch(() => undefined);
+    return false;
+  };
 }
 
 function TerminalScreen({
@@ -144,18 +171,13 @@ function TerminalScreen({
       clearTimeout(inputTimer);
       inputTimer = setTimeout(flush, 12);
     });
-    terminal.attachCustomKeyEventHandler((event) => {
-      if (
-        event.type === "keydown" &&
-        (event.metaKey || event.ctrlKey) &&
-        event.shiftKey &&
-        event.key.toLowerCase() === "f"
-      ) {
-        setFinding((v) => !v);
-        return false;
-      }
-      return true;
-    });
+    terminal.attachCustomKeyEventHandler(
+      terminalKeys(
+        terminal,
+        () => setFinding((v) => !v),
+        () => alive,
+      ),
+    );
     let colors = "";
     const updateTheme = () => {
       if (!host.current) return;
