@@ -39,7 +39,7 @@ ERRORS = {
     "approval_required": "Microsoft requires permission or administrator approval. Ask your organization to approve Microsoft Graph Command Line Tools, then sign in again.",
     "access_denied": "Microsoft denied access to this resource. Check the account, requested permissions, and your organization’s access policy.",
     "account_mismatch": "Microsoft returned a different account. Sign in to the account this agent is using.",
-    "cache_unavailable": "Microsoft could not save sign-in securely on this Mac. Check Keychain access and try again.",
+    "cache_unavailable": f"Microsoft could not save sign-in securely on {platforms.this_computer()}. Check Keychain access and try again.",
     "not_found": "Microsoft could not find this resource. Check its ID and the connected account.",
     "throttled": "Microsoft is limiting requests. Wait briefly before trying again.",
     "request_failed": "Microsoft could not complete the request. Check your connection and the requested resource. A failed write may already have reached Microsoft; check its result before retrying.",

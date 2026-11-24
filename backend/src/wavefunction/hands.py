@@ -19,6 +19,7 @@ from typing import Any
 from langchain_core.tools import BaseTool, tool
 from pydantic import BaseModel, Field
 
+from . import platforms
 from .execution_policy import ToolCallRejected, emit_command_output
 from .irreversible import command_danger
 from .sandbox import Grant, Sandbox, run_outside
@@ -107,16 +108,20 @@ def existing_folder(folder: Path) -> Path:
     return folder
 
 
-RUN_COMMAND = (
-    "Run /bin/sh -c on macOS; returns exit code/output. No stdin: use noninteractive flags. "
-    "Background children stop on return: start and use a test server in one call, or keep one "
-    "running with start_terminal. An app opened with open (outside the sandbox) keeps running; "
-    "open apps or pages on the user's Mac only when they ask. Long output returns "
-    "a tail and file path; read_file with offsets retrieves the rest. A command stopped at its "
-    "timeout returns what it printed so far: do not pipe through tail or head, which hides it. "
-    "Read and search files with read_file, find_files and search_files, not cat, sed, head or "
-    "grep: their output is bounded, and write_file replaces only files read with read_file. "
-)
+def run_command_description() -> str:
+    """What run_command's description says before its arguments, in this computer's words."""
+    return (
+        f"Run /bin/sh -c on {platforms.system()}; returns exit code/output. No stdin: use noninteractive flags. "
+        "Background children stop on return: start and use a test server in one call, or keep one "
+        f"running with start_terminal. An app opened with {platforms.opener()} (outside the sandbox) keeps running; "
+        f"open apps or pages on the user's {platforms.computer()} only when they ask. Long output returns "
+        "a tail and file path; read_file with offsets retrieves the rest. A command stopped at its "
+        "timeout returns what it printed so far: do not pipe through tail or head, which hides it. "
+        "Read and search files with read_file, find_files and search_files, not cat, sed, head or "
+        "grep: their output is bounded, and write_file replaces only files read with read_file. "
+    )
+
+
 RUN_COMMAND_ARGS = (
     "workdir defaults to the repository; overrides may be absolute or repository-relative. "
     "Use request_folder_access for other folders. Other sandbox restrictions: request "
@@ -326,7 +331,7 @@ def build_hands(
     @tool(
         "run_command",
         response_format="content_and_artifact",
-        description=RUN_COMMAND
+        description=run_command_description()
         + "Sandboxed by default; timeout_seconds defaults to 120. "
         + RUN_COMMAND_ARGS,
     )

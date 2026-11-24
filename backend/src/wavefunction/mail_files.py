@@ -20,7 +20,7 @@ from typing import Any
 
 from langchain_core.tools import BaseTool, tool
 
-from . import computer
+from . import computer, platforms
 from .desktop_files import _allow, _fits, _mac_path, _plain_name, _write_mac
 from .local_integrations import run_cli
 from .toolkit import ToolContext
@@ -108,17 +108,18 @@ def build_mail_attachment_tools(context: ToolContext, servers: list[Any]) -> lis
             raise ValueError("This mailbox was removed, disabled, or reconnected. Start a new run to use it.")
         return server
 
+    mac = platforms.computer()
     description = (
-        "Save an email's attachments into a folder on the user's Mac. "
+        f"Save an email's attachments into a folder on the user's {mac}. "
         "Use it for what came with a message; never open webmail in the desktop for this. "
-        "The user is asked to allow a Mac folder they have not allowed yet. Nothing is replaced: "
+        f"The user is asked to allow a {mac} folder they have not allowed yet. Nothing is replaced: "
         "a name already taken gets a number, and the result says which.\n\n"
         "Args:\n"
         "    message_id: The message, from search_mail or read_mail.\n"
         "    mailbox: The mailbox that message_id belongs to.\n"
         "    names: Only these attachments, by the file names read_mail lists. Empty saves them all.\n"
-        "    destination: A folder on the user's Mac. Empty is ~/Downloads.\n"
-        "    folder: Leave empty; use destination for the Mac folder.\n"
+        f"    destination: A folder on the user's {mac}. Empty is ~/Downloads.\n"
+        f"    folder: Leave empty; use destination for the {mac} folder.\n"
         + (
             "    account: The mailbox's address: " + " or ".join(sorted(accounts)) + ".\n"
             if len(accounts) > 1
@@ -136,7 +137,7 @@ def build_mail_attachment_tools(context: ToolContext, servers: list[Any]) -> lis
         account: str = "",
     ) -> tuple[str, dict]:
         if folder.strip():
-            raise ValueError("Give the Mac folder as `destination` and leave `folder` empty.")
+            raise ValueError(f"Give the {mac} folder as `destination` and leave `folder` empty.")
         connector = accounts.get(account.strip()) or (
             next(iter(accounts.values())) if len(accounts) == 1 else None
         )
@@ -147,7 +148,7 @@ def build_mail_attachment_tools(context: ToolContext, servers: list[Any]) -> lis
             raise ValueError("Saving files is disabled for this task.")
         target = _mac_path(destination.strip() or "~/Downloads", "folder")
         if not target.is_dir():
-            raise ValueError(f"There is no folder at {target} on this Mac.")
+            raise ValueError(f"There is no folder at {target} on {platforms.this_computer()}.")
         # Ask before downloading: a paused call starts again from its first line.
         target = _allow(context, target, writable=True)
         wanted = {name.strip().casefold() for name in names or [] if name.strip()}
@@ -194,7 +195,7 @@ def build_mail_attachment_tools(context: ToolContext, servers: list[Any]) -> lis
                     )
                     said.append(
                         f"Saved {name} ({computer.describe_size(len(data))}) from the email "
-                        f"to {written} on this Mac.{renamed}"
+                        f"to {written} on {platforms.this_computer()}.{renamed}"
                     )
                 except ValueError as error:
                     said.append(f"{original} was not saved: {error}")
