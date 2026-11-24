@@ -1,12 +1,12 @@
 # Security updates (switched on in the repository settings) open a pull request as soon as an
-# advisory affects a locked version. The weekly version updates below group minor and patch
-# releases into one pull request per ecosystem, and only take releases at least a week old, so a
-# hijacked release is usually pulled before it reaches a pull request. Major upgrades are done by
-# hand; security fixes still arrive for them.
+# advisory affects a locked version. Routine version updates are off: open-pull-requests-limit: 0
+# stops them without touching security updates, which have their own limit. The groups, cooldown
+# and major-version rules below stay, so removing the limits switches version updates back on.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /frontend
+    open-pull-requests-limit: 0
     schedule:
       interval: weekly
     cooldown:
@@ -20,6 +20,7 @@ updates:
         update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /website
+    open-pull-requests-limit: 0
     schedule:
       interval: weekly
     cooldown:
@@ -33,6 +34,7 @@ updates:
         update-types: ["version-update:semver-major"]
   - package-ecosystem: uv
     directory: /backend
+    open-pull-requests-limit: 0
     schedule:
       interval: weekly
     cooldown:
@@ -46,6 +48,7 @@ updates:
         update-types: ["version-update:semver-major"]
   - package-ecosystem: cargo
     directory: /src-tauri
+    open-pull-requests-limit: 0
     schedule:
       interval: weekly
     cooldown:
@@ -59,6 +62,7 @@ updates:
         update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
+    open-pull-requests-limit: 0
     schedule:
       interval: weekly
     cooldown:
