@@ -1,13 +1,13 @@
-//! macOS notifications for a chat's task that finished or needs the user while the chat is not
-//! on screen. The backend decides what is due and holds this one request open until something
-//! is; this shows the result, except for the chat in view when the window has focus. A click
-//! opens that chat.
+//! Notifications for a chat's task that finished or needs the user while the chat is not on
+//! screen: macOS's notification center, or the desktop's notification service on Linux. The
+//! backend decides what is due and holds this one request open until something is; this shows
+//! the result, except for the chat in view when the window has focus. A click opens that chat.
 
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 use serde::Deserialize;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 /// The chat the page shows, or none on Settings and Connectors.
 #[derive(Default)]
@@ -22,7 +22,6 @@ const TEST: &str = "test";
 mod native {
     use super::*;
     use std::ffi::{c_char, c_void, CStr, CString};
-    use tauri::Emitter;
     type Sender = tokio::sync::oneshot::Sender<i32>;
     extern "C" {
         fn wf_notifications_init(callback: extern "C" fn(*const c_char)) -> bool;
@@ -46,18 +45,9 @@ mod native {
         let _ = sender.send(value);
     }
     extern "C" fn clicked(id: *const c_char) {
-        let id = unsafe { CStr::from_ptr(id) }.to_string_lossy().into_owned();
-        if let Some(app) = APP.get() {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.unminimize();
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
-            if id != TEST {
-                let _ = app.emit("notification-open", id);
-            }
-        }
+        super::clicked(&unsafe { CStr::from_ptr(id) }.to_string_lossy());
     }
+    pub const NOT_ALLOWED: &str = "Allow Wavefunction in System Settings › Notifications first.";
     pub fn init() -> bool {
         unsafe { wf_notifications_init(clicked) }
     }
@@ -92,26 +82,97 @@ mod native {
         }
     }
 }
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
 mod native {
+    use super::*;
+    use notify_rust::{Hint, Notification, NotificationResponse};
+    use std::collections::BTreeMap;
+    use tauri::async_runtime::JoinHandle;
+
+    /// Each chat's notification still on screen: the service's id for it, and the task that
+    /// waits for its click. A server replaces only an id it gave, so the chat keeps that one.
+    static SHOWN: Mutex<BTreeMap<String, (u32, JoinHandle<()>)>> = Mutex::new(BTreeMap::new());
+    /// What `permission` answers when no notification service does.
+    pub const NO_SERVICE: i32 = -2;
+    pub const NOT_ALLOWED: &str =
+        "No notification service answered. Start your desktop's notification service and try again.";
+
+    /// There is nothing to set up: the service is asked each time.
     pub fn init() -> bool {
-        false
+        true
     }
+    /// Allowed whenever the desktop's notification service answers; it has nothing to ask.
     pub async fn permission(_: bool) -> Result<i32, String> {
-        Ok(-2)
+        let answered =
+            tauri::async_runtime::spawn_blocking(|| notify_rust::get_server_information().is_ok())
+                .await
+                .unwrap_or(false);
+        Ok(if answered { 2 } else { NO_SERVICE })
     }
-    pub async fn send(_: &str, _: &str, _: &str, _: bool) -> Result<(), String> {
-        Err("Notifications need macOS.".into())
+    pub async fn send(id: &str, title: &str, body: &str, sound: bool) -> Result<(), String> {
+        let mut notification = Notification::new();
+        notification
+            .appname("Wavefunction")
+            .summary(title)
+            .body(body)
+            .action("default", "Open");
+        if let Some((earlier, _)) = SHOWN.lock().unwrap().get(id) {
+            notification.id(*earlier);
+        }
+        if sound {
+            notification.sound_name("message-new-instant");
+        } else {
+            notification.hint(Hint::SuppressSound(true));
+        }
+        let handle = notification.show_async().await.map_err(|e| e.to_string())?;
+        let shown = handle.id();
+        let thread = id.to_owned();
+        // Holds the connection that sent it: some servers tell only that one about the click.
+        let waiter = tauri::async_runtime::spawn(async move {
+            let mut open = false;
+            handle
+                .wait_for_action_async(|response| {
+                    open = matches!(response, NotificationResponse::Default)
+                })
+                .await;
+            let mut on_screen = SHOWN.lock().unwrap();
+            if on_screen.get(&thread).is_some_and(|(id, _)| *id == shown) {
+                on_screen.remove(&thread);
+            }
+            drop(on_screen);
+            if open {
+                clicked(&thread);
+            }
+        });
+        // The earlier one's waiter would hear this one's click too.
+        if let Some((_, earlier)) = SHOWN.lock().unwrap().insert(id.to_owned(), (shown, waiter)) {
+            earlier.abort();
+        }
+        Ok(())
     }
 }
 static AVAILABLE: OnceLock<bool> = OnceLock::new();
+
+/// A click on a notification: bring the window forward and open its chat.
+fn clicked(id: &str) {
+    if let Some(app) = APP.get() {
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.unminimize();
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+        if id != TEST {
+            let _ = app.emit("notification-open", id);
+        }
+    }
+}
 
 #[tauri::command]
 pub fn notification_context(thread: Option<String>, state: tauri::State<'_, NotificationState>) {
     *state.visible.lock().unwrap() = thread;
 }
 
-/// macOS's answer for this app, asking first when `request` is set and it has not been asked.
+/// The system's answer for this app, asking first when `request` is set and it has not been asked.
 #[tauri::command]
 pub async fn notification_permission(request: bool) -> Result<String, String> {
     if AVAILABLE.get() != Some(&true) {
@@ -125,6 +186,8 @@ pub async fn notification_permission(request: bool) -> Result<String, String> {
         0 => "not_requested",
         1 => "denied",
         2..=4 => "granted",
+        #[cfg(target_os = "linux")]
+        native::NO_SERVICE => "unsupported",
         _ => "unavailable",
     }
     .into())
@@ -133,7 +196,7 @@ pub async fn notification_permission(request: bool) -> Result<String, String> {
 #[tauri::command]
 pub async fn notification_test(sound: bool) -> Result<(), String> {
     if notification_permission(false).await? != "granted" {
-        return Err("Allow Wavefunction in System Settings › Notifications first.".into());
+        return Err(native::NOT_ALLOWED.into());
     }
     native::send(
         TEST,

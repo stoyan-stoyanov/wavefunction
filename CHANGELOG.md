@@ -4,6 +4,10 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 
 ## Unreleased
 
+### Added
+
+- On Linux, a chat that finishes or needs you while you're away from it shows a notification through your desktop's notification service, as on macOS. Clicking it opens the chat.
+
 ### Fixed
 
 - On Linux, the app says "this computer", "File manager" and Ctrl where it said "this Mac", "Finder" and ⌘, and no longer shows a dictation button, which needs macOS.

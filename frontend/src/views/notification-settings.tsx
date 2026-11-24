@@ -12,15 +12,17 @@ import {
   type NotificationPermission,
   type NotificationSettings as Preferences,
 } from "@/lib/notifications";
+import { words } from "@/lib/platform";
 import { SettingsRow } from "./settings-row";
 
+const system = words.system();
 const permissionText: Record<NotificationPermission | "checking", string> = {
-  checking: "Checking the macOS notification setting…",
-  granted: "macOS allows notifications from Wavefunction. A Focus mode can still silence them.",
-  not_requested: "macOS asks for permission when the first notification is due, or when you send a test.",
-  denied: "macOS blocks notifications from Wavefunction. Allow them in System Settings › Notifications.",
-  unsupported: "System notifications need the Wavefunction app on macOS.",
-  unavailable: "The macOS notification setting could not be read.",
+  checking: `Checking the ${system} notification setting…`,
+  granted: `${system} allows notifications from Wavefunction. A Focus mode can still silence them.`,
+  not_requested: `${system} asks for permission when the first notification is due, or when you send a test.`,
+  denied: `${system} blocks notifications from Wavefunction. Allow them in System Settings › Notifications.`,
+  unsupported: `System notifications need the Wavefunction app on ${system}.`,
+  unavailable: `The ${system} notification setting could not be read.`,
 };
 
 export function NotificationSettings() {
@@ -124,7 +126,7 @@ export function NotificationSettings() {
               "input",
               !settings.desktop,
             )}
-            {toggle("Sound", "Play the macOS notification sound.", "sound", !settings.desktop)}
+            {toggle("Sound", `Play the ${system} notification sound.`, "sound", !settings.desktop)}
             {toggle(
               "Show previews",
               "The chat's title and the start of its reply. When off, a notification only says that a task finished or needs you.",
