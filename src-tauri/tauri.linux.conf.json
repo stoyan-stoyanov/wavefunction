@@ -4,6 +4,7 @@
     "windows": [
       {
         "label": "main",
+        "create": false,
         "dragDropEnabled": false,
         "title": "Wavefunction",
         "width": 1440,
