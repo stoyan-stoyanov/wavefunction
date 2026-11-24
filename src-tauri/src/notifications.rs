@@ -84,13 +84,22 @@ mod native {
 #[cfg(target_os = "linux")]
 mod native {
     use super::*;
-    use notify_rust::{Hint, Notification, NotificationResponse};
-    use std::collections::BTreeMap;
-    use tauri::async_runtime::JoinHandle;
+    use std::collections::{BTreeMap, HashMap};
+    use std::future::poll_fn;
+    use std::pin::Pin;
+    use zbus::export::futures_core::Stream;
+    use zbus::zvariant::{DynamicType, Value};
+    use zbus::{Connection, MatchRule, Message, MessageStream};
 
-    /// Each chat's notification still on screen: the service's id for it, and the task that
-    /// waits for its click. A server replaces only an id it gave, so the chat keeps that one.
-    static SHOWN: Mutex<BTreeMap<String, (u32, JoinHandle<()>)>> = Mutex::new(BTreeMap::new());
+    const SERVICE: &str = "org.freedesktop.Notifications";
+    const PATH: &str = "/org/freedesktop/Notifications";
+    /// One connection for as long as the app runs. GNOME removes all of an app's notifications
+    /// when the connection that sent its first one closes, and some servers (dunst) report a
+    /// click only to the connection that sent the notification.
+    static BUS: tokio::sync::OnceCell<Connection> = tokio::sync::OnceCell::const_new();
+    /// Each chat's notification still on screen, by the id the service gave it. A server
+    /// replaces only an id it gave, so a chat's next notification reuses that one.
+    static SHOWN: Mutex<BTreeMap<String, u32>> = Mutex::new(BTreeMap::new());
     /// What `permission` answers when no notification service does.
     pub const NO_SERVICE: i32 = -2;
     pub const NOT_ALLOWED: &str =
@@ -102,52 +111,118 @@ mod native {
     }
     /// Allowed whenever the desktop's notification service answers; it has nothing to ask.
     pub async fn permission(_: bool) -> Result<i32, String> {
-        let answered =
-            tauri::async_runtime::spawn_blocking(|| notify_rust::get_server_information().is_ok())
-                .await
-                .unwrap_or(false);
+        let answered = match bus().await {
+            Ok(bus) => call(bus, "GetServerInformation", &()).await.is_ok(),
+            Err(_) => false,
+        };
         Ok(if answered { 2 } else { NO_SERVICE })
     }
     pub async fn send(id: &str, title: &str, body: &str, sound: bool) -> Result<(), String> {
-        let mut notification = Notification::new();
-        notification
-            .appname("Wavefunction")
-            .summary(title)
-            .body(body)
-            .action("default", "Open");
-        if let Some((earlier, _)) = SHOWN.lock().unwrap().get(id) {
-            notification.id(*earlier);
-        }
-        if sound {
-            notification.sound_name("message-new-instant");
+        show(id, title, body, sound)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    async fn show(id: &str, title: &str, body: &str, sound: bool) -> zbus::Result<()> {
+        let bus = bus().await?;
+        let capabilities: Vec<String> = call(bus, "GetCapabilities", &())
+            .await?
+            .body()
+            .deserialize()?;
+        // The body is plain text: a server that renders markup would show `<b>` as bold.
+        let body = if capabilities
+            .iter()
+            .any(|capability| capability == "body-markup")
+        {
+            body.replace('&', "&amp;")
+                .replace('<', "&lt;")
+                .replace('>', "&gt;")
         } else {
-            notification.hint(Hint::SuppressSound(true));
-        }
-        let handle = notification.show_async().await.map_err(|e| e.to_string())?;
-        let shown = handle.id();
-        let thread = id.to_owned();
-        // Holds the connection that sent it: some servers tell only that one about the click.
-        let waiter = tauri::async_runtime::spawn(async move {
-            let mut open = false;
-            handle
-                .wait_for_action_async(|response| {
-                    open = matches!(response, NotificationResponse::Default)
-                })
-                .await;
-            let mut on_screen = SHOWN.lock().unwrap();
-            if on_screen.get(&thread).is_some_and(|(id, _)| *id == shown) {
-                on_screen.remove(&thread);
-            }
-            drop(on_screen);
-            if open {
-                clicked(&thread);
-            }
-        });
-        // The earlier one's waiter would hear this one's click too.
-        if let Some((_, earlier)) = SHOWN.lock().unwrap().insert(id.to_owned(), (shown, waiter)) {
-            earlier.abort();
-        }
+            body.to_owned()
+        };
+        let hints = HashMap::from([if sound {
+            ("sound-name", Value::from("message-new-instant"))
+        } else {
+            ("suppress-sound", Value::from(true))
+        }]);
+        let earlier = SHOWN.lock().unwrap().get(id).copied().unwrap_or(0);
+        let actions = ["default", "Open"];
+        let shown: u32 = call(
+            bus,
+            "Notify",
+            &(
+                "Wavefunction",
+                earlier,
+                "",
+                title,
+                body,
+                actions.as_slice(),
+                hints,
+                -1_i32,
+            ),
+        )
+        .await?
+        .body()
+        .deserialize()?;
+        SHOWN.lock().unwrap().insert(id.to_owned(), shown);
         Ok(())
+    }
+
+    async fn call<B>(bus: &Connection, method: &str, body: &B) -> zbus::Result<Message>
+    where
+        B: serde::Serialize + DynamicType,
+    {
+        bus.call_method(Some(SERVICE), PATH, Some(SERVICE), method, body)
+            .await
+    }
+
+    /// The session bus, connected on first use and listening for clicks from then on.
+    async fn bus() -> zbus::Result<&'static Connection> {
+        BUS.get_or_try_init(|| async {
+            let bus = Connection::session().await?;
+            let rule = MatchRule::builder()
+                .msg_type(zbus::message::Type::Signal)
+                .interface(SERVICE)?
+                .build();
+            let signals = MessageStream::for_match_rule(rule, &bus, None).await?;
+            tauri::async_runtime::spawn(listen(signals));
+            Ok::<_, zbus::Error>(bus)
+        })
+        .await
+    }
+
+    /// Opens a chat when its notification is clicked, and forgets one the server closed.
+    async fn listen(mut signals: MessageStream) {
+        while let Some(signal) = poll_fn(|cx| Pin::new(&mut signals).poll_next(cx)).await {
+            let Ok(signal) = signal else { continue };
+            let header = signal.header();
+            match header.member().map(|name| name.as_str()) {
+                Some("ActionInvoked") => {
+                    let Ok((id, action)) = signal.body().deserialize::<(u32, String)>() else {
+                        continue;
+                    };
+                    if action != "default" {
+                        continue;
+                    }
+                    let thread = SHOWN
+                        .lock()
+                        .unwrap()
+                        .iter()
+                        .find(|(_, shown)| **shown == id)
+                        .map(|(thread, _)| thread.clone());
+                    if let Some(thread) = thread {
+                        clicked(&thread);
+                    }
+                }
+                Some("NotificationClosed") => {
+                    let Ok((id, _)) = signal.body().deserialize::<(u32, u32)>() else {
+                        continue;
+                    };
+                    SHOWN.lock().unwrap().retain(|_, shown| *shown != id);
+                }
+                _ => {}
+            }
+        }
     }
 }
 static AVAILABLE: OnceLock<bool> = OnceLock::new();
