@@ -7,6 +7,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 ### Added
 
 - Each release has Linux downloads for x86-64: an AppImage and a `.deb`, for Ubuntu 22.04, Debian 12 and later. They're experimental and unsigned, and don't update themselves yet; the README says how to install them. ([#83](https://github.com/stoyan-stoyanov/wavefunction/pull/83))
+- Computer use works on Linux, with Docker Desktop for Linux or Docker Engine. Settings › Computer use starts and restarts Docker through systemd, and the agent's desktop opens the servers your chat runs, as on macOS.
 
 ### Fixed
 

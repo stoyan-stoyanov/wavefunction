@@ -24,11 +24,10 @@ from typing import TYPE_CHECKING, Literal
 if TYPE_CHECKING:
     from langchain_core.tools import BaseTool
 
-Feature = Literal["computer_use", "integration_install"]
+Feature = Literal["integration_install"]
 # What only the macOS app has for now, and what other builds say instead.
 _MACOS_ONLY: dict[Feature, str] = {
-    "computer_use": "Computer use needs macOS for now. Linux builds come without it.",
-    "integration_install": "In-app installation currently supports Intel and Apple silicon Macs.",
+    "integration_install": "In-app installation currently supports Intel and Apple silicon Macs."
 }
 
 
@@ -75,10 +74,25 @@ def opener() -> str:
 
 
 def worded(tool: BaseTool) -> BaseTool:
-    """`tool`, with `{this_computer}` and `{system}` in its description, which a docstring can't
-    compute, filled in."""
-    tool.description = tool.description.format(this_computer=this_computer(), system=system())
+    """`tool`, with `{this_computer}`, `{computer}` and `{system}` in its description, which a
+    docstring can't compute, filled in."""
+    tool.description = tool.description.format(
+        this_computer=this_computer(), computer=computer(), system=system()
+    )
     return tool
+
+
+def docker_manager() -> Literal["app", "systemd"]:
+    """What starts and restarts Docker for computer use: on macOS the Docker Desktop app, opened
+    as the Dock opens it (`docker_macos`), and on Linux systemd, which runs Docker Desktop and
+    Docker Engine as services (`docker_linux`)."""
+    return "app" if sys.platform == "darwin" else "systemd"
+
+
+def has_proc() -> bool:
+    """Whether what a process has open is read from /proc, as on Linux. macOS has no /proc, and
+    asks lsof."""
+    return sys.platform != "darwin"
 
 
 def sandboxed_gh() -> bool:

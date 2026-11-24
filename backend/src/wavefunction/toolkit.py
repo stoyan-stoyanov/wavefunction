@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, cast
 import httpx
 from langchain_core.tools import BaseTool, tool
 
+from . import platforms
 from .files import ProjectFileStore, readable_documents
 from .repository import Repository
 from .secrets import SecretBackend
@@ -531,7 +532,7 @@ def _build_computer_screenshot(context: ToolContext) -> BaseTool:
 
         Returns a screenshot of the sandboxed desktop. Firefox is already open when the
         desktop starts — click its address bar, type a URL, and press Return to browse. It
-        opens a server this chat runs in a terminal at its address on the Mac, such as
+        opens a server this chat runs in a terminal at its address on the {computer}, such as
         http://127.0.0.1:3000. Take one before your
         first action. Every action already returns the screen as it looks
         afterwards, so look again only when something may have changed on its own, such as a
@@ -541,7 +542,7 @@ def _build_computer_screenshot(context: ToolContext) -> BaseTool:
         sentinel = await _look(context, session)
         return _told(session, f"Screenshot captured (1280x800). {sentinel}")
 
-    return computer_screenshot
+    return platforms.worded(computer_screenshot)
 
 
 def _build_computer_click(context: ToolContext) -> BaseTool:

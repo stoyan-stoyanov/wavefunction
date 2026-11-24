@@ -37,7 +37,7 @@ def _grants(context: ToolContext) -> list[Any]:
 def _not_private(path: Path) -> Path:
     if any(path == folder or folder in path.parents for folder in private_folders()):
         raise ValueError(
-            f"{path} is private to this Mac — keys, credentials or the app's own "
+            f"{path} is private to {platforms.this_computer()} — keys, credentials or the app's own "
             "data — so no file is moved into or out of it."
         )
     return path
@@ -84,7 +84,7 @@ def _read_mac(context: ToolContext, path: Path) -> bytes:
     try:
         descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
     except FileNotFoundError:
-        raise ValueError(f"There is no file at {path} on this Mac.") from None
+        raise ValueError(f"There is no file at {path} on {platforms.this_computer()}.") from None
     except OSError as error:
         raise ValueError(f"Could not open {path}: {error.strerror}.") from None
     with os.fdopen(descriptor, "rb") as source:
@@ -162,7 +162,9 @@ def _desktop_path(raw: str) -> str:
 def _mac_path(raw: str, what: str) -> Path:
     path = Path(raw.strip()).expanduser()
     if not path.is_absolute():
-        raise ValueError(f"Give the {what} on the Mac by its full path, such as ~/Downloads, not {raw!r}.")
+        raise ValueError(
+            f"Give the {what} on the {platforms.computer()} by its full path, such as ~/Downloads, not {raw!r}."
+        )
     return _not_private(path.resolve())
 
 
@@ -193,7 +195,7 @@ def _reference_file(context: ToolContext, wanted: str) -> tuple[str, bytes]:
             _fits(record["name"], path.stat().st_size)
             return record["name"], path.read_bytes()
     raise ValueError(
-        f"There is no document named {wanted!r} here. For a file on the Mac, give "
+        f"There is no document named {wanted!r} here. For a file on the {platforms.computer()}, give "
         "its full path, such as ~/Documents/cv.pdf."
     )
 
@@ -201,25 +203,26 @@ def _reference_file(context: ToolContext, wanted: str) -> tuple[str, bytes]:
 def build_desktop_file_tools(context: ToolContext) -> list[BaseTool]:
     """The file tools for an agent with the desktop tools. Only a task someone started stops on
     the folder card (`choose_folder`); any other says which folder it needs."""
+    mac = platforms.computer()
     save_description = (
-        "Copy a file out of the desktop into a folder on the user's Mac. "
+        f"Copy a file out of the desktop into a folder on the user's {mac}. "
         "Use it to hand over what was downloaded there: the desktop's files cannot be reached "
-        "from the Mac. The user is asked to allow a Mac folder they have not allowed yet. Nothing "
+        f"from the {mac}. The user is asked to allow a {mac} folder they have not allowed yet. Nothing "
         'is replaced: a name already taken gets a number, as in "Report (1).pdf", and the result '
         "says which.\n\n"
         "Args:\n"
         '    path: The file in the desktop: a name in ~/Downloads, such as "Report.pdf", or a path '
         "under /home/desktop.\n"
-        "    destination: A folder on the user's Mac. Empty is ~/Downloads.\n"
-        "    folder: Leave empty; use destination for the Mac folder."
+        f"    destination: A folder on the user's {mac}. Empty is ~/Downloads.\n"
+        f"    folder: Leave empty; use destination for the {mac} folder."
     )
     add_description = (
         "Copy a file into the desktop's ~/Downloads, where the desktop browser's file dialog can "
-        "pick it to attach or upload. The user is asked to allow a Mac folder they have not allowed "
+        f"pick it to attach or upload. The user is asked to allow a {mac} folder they have not allowed "
         "yet.\n\n"
         "Args:\n"
         "    source: An attached document by the name list_documents gives, or a file on the "
-        "user's Mac by its full path, such as ~/Documents/cv.pdf."
+        f"user's {mac} by its full path, such as ~/Documents/cv.pdf."
     )
 
     @tool("computer_save_file", description=save_description, response_format="content_and_artifact")
@@ -227,12 +230,12 @@ def build_desktop_file_tools(context: ToolContext) -> list[BaseTool]:
         source = _desktop_path(path)
         name = _plain_name(posixpath.basename(source))
         if folder.strip():
-            raise ValueError("Give the Mac folder as `destination` and leave `folder` empty.")
+            raise ValueError(f"Give the {mac} folder as `destination` and leave `folder` empty.")
         if context.local_read_only:
             raise ValueError("Saving files is disabled for this task.")
         target = _mac_path(destination.strip() or "~/Downloads", "folder")
         if not target.is_dir():
-            raise ValueError(f"There is no folder at {target} on this Mac.")
+            raise ValueError(f"There is no folder at {target} on {platforms.this_computer()}.")
         session = await _desktop_with_files(context)
         data = await context.computer.read_file(session, source)
         chosen = _allow(context, target, writable=True)
@@ -249,20 +252,20 @@ def build_desktop_file_tools(context: ToolContext) -> list[BaseTool]:
         )
         return (
             f"Saved {name} ({computer.describe_size(len(data))}) from the desktop to {written} "
-            f"on this Mac.{renamed}{instead}"
+            f"on {platforms.this_computer()}.{renamed}{instead}"
         ), {}
 
     @tool("computer_add_file", description=add_description)
     async def computer_add_file(source: str) -> str:
         wanted = source.strip()
         if not wanted:
-            raise ValueError("Name the document, or give the full path of a file on the Mac.")
+            raise ValueError(f"Name the document, or give the full path of a file on the {mac}.")
         if wanted.startswith(("/", "~")):
             path = _mac_path(wanted, "file")
             try:
                 info = path.stat()
             except (FileNotFoundError, NotADirectoryError):
-                raise ValueError(f"There is no file at {path} on this Mac.") from None
+                raise ValueError(f"There is no file at {path} on {platforms.this_computer()}.") from None
             except OSError:
                 info = None  # The Mac may keep a folder closed until it is allowed.
             if info is not None and not stat.S_ISREG(info.st_mode):

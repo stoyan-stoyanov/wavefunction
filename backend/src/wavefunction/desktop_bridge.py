@@ -17,11 +17,16 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import ipaddress
+import os
 import subprocess
+import sys
 from collections.abc import Iterable
 from typing import Any
 
 import httpx
+
+from . import platforms
 
 # Connections kept open into a desktop that mirrors ports: a page load opens several at once.
 IDLE = 4
@@ -44,6 +49,8 @@ def served_ports(terminals: Iterable[Any]) -> dict[int, str]:
         pids.update(terminal._capture_children())
     if not pids:
         return {}
+    if platforms.has_proc():
+        return _proc_listeners(pids)
     try:
         listed = subprocess.run(
             [
@@ -73,6 +80,47 @@ def served_ports(terminals: Iterable[Any]) -> dict[int, str]:
             address = {"127.0.0.1": "127.0.0.1", "[::1]": "::1", "*": wildcard}.get(host)
             if address and port.isdigit():
                 served.setdefault(int(port), address)
+    return served
+
+
+def _proc_listeners(pids: set[int]) -> dict[int, str]:
+    """`served_ports` from /proc: the listening TCP sockets among what these processes hold open,
+    matched by inode to the engine's own TCP tables. Only those can be joined from here; a server
+    in a sandbox without network has a loopback of its own, which the desktop could never reach."""
+    inodes: set[str] = set()
+    for pid in pids:
+        try:
+            descriptors = os.listdir(f"/proc/{pid}/fd")
+        except OSError:  # Gone, or another user's.
+            continue
+        for descriptor in descriptors:
+            with contextlib.suppress(OSError):
+                target = os.readlink(f"/proc/{pid}/fd/{descriptor}")
+                if target.startswith("socket:["):
+                    inodes.add(target[8:-1])
+    if not inodes:
+        return {}
+    served: dict[int, str] = {}
+    for table, wildcard in (("tcp", "127.0.0.1"), ("tcp6", "::1")):
+        try:
+            with open(f"/proc/self/net/{table}") as rows:
+                lines = rows.read().splitlines()[1:]
+        except OSError:  # No IPv6.
+            continue
+        for line in lines:
+            fields = line.split()
+            # The local address, the state (0A is LISTEN) and the inode.
+            if len(fields) < 10 or fields[3] != "0A" or fields[9] not in inodes:
+                continue
+            host, _, port = fields[1].partition(":")
+            # Each 32-bit word of the address is written in the host's byte order.
+            packed = b"".join(
+                int(host[i : i + 8], 16).to_bytes(4, sys.byteorder) for i in range(0, len(host), 8)
+            )
+            address = ipaddress.ip_address(packed)
+            reach = wildcard if address.is_unspecified else str(address)
+            if reach in ("127.0.0.1", "::1"):
+                served.setdefault(int(port, 16), reach)
     return served
 
 

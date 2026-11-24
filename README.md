@@ -48,7 +48,7 @@ Other agents take over your mouse, keyboard and screen to get things done. Wavef
 - **Secure sign-ins.** When a site needs your login, you sign in privately. The agent pauses and never sees what you type, and the chat stays signed in for next time.
 - **Files in and out.** Downloads come to your computer in the folder you choose, and files you add are ready to upload.
 
-Computer use needs Docker Desktop and a model that can read images. It's macOS-only for now.
+Computer use needs Docker Desktop, or Docker Engine on Linux, and a model that can read images.
 
 ## Connectors and skills
 
@@ -117,7 +117,7 @@ open src-tauri/target/release/bundle/macos/Wavefunction.app
 
 ### Linux (experimental)
 
-Linux support is experimental and community-supported. Computer use, notifications and dictation are macOS-only for now. Commands run in a [Bubblewrap](https://github.com/containers/bubblewrap) sandbox with a seccomp filter, from the same grants as on macOS; without `/usr/bin/bwrap` the app runs no commands at all.
+Linux support is experimental and community-supported. Notifications and dictation are macOS-only for now. Commands run in a [Bubblewrap](https://github.com/containers/bubblewrap) sandbox with a seccomp filter, from the same grants as on macOS; without `/usr/bin/bwrap` the app runs no commands at all.
 
 Each [release](https://github.com/stoyan-stoyanov/wavefunction/releases/latest) has x86-64 downloads for Ubuntu 22.04, Debian 12 and later. They aren't signed: compare them with the release's `SHA256SUMS-linux` (`sha256sum -c --ignore-missing SHA256SUMS-linux`). They don't update themselves yet, so download each new release to update.
 
