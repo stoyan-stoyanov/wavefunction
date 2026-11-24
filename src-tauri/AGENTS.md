@@ -23,3 +23,4 @@ Tauri v2 in Rust, plus one Objective-C file for notifications. Read the root [AG
 - `npm run desktop:dev` and the installed app share the owner's data folder (`app.harness.coding`). Set `WAVEFUNCTION_DEV_DATA_DIR` to a scratch folder to keep `desktop:dev` off it.
 - Keep the `app.harness.coding` identity and the signing setup as they are.
 - Distinguish a successful build from a verified launch.
+- Per-platform code (`#[cfg(target_os)]`) goes in a module made for it, like `notifications.rs`; `lib.rs` keeps no more than it has ([macOS and Linux](../docs/ARCHITECTURE.md#macos-and-linux)).

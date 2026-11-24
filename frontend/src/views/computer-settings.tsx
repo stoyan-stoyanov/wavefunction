@@ -6,6 +6,7 @@ import type { ComputerStatus } from "@/lib/types";
 import { Info, LoaderCircle, RotateCcw, ShieldAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { words } from "@/lib/platform";
 
 export function ComputerSettings() {
   const [status, setStatus] = useState<ComputerStatus | null>(null);
@@ -148,7 +149,7 @@ export function ComputerSettings() {
 
       <NativeSection
         title="Desktop image"
-        description="Built on this Mac from files that ship with the app. Some app updates require a desktop update. Building can download a few hundred megabytes and take a few minutes."
+        description={`Built on ${words.thisComputer()} from files that ship with the app. Some app updates require a desktop update. Building can download a few hundred megabytes and take a few minutes.`}
       >
         {status?.image_ready && !status.building ? (
           <p className="rounded-xl bg-card px-4 py-3 text-sm">

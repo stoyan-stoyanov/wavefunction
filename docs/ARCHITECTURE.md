@@ -124,3 +124,16 @@ Opening an uncached chat shows a message/composer skeleton until its latest mess
 `src-tauri/src/lib.rs` supervises the sidecar and native window; and `quit.rs` checks active coding work before exit. `scripts/build-sidecar.mjs` and `backend/wavefunction-backend.spec` freeze supported tools, skills, libraries, computer resources, and ripgrep into a directory distribution. Tauri bundles that directory in `Contents/Resources/backend` and launches its executable directly, preserving `_MEIPASS` resource lookup and the `--python` helper interpreter without extraction at each app launch. Tauri copies the sidecar's symbolic links as whole files; `scripts/backend-links.mjs` puts them back before `scripts/package-desktop.mjs` and `scripts/release-desktop.mjs` sign the app. `scripts/package-desktop.mjs` then produces its ZIP/checksum.
 
 See [development](DEVELOPMENT.md), [test policy](TESTING.md), and the [rebuild skill](../.agents/skills/rebuild-wavefunction/SKILL.md) for verification. Storage changes require populated synthetic success/rejection checks; native sandbox and frozen packaging paths require their actual execution environments.
+
+## macOS and Linux
+
+The macOS app is the product; Linux is built from source and community-supported ([SECURITY.md](../SECURITY.md#linux)). Nearly everything is shared: one engine, one interface, one set of rules. What differs lives in one place per layer, so a feature is written once and Linux work doesn't edit macOS code:
+
+| Layer | Where | What goes there |
+|---|---|---|
+| Engine | `backend/src/wavefunction/platforms.py` | Something each computer does its own way is one function. A feature only macOS has is one entry in `_MACOS_ONLY`, read with `unavailable()`. |
+| Sandbox | `sandbox.py` (Seatbelt), `sandbox_linux.py` (Bubblewrap and seccomp) | One policy, enforced by each, and how each one's refusals look. |
+| Interface | `frontend/src/lib/platform.ts` | `has` for what this build has; `words` for "this Mac", "Finder", ⌘ and the system's name. |
+| Shell | `src-tauri/src/notifications.rs`, `quit.rs`, `window_controls.rs` | `#[cfg(target_os)]` code, in modules made for it. `lib.rs` keeps no more than it has. |
+
+`scripts/check-platform.mjs`, part of `npm run check` and CI, fails a change that checks the platform anywhere else. A pull request that touches the computer says what it does on Linux: works, hidden through `has` or `unavailable()`, or a linked follow-up issue. The required checks run the whole suite on macOS (`backend-macos`, `native`) and on Linux without the sandbox; the `linux` job, which runs the Linux sandbox and builds the app, isn't required, so a Linux failure never blocks a macOS change.

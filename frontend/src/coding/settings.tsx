@@ -22,7 +22,7 @@ import { useSettings } from "@/store/settings";
 import { api } from "@/lib/api";
 import { beginWindowDrag } from "@/lib/titlebar";
 import { checkForUpdate, installUpdate, restartToUpdate, useAppUpdate } from "@/lib/app-update";
-import { linuxDesktop } from "@/lib/platform";
+import { has, words } from "@/lib/platform";
 import { codingApi, type CodingSnapshot } from "./api";
 import { CodingMarkdown } from "./markdown";
 import { useCoding } from "./store";
@@ -161,8 +161,8 @@ function AccessSettings() {
           />
         </div>
         <p className="mt-2 px-1 text-xs leading-5 text-muted-foreground">
-          The macOS sandbox limits access to the project and granted folders, with support for system tools
-          and temporary files.
+          The {words.system()} sandbox limits access to the project and granted folders, with support for
+          system tools and temporary files.
         </p>
         {grants && !grants.sandbox_ok ? (
           <p role="alert" className="mt-2 px-1 text-xs text-destructive">
@@ -238,7 +238,7 @@ function AccessSettings() {
 function Updates() {
   const update = useAppUpdate();
   if (!("__TAURI_INTERNALS__" in window) || import.meta.env.DEV) return null;
-  if (linuxDesktop())
+  if (!has.updates())
     return (
       <NativeSection title="Updates">
         <div className="overflow-hidden rounded-xl bg-card">

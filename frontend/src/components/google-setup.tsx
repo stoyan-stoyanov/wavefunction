@@ -16,6 +16,7 @@ import {
   type LocalIntegrationStatus,
 } from "@/lib/api";
 import { useSettings } from "@/store/settings";
+import { words } from "@/lib/platform";
 
 const choices = [
   { title: "Mail", services: ["gmail"] },
@@ -305,7 +306,7 @@ export function GoogleAccountSetup({
             Connect Google
           </DialogTitle>
           <DialogDescription>
-            Connect your mail, files and calendar. Credentials stay on this Mac.
+            Connect your mail, files and calendar. Credentials stay on {words.thisComputer()}.
           </DialogDescription>
         </DialogHeader>
         <form

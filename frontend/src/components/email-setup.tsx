@@ -13,6 +13,9 @@ import {
   type LocalIntegrationStatus,
 } from "@/lib/api";
 import { useSettings } from "@/store/settings";
+import { words } from "@/lib/platform";
+
+const CREDENTIALS = `Credentials stay on ${words.thisComputer()}.`;
 
 type Provider = "gmail" | "microsoft" | "other";
 
@@ -49,7 +52,7 @@ export function EmailSetup(props: EmailSetupProps) {
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Connect Email</DialogTitle>
-          <DialogDescription>Choose your email provider. Credentials stay on this Mac.</DialogDescription>
+          <DialogDescription>Choose your email provider. {CREDENTIALS}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-2 sm:grid-cols-3">
           {(
@@ -264,7 +267,7 @@ function ImapEmailSetup({
             <ConnectorLogo id={gmail ? "gmail" : "email"} className="size-5" />
             {initialAccount ? "Reconnect" : "Connect"} {gmail ? "Gmail" : "Email"}
           </DialogTitle>
-          <DialogDescription>Use your own email account. Credentials stay on this Mac.</DialogDescription>
+          <DialogDescription>Use your own email account. {CREDENTIALS}</DialogDescription>
         </DialogHeader>
         <form
           className="flex min-h-0 flex-col gap-4"

@@ -14,6 +14,7 @@ import {
   type LocalIntegrationStatus,
 } from "@/lib/api";
 import { useSettings } from "@/store/settings";
+import { words } from "@/lib/platform";
 
 export function MicrosoftSetup({
   close,
@@ -194,8 +195,8 @@ export function MicrosoftSetup({
             Connect {mode === "mail" ? "Outlook" : "Microsoft 365"}
           </DialogTitle>
           <DialogDescription>
-            Sign in to your own Microsoft account. Microsoft’s official tools run on this Mac and keep sign-in
-            credentials in its secure local cache.
+            Sign in to your own Microsoft account. Microsoft’s official tools run on {words.thisComputer()}{" "}
+            and keep sign-in credentials in its secure local cache.
           </DialogDescription>
         </DialogHeader>
         <form

@@ -21,6 +21,7 @@ const loading = (
   </p>
 );
 import "./file-preview.css";
+import { words } from "@/lib/platform";
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -213,7 +214,7 @@ export const FilePreviewPane = memo(function FilePreviewPane({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={() => open("finder")}>
-                <FolderOpen /> Finder
+                <FolderOpen /> {words.fileManager()}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!preview?.openable} onSelect={() => open("app")}>
                 <ExternalLink /> Default app

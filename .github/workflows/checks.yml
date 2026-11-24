@@ -60,6 +60,8 @@ jobs:
         run: for script in scripts/*.mjs; do node --check "$script"; done
       - name: Docs links and agent file sizes
         run: node scripts/check-docs.mjs
+      - name: Platform differences stay in the platform modules
+        run: node scripts/check-platform.mjs
       - run: npm run test:frontend
       # The build includes tsc; running a separate typecheck duplicates that work.
       - run: npm run build

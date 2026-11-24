@@ -6,19 +6,20 @@ import asyncio
 import hashlib
 import json
 import os
-import platform
 import sys
 import tarfile
 import tempfile
 import uuid
 import zipfile
+from collections.abc import Sequence
 from contextlib import suppress
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 import httpx
 from pydantic import BaseModel, Field
 
+from . import platforms
 from .connectors import McpServer, SignInRequired
 from .integration_setup import private_write
 from .local_integrations import run_cli
@@ -53,13 +54,17 @@ class MicrosoftSetup(BaseModel):
     services: list[Literal["mail", "files", "calendar"]] | None = Field(default=None, min_length=1)
 
 
-def selected_services(mode: Mode, services: list[str] | None = None) -> list[str]:
+def selected_services(mode: Mode, services: Sequence[str] | None = None) -> list[str]:
     return (
-        ["mail"] if mode == "mail" else (services if services is not None else ["mail", "files", "calendar"])
+        ["mail"]
+        if mode == "mail"
+        else (list(services) if services is not None else ["mail", "files", "calendar"])
     )
 
 
-def scopes(mode: Mode, allow_write: bool, account_type: str, services: list[str] | None = None) -> list[str]:
+def scopes(
+    mode: Mode, allow_write: bool, account_type: str, services: Sequence[str] | None = None
+) -> list[str]:
     selected = selected_services(mode, services)
     result = ["User.Read"]
     if "mail" in selected:
@@ -96,8 +101,8 @@ def read_account(root: Path, email: str, mode: Mode) -> dict:
 
 
 async def install(root: Path):
-    arch = {"arm64": "arm64", "x86_64": "x64"}.get(platform.machine())
-    if platform.system() != "Darwin" or not arch:
+    arch = {"arm64": "arm64", "x86_64": "x64"}.get(platforms.machine())
+    if platforms.unavailable("integration_install") or not arch:
         raise ValueError("Microsoft integration installation supports Intel and Apple silicon Macs.")
     target = runtime_dir(root)
     if (target / "pwsh" / "pwsh").is_file() and (
@@ -374,7 +379,7 @@ async def verify_server(server: McpServer):
     await request(
         Path(args[args.index("--root") + 1]),
         args[args.index("--account") + 1],
-        args[args.index("--mode") + 1],
+        cast(Mode, args[args.index("--mode") + 1]),
         "GET",
         "me?$select=id",
     )
