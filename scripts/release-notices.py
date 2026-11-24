@@ -1,9 +1,11 @@
 """Collect exact installed dependency notices and hash-verified source archives.
 
-Run with backend/.venv/bin/python after npm ci, uv sync and cargo fetch.
+Run with backend/.venv/bin/python after npm ci, uv sync and cargo fetch for the Rust target it is
+given (default aarch64-apple-darwin). For a Linux target it also needs deb-src entries in apt's sources.
 Generated files stay in dist/legal for inclusion in a published distribution.
 """
 
+import argparse
 import hashlib
 import json
 import re
@@ -18,6 +20,9 @@ from pathlib import Path
 
 from packaging.requirements import Requirement
 
+parser = argparse.ArgumentParser(description="Collect third-party notices and sources into dist/legal.")
+parser.add_argument("target", nargs="?", default="aarch64-apple-darwin", help="the Rust target the app is built for")
+TARGET = parser.parse_args().target
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "dist/legal"
 NOTICES = OUT / "notices"
@@ -140,7 +145,7 @@ cargo = json.loads(
             "--manifest-path",
             str(ROOT / "src-tauri/Cargo.toml"),
             "--filter-platform",
-            "aarch64-apple-darwin",
+            TARGET,
         ]
     )
 )
@@ -165,6 +170,37 @@ for package in cargo["packages"]:
         notice_files(directory),
         f"https://crates.io/api/v1/crates/{name}/{version}/download",
     )
+
+# The AppImage bundles the build machine's system libraries: WebKitGTK and GTK draw the window, GLib
+# underlies both, and OpenSSL is the updater's TLS (native-tls). Each ships with its Debian copyright
+# file and, as the LGPL asks of whoever distributes the library, its Ubuntu source package, which
+# apt verifies against the archive's signed index.
+SYSTEM_LIBRARIES = {
+    "libwebkit2gtk-4.1.so.0": "LGPL-2.0-or-later AND BSD-2-Clause",
+    "libgtk-3.so.0": "LGPL-2.0-or-later",
+    "libglib-2.0.so.0": "LGPL-2.1-or-later",
+    "libssl.so.3": "Apache-2.0",
+}
+if "linux" in TARGET:
+    for library, license_expression in SYSTEM_LIBRARIES.items():
+        owner = subprocess.check_output(["dpkg-query", "-S", f"*/{library}"], text=True)
+        package = owner.splitlines()[0].split(": ", 1)[0]
+        name, version, source, source_version = subprocess.check_output(
+            ["dpkg-query", "-W", "-f", "${Package}\t${Version}\t${source:Package}\t${source:Version}", package],
+            text=True,
+        ).split("\t")
+        copyright_file = Path("/usr/share/doc", name, "copyright")
+        if not copyright_file.is_file():
+            raise RuntimeError(f"No copyright file for {name}: {copyright_file}")
+        add(
+            "linux",
+            name,
+            version,
+            license_expression,
+            [copyright_file],
+            f"https://launchpad.net/ubuntu/+source/{source}/{source_version}",
+        )
+        subprocess.run(["apt-get", "source", "--download-only", f"{source}={source_version}"], cwd=SOURCES, check=True)
 
 with ThreadPoolExecutor(max_workers=6) as pool:
     list(pool.map(lambda args: fetch(*args), downloads))
