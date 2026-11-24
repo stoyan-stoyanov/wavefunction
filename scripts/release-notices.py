@@ -21,7 +21,9 @@ from pathlib import Path
 from packaging.requirements import Requirement
 
 parser = argparse.ArgumentParser(description="Collect third-party notices and sources into dist/legal.")
-parser.add_argument("target", nargs="?", default="aarch64-apple-darwin", help="the Rust target the app is built for")
+parser.add_argument(
+    "target", nargs="?", default="aarch64-apple-darwin", help="the Rust target the app is built for"
+)
 TARGET = parser.parse_args().target
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "dist/legal"
@@ -186,7 +188,13 @@ if "linux" in TARGET:
         owner = subprocess.check_output(["dpkg-query", "-S", f"*/{library}"], text=True)
         package = owner.splitlines()[0].split(": ", 1)[0]
         name, version, source, source_version = subprocess.check_output(
-            ["dpkg-query", "-W", "-f", "${Package}\t${Version}\t${source:Package}\t${source:Version}", package],
+            [
+                "dpkg-query",
+                "-W",
+                "-f",
+                "${Package}\t${Version}\t${source:Package}\t${source:Version}",
+                package,
+            ],
             text=True,
         ).split("\t")
         copyright_file = Path("/usr/share/doc", name, "copyright")
@@ -200,7 +208,9 @@ if "linux" in TARGET:
             [copyright_file],
             f"https://launchpad.net/ubuntu/+source/{source}/{source_version}",
         )
-        subprocess.run(["apt-get", "source", "--download-only", f"{source}={source_version}"], cwd=SOURCES, check=True)
+        subprocess.run(
+            ["apt-get", "source", "--download-only", f"{source}={source_version}"], cwd=SOURCES, check=True
+        )
 
 with ThreadPoolExecutor(max_workers=6) as pool:
     list(pool.map(lambda args: fetch(*args), downloads))
