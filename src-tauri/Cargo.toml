@@ -36,6 +36,11 @@ objc2 = "0.6"
 objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSButton", "NSColor", "NSControl", "NSGraphics", "NSView", "NSVisualEffectView", "NSResponder"] }
 objc2-foundation = { version = "0.3", features = ["NSNotification", "NSOperation", "block2"] }
 
+[target."cfg(target_os = \"linux\")".dependencies]
+# The desktop's notification service, over D-Bus. The opener and single-instance plugins
+# already bring zbus 5 with these features.
+zbus = "5"
+
 # A smaller shell: the app is mostly waiting on the WebView and the backend, not running Rust.
 # Panics keep unwinding, as Tauri's command handlers and plugins expect.
 [profile.release]
