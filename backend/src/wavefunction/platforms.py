@@ -19,7 +19,10 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from langchain_core.tools import BaseTool
 
 Feature = Literal["computer_use", "integration_install"]
 # What only the macOS app has for now, and what other builds say instead.
@@ -42,6 +45,46 @@ def machine() -> str:
 def description() -> str:
     """The system and processor, as the model is told them: "Darwin arm64"."""
     return f"{platform.system()} {platform.machine()}"
+
+
+# Words that name this computer and its parts in what the engine says, as `words` in the
+# interface's lib/platform.ts. The macOS ones are what the app has always said.
+def computer() -> str:
+    """The user's computer: "Mac", or "computer" on Linux."""
+    return "Mac" if sys.platform == "darwin" else "computer"
+
+
+def this_computer() -> str:
+    """The words "this Mac", or "this computer" on Linux."""
+    return f"this {computer()}"
+
+
+def file_manager() -> str:
+    """Where files are browsed: "Finder", or "the file manager" on Linux."""
+    return "Finder" if sys.platform == "darwin" else "the file manager"
+
+
+def system() -> str:
+    """The system's name: "macOS" or "Linux"."""
+    return "macOS" if sys.platform == "darwin" else "Linux"
+
+
+def opener() -> str:
+    """The command that opens a file, page or app as a double-click would: `open`, or `xdg-open`."""
+    return "open" if sys.platform == "darwin" else "xdg-open"
+
+
+def worded(tool: BaseTool) -> BaseTool:
+    """`tool`, with `{this_computer}` and `{system}` in its description, which a docstring can't
+    compute, filled in."""
+    tool.description = tool.description.format(this_computer=this_computer(), system=system())
+    return tool
+
+
+def sandboxed_gh() -> bool:
+    """Whether gh reaches GitHub from inside the sandbox, through the app's Unix socket. Seatbelt
+    lets it connect; the Linux sandbox refuses every Unix socket, so there gh runs outside it."""
+    return sys.platform == "darwin"
 
 
 def data_dir() -> Path:

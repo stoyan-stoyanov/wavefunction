@@ -4,6 +4,8 @@ Source: https://github.com/NousResearch/hermes-agent/tree/main/optional-mcps
 Snapshot: 2026-09-09. Catalog inclusion does not certify a successful account login.
 """
 
+from . import platforms
+
 CATALOG = [
     {
         "id": "agentcouch",
@@ -762,7 +764,7 @@ CATALOG.append(
     {
         "id": "figma-desktop",
         "title": "Figma Desktop",
-        "description": "Read design context from the Figma app running on this Mac.",
+        "description": f"Read design context from the Figma app running on {platforms.this_computer()}.",
         "url": "http://127.0.0.1:3845/mcp",
         "auth": "none",
         "transport": "http",
@@ -829,7 +831,7 @@ CATALOG.extend(
             "docs": "https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-mcp",
             "notes": "Create a Snowflake MCP server and an OAuth security integration using the callback URL "
             "below, with OAUTH_CLIENT_TYPE = 'CONFIDENTIAL' and OAUTH_ALLOW_NON_TLS_REDIRECT_URI = TRUE "
-            "(the callback runs on this Mac without TLS). Grant your role access to the server and its underlying resources, and set a "
+            f"(the callback runs on {platforms.this_computer()} without TLS). Grant your role access to the server and its underlying resources, and set a "
             "default warehouse. Then enter the full server URL and the OAuth client credentials. "
             "External OAuth users should use the credentials and scopes supplied by their "
             "administrator.",
@@ -899,7 +901,7 @@ CATALOG.extend(
             "docs": "https://developers.hubspot.com/docs/apps/developer-platform/build-apps/integrate-with-the-remote-hubspot-mcp-server",
             "notes": "In HubSpot, go to Development → MCP Connectors, click Create MCP connector, and add the "
             "exact callback URL below as a redirect URL. Copy its client ID and client secret into this form, then sign in and choose "
-            "the HubSpot account to authorize. PKCE is handled by Wavefunction on your Mac.",
+            f"the HubSpot account to authorize. PKCE is handled by Wavefunction on your {platforms.computer()}.",
             "oauth_default_auth_method": "client_secret_post",
             "oauth_auth_methods": ["client_secret_post"],
             "oauth_callback": "http://127.0.0.1:43830/callback",

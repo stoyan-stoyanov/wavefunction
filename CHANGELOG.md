@@ -7,6 +7,7 @@ What changed in each release of Wavefunction, for the people who use it. A pull 
 ### Fixed
 
 - On Linux, the app says "this computer", "File manager" and Ctrl where it said "this Mac", "Finder" and ⌘, and no longer shows a dictation button, which needs macOS.
+- On Linux, the agent asks before running disk tools that can erase a disk, such as `wipefs`, `fdisk` or `cryptsetup luksFormat`, and asks to run `gh` outside the sandbox, where it can reach GitHub. When AppArmor keeps the sandbox from starting, Settings › Access says how to allow it.
 
 ## 0.5.0 - 2026-11-23
 

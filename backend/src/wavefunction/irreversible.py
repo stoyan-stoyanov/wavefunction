@@ -12,6 +12,8 @@ import shlex
 import tempfile
 from pathlib import Path
 
+from . import platforms
+
 DELETES = "Deletes files that undo can't bring back."
 DELETES_INPUT = "Deletes files named by another command, which undo may not bring back."
 DISCARDS = "Discards uncommitted changes."
@@ -25,7 +27,7 @@ HISTORY = "Rewrites Git history."
 DATABASE = "Deletes data in a database."
 DOCKER = "Deletes Docker volumes and the data in them."
 CLOUD = "Deletes or destroys remote resources."
-MAC = "Can erase a disk or break this Mac."
+MAC = f"Can erase a disk or break {platforms.this_computer()}."
 NESTED = "Runs commands nested too deeply to check."
 
 # Temporary folders, resolved because /tmp is a link on macOS.
@@ -38,6 +40,8 @@ SHELLS = {"sh", "bash", "zsh", "dash", "ksh", "fish"}
 WRAPPERS = {
     "sudo",
     "doas",
+    "pkexec",
+    "run0",
     "env",
     "nohup",
     "time",
@@ -94,6 +98,23 @@ VALUE_OPTIONS = {
         "--other-user",
     },
     "doas": {"-u", "-C"},
+    "pkexec": {"--user"},
+    "run0": {
+        "-u",
+        "--user",
+        "-g",
+        "--group",
+        "-D",
+        "--chdir",
+        "--setenv",
+        "--unit",
+        "--property",
+        "--description",
+        "--slice",
+        "--nice",
+        "--background",
+        "--machine",
+    },
     "env": {"-u", "--unset", "-C", "--chdir"},
     "nice": {"-n", "--adjustment"},
     "timeout": {"-s", "--signal", "-k", "--kill-after"},
@@ -277,7 +298,8 @@ SQL = re.compile(
     re.IGNORECASE,
 )
 SQL_START = {"drop", "truncate", "delete"}
-DEVICE = re.compile(r"/dev/(r?disk|sd|nvme|hd)")
+# Disks and what stands for one: RAID arrays, device-mapper and encrypted volumes.
+DEVICE = re.compile(r"/dev/(r?disk|sd|nvme|hd|vd|xvd|mmcblk|md|dm-|mapper/)")
 SYSTEM = {
     Path(p)
     for p in (
@@ -293,6 +315,12 @@ SYSTEM = {
         "/var",
         "/private",
         "/opt",
+        "/boot",
+        "/lib",
+        "/lib64",
+        "/home",
+        "/root",
+        "/srv",
     )
 }
 
@@ -696,6 +724,7 @@ def _check(
             arg.startswith(("erase", "partition", "zero", "random", "secureerase", "reformat", "delete"))
             for arg in lowered
         )
+        or _erases_disk(name, options, operands)
     ):
         return MAC
     if name in ("chmod", "chown", "chgrp") and _short(options, "R", "--recursive"):
@@ -705,6 +734,46 @@ def _check(
             if path.is_absolute() and (path.resolve() in SYSTEM or path.resolve() == home):
                 return MAC
     return None
+
+
+# Linux's tools that format, wipe or repartition a disk, or remove a volume, as diskutil's verbs
+# do on macOS. Partition editors write unless they only list.
+ERASERS = {"blkdiscard", "mke2fs", "mkswap", "mkdosfs", "mkntfs", "lvremove", "vgremove", "pvremove"}
+PARTITIONERS = {
+    "fdisk": ("lx", "--list", "--list-details"),
+    "sfdisk": ("lFdJV", "--list", "--list-free", "--dump", "--json", "--verify"),
+    "gdisk": ("l",),
+    "parted": ("l", "--list"),
+}
+
+
+def _erases_disk(name: str, options: list[str], operands: list[str]) -> bool:
+    # --name=value is that option too.
+    long = [option.split("=", 1)[0] for option in options]
+    words = [arg.lower() for arg in operands]
+    if name in PARTITIONERS:
+        letters, *listing = PARTITIONERS[name]
+        return not _short(long, letters, *listing)
+    return (
+        name in ERASERS
+        or name == "wipefs"
+        and _short(long, "ao", "--all", "--offset")
+        and not _short(long, "n", "--no-act")
+        or name == "sgdisk"
+        and _short(long, "Zzo", "--zap-all", "--zap", "--clear")
+        or name == "cryptsetup"
+        and bool({"luksformat", "erase", "lukserase"} & set(words))
+        or name == "mdadm"
+        and "--zero-superblock" in long
+        or name == "zpool"
+        and words[:1] in (["destroy"], ["labelclear"])
+        or name == "nvme"
+        and words[:1] in (["format"], ["sanitize"])
+        or name == "hdparm"
+        and any(option.startswith("--security-erase") for option in long)
+        or name == "badblocks"
+        and _short(long, "w")
+    )
 
 
 def _kubectl_dry_run(args: list[str]) -> bool:

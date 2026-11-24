@@ -1,6 +1,7 @@
 // What differs between macOS and Linux stays in one place per layer, so a feature is written once
 // and Linux work doesn't reach into macOS code:
-// - the engine checks the platform only in platforms.py and the sandbox's own modules;
+// - the engine checks the platform only in platforms.py and the sandbox's own modules, which also
+//   hold the words "this Mac", "your Mac" and "Finder" in what it says;
 // - the interface only in lib/platform.ts, which also holds the words "this Mac", "your Mac",
 //   "Finder" and ⌘ that are different on Linux;
 // - the shell's per-platform code (`target_os`) stays in its per-platform modules, and lib.rs
@@ -17,6 +18,10 @@ const files = spawnSync("git", ["ls-files", "--cached", "--others", "--exclude-s
 const ENGINE = "backend/src/wavefunction/";
 const ENGINE_ALLOWED = new Set(["platforms.py", "sandbox.py", "sandbox_linux.py"].map((name) => ENGINE + name));
 const ENGINE_CHECK = /\bsys\.platform\b|\bplatform\.(system|machine|mac_ver|release|version|uname|platform)\(|\bos\.uname\(/;
+const MAC_WORDS = /\bthis Mac\b|\byour Mac\b|\bFinder\b/;
+// Computer use, which only macOS has for now (platforms.unavailable), keeps the Mac's words until
+// Linux gets it.
+const MAC_WORDS_ALLOWED = new Set(["computer.py", "desktop_files.py"].map((name) => ENGINE + name));
 const INTERFACE_ALLOWED = "frontend/src/lib/platform.ts";
 const INTERFACE_CHECK = /\bnavigator\.(userAgent|platform|userAgentData)\b|@tauri-apps\/plugin-os/;
 const INTERFACE_WORDS = /\bthis Mac\b|\byour Mac\b|\bFinder\b|⌘/;
@@ -29,12 +34,20 @@ const problems = [];
 const read = (file) => readFileSync(path.join(root, file), "utf8");
 // Comments may name a platform freely: blank them out, keeping line numbers.
 const blank = (text) => text.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, " ")).replace(/\/\/[^\n]*/g, "");
+// So may Python's comments and docstrings, which describe the macOS app to developers. A tool's
+// docstring that the model reads takes `{this_computer}`, filled in from platforms.py.
+const blankPython = (text) =>
+  text.replace(/("""|''')[\s\S]*?\1/g, (string) => string.replace(/[^\n]/g, " ")).replace(/#[^\n]*/g, "");
 const lines = (text) => text.split("\n").map((line, index) => [index + 1, line]);
 
 for (const file of files.filter((name) => name.startsWith(ENGINE) && name.endsWith(".py") && !ENGINE_ALLOWED.has(name))) {
   for (const [number, line] of lines(read(file))) {
     if (!line.trimStart().startsWith("#") && ENGINE_CHECK.test(line))
       problems.push(`${file}:${number}: checks the platform. Ask platforms.py instead, adding a function there if none fits.`);
+  }
+  for (const [number, line] of lines(blankPython(read(file)))) {
+    if (!MAC_WORDS_ALLOWED.has(file) && MAC_WORDS.test(line))
+      problems.push(`${file}:${number}: names the Mac. Use platforms.this_computer(), computer() or file_manager(), which say it right on Linux too.`);
   }
 }
 
