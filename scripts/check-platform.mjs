@@ -19,9 +19,6 @@ const ENGINE = "backend/src/wavefunction/";
 const ENGINE_ALLOWED = new Set(["platforms.py", "sandbox.py", "sandbox_linux.py"].map((name) => ENGINE + name));
 const ENGINE_CHECK = /\bsys\.platform\b|\bplatform\.(system|machine|mac_ver|release|version|uname|platform)\(|\bos\.uname\(/;
 const MAC_WORDS = /\bthis Mac\b|\byour Mac\b|\bFinder\b/;
-// Computer use, which only macOS has for now (platforms.unavailable), keeps the Mac's words until
-// Linux gets it.
-const MAC_WORDS_ALLOWED = new Set(["computer.py", "desktop_files.py"].map((name) => ENGINE + name));
 const INTERFACE_ALLOWED = "frontend/src/lib/platform.ts";
 const INTERFACE_CHECK = /\bnavigator\.(userAgent|platform|userAgentData)\b|@tauri-apps\/plugin-os/;
 const INTERFACE_WORDS = /\bthis Mac\b|\byour Mac\b|\bFinder\b|⌘/;
@@ -46,7 +43,7 @@ for (const file of files.filter((name) => name.startsWith(ENGINE) && name.endsWi
       problems.push(`${file}:${number}: checks the platform. Ask platforms.py instead, adding a function there if none fits.`);
   }
   for (const [number, line] of lines(blankPython(read(file)))) {
-    if (!MAC_WORDS_ALLOWED.has(file) && MAC_WORDS.test(line))
+    if (MAC_WORDS.test(line))
       problems.push(`${file}:${number}: names the Mac. Use platforms.this_computer(), computer() or file_manager(), which say it right on Linux too.`);
   }
 }

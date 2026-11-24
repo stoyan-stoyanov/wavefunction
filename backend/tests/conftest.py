@@ -269,8 +269,6 @@ def _signed_out_of_github(monkeypatch):
     monkeypatch.setattr(github_cli, "token", signed_out)
     monkeypatch.setattr(github_cli, "signed_in_account", no_account)
     monkeypatch.setattr(github_cli, "_command_token", None)
-    # Computer use is off in Linux builds; its tests drive a fake Docker as the macOS app does.
-    monkeypatch.setattr("wavefunction.computer.UNSUPPORTED", None)
 
 
 @pytest.fixture

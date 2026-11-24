@@ -25,6 +25,7 @@ import httpx
 import pytest
 
 from wavefunction import computer as computer_module
+from wavefunction import docker_linux, platforms
 from wavefunction.computer import (
     COMPUTER_TOOL_NAMES,
     CommandResult,
@@ -125,6 +126,7 @@ def fake_runner(responses: dict[str, CommandResult]):
 
 
 async def test_docker_recovery_waits_for_readiness_and_prevents_overlapping_operations(monkeypatch, tmp_path):
+    monkeypatch.setattr(platforms, "docker_manager", lambda: "app")
     action = "restart"
     entered, finish = asyncio.Event(), asyncio.Event()
     calls = []
@@ -199,8 +201,43 @@ async def test_docker_recovery_waits_for_readiness_and_prevents_overlapping_oper
         await asyncio.sleep(0.01)
     assert manager.status_cached().image_ready
 
+    # On Linux systemd runs Docker Desktop: restarted as the user's service, one operation at a
+    # time, and waited for through its own context.
+    monkeypatch.setattr(platforms, "docker_manager", lambda: "systemd")
+    monkeypatch.setattr(docker_linux, "SYSTEMCTL", "/usr/bin/systemctl")
+    entered, finish = asyncio.Event(), asyncio.Event()
+    calls.clear()
 
-async def test_failed_docker_recovery_reports_the_error_or_reopens_a_hung_docker_desktop(tmp_path):
+    async def systemd(*args, **kwargs):
+        if args[1:3] == ("--user", "show"):
+            return CommandResult(0, "loaded" if args[-1] == "docker-desktop.service" else "not-found", "")
+        if args[1:3] == ("--user", "restart"):
+            calls.append(args[1:])
+            entered.set()
+            await finish.wait()
+            return CommandResult(0, "", "")
+        return await run(*args, **kwargs)
+
+    manager._run = systemd
+    await manager.refresh_status()
+    task = asyncio.create_task(manager.manage_docker(action))
+    try:
+        await entered.wait()
+        with pytest.raises(DesktopUnavailable, match="current Docker operation"):
+            await manager.manage_docker("start")
+    finally:
+        finish.set()
+        status = await task
+    assert status.docker_action is None and status.docker_problem is None
+    assert ("--user", "restart", "docker-desktop.service") in calls
+    assert ("--context", "desktop-linux", "info", "--format", "{{.ServerVersion}}") in calls
+    assert not any(call[:2] == ("desktop", "stop") for call in calls)
+
+
+async def test_failed_docker_recovery_reports_the_error_or_reopens_a_hung_docker_desktop(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(platforms, "docker_manager", lambda: "app")
     # A hung Docker Desktop keeps its window but has no engine, and its own stop cannot end it.
     root = tmp_path.resolve()
     cli = root / "Docker.app/Contents/Resources/bin/docker"
@@ -269,6 +306,56 @@ async def test_failed_docker_recovery_reports_the_error_or_reopens_a_hung_docker
     with pytest.raises(DesktopUnavailable, match="Docker Desktop did not respond"):
         await manager.manage_docker("restart")
     assert not any(call[0] == "pkill" for call in calls)
+
+    # On Linux systemd runs Docker Engine: the user's own service when it is rootless, otherwise
+    # the system's, which pkexec asks the user to authorize. A refusal is reported; with no
+    # service systemd knows, the app says it can't start Docker rather than trying.
+    monkeypatch.setattr(platforms, "docker_manager", lambda: "systemd")
+    monkeypatch.setattr(docker_linux, "SYSTEMCTL", "/usr/bin/systemctl")
+    monkeypatch.setattr(docker_linux, "PKEXEC", "/usr/bin/pkexec")
+    units: set[tuple[bool, str]] = set()
+
+    async def systemd(*args, **kwargs):
+        calls.append(args)
+        if "show" in args[1:3]:
+            return CommandResult(0, "loaded" if (args[1] == "--user", args[-1]) in units else "not-found", "")
+        if args[0] == "/usr/bin/pkexec":
+            return CommandResult(126, "", "Error executing command as another user: Request dismissed")
+        if args[0] == "/usr/bin/systemctl":
+            state["quit"] = True  # The engine answers once started.
+            return CommandResult(0, "", "")
+        return await run(*args, **kwargs)
+
+    manager = DesktopManager(docker_path="docker", run_command=systemd)
+    for rootless in (False, True):
+        units, state["quit"], state["elsewhere"] = {(rootless, "docker.service")}, False, False
+        calls.clear()
+        assert (await manager.refresh_status()).docker_problem == docker_linux.NOT_RUNNING
+        if rootless:
+            status = await manager.manage_docker("restart")
+            assert status.docker_problem is None and status.docker_action is None
+            assert ("/usr/bin/systemctl", "--user", "restart", "docker.service") in calls
+        else:
+            with pytest.raises(DesktopUnavailable, match="Request dismissed"):
+                await manager.manage_docker("start")
+            assert ("/usr/bin/pkexec", "/usr/bin/systemctl", "start", "docker.service") in calls
+        assert not any(call[0] in {"pkill", "/usr/bin/open"} or "desktop" in call[1:3] for call in calls)
+
+    units = set()
+    await manager.refresh_status()
+    with pytest.raises(DesktopUnavailable, match="only a Docker that systemd runs"):
+        await manager.manage_docker("start")
+
+    # A running Docker Engine whose socket this user may not open is said to be that, not stopped.
+    async def denied(*args, **kwargs):
+        if args[1] == "info":
+            return CommandResult(
+                1, "", "permission denied while trying to connect to the Docker daemon socket"
+            )
+        return await systemd(*args, **kwargs)
+
+    manager._run = denied
+    assert (await manager.refresh_status()).docker_problem == docker_linux.NOT_ALLOWED
 
 
 class FakeClient:
@@ -356,7 +443,6 @@ def _browse(port: int) -> str:
         return b"".join(iter(lambda: browser.recv(65536), b"")).decode()
 
 
-@pytest.mark.skipif(sys.platform != "darwin", reason="Finds the chat's servers with macOS lsof")
 async def test_the_desktop_opens_the_chats_servers_at_their_address_on_the_mac(
     server, monkeypatch, tmp_path
 ) -> None:

@@ -131,7 +131,7 @@ The macOS app is the product; Linux is built from source and community-supported
 
 | Layer | Where | What goes there |
 |---|---|---|
-| Engine | `backend/src/wavefunction/platforms.py` | Something each computer does its own way is one function. A feature only macOS has is one entry in `_MACOS_ONLY`, read with `unavailable()`. `computer()`, `this_computer()`, `file_manager()`, `system()` and `opener()` for what the engine and the agent's instructions say. |
+| Engine | `backend/src/wavefunction/platforms.py` | Something each computer does its own way is one function. A feature only macOS has is one entry in `_MACOS_ONLY`, read with `unavailable()`. `computer()`, `this_computer()`, `file_manager()`, `system()` and `opener()` for what the engine and the agent's instructions say. `docker_manager()` picks `docker_macos` or `docker_linux` to start and restart Docker for computer use. |
 | Sandbox | `sandbox.py` (Seatbelt), `sandbox_linux.py` (Bubblewrap and seccomp) | One policy, enforced by each, and how each one's refusals look. |
 | Interface | `frontend/src/lib/platform.ts` | `has` for what this build has; `words` for "this Mac", "Finder", ⌘ and the system's name. |
 | Shell | `src-tauri/src/notifications.rs`, `quit.rs`, `window_controls.rs` | `#[cfg(target_os)]` code, in modules made for it. `lib.rs` keeps no more than it has. |

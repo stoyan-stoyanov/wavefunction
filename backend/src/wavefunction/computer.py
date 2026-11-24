@@ -59,9 +59,6 @@ from .desktop_bridge import DesktopBridge
 logger = logging.getLogger(__name__)
 
 IMAGE_REPO = "wavefunction-desktop"
-# Linux builds start without computer use: the desktop, its files and its Docker handling are made
-# for Docker Desktop on macOS. Said wherever computer use would otherwise be set up or started.
-UNSUPPORTED = platforms.unavailable("computer_use")
 # On the desktop containers, and on the volumes that keep chats' homes.
 CONTAINER_LABEL = "wavefunction.computer=1"
 INSTALLATION_LABEL = "wavefunction.installation"
@@ -238,13 +235,6 @@ def find_docker() -> str | None:
     return None
 
 
-def docker_desktop_app(docker: str) -> Path | None:
-    """The Docker Desktop app a docker CLI comes from, such as /Applications/Docker.app."""
-    return next(
-        (parent for parent in Path(os.path.realpath(docker)).parents if parent.suffix == ".app"), None
-    )
-
-
 def image_context_dir() -> Path:
     """Where the Dockerfile and action server live, frozen build or not."""
     if getattr(sys, "frozen", False):
@@ -285,6 +275,8 @@ class DockerStatus:
     building: bool = False
     build_log: list[str] = field(default_factory=list)
     image_tag: str = ""
+    # Whether the app can start and restart Docker: Docker Desktop on macOS, and on Linux a Docker
+    # that systemd runs.
     docker_desktop_available: bool = False
     docker_action: str | None = None
 
@@ -324,6 +316,13 @@ class DesktopSession:
 
     def touch(self) -> None:
         self.last_used = time.monotonic()
+
+
+def _docker_manager() -> Any:
+    """`docker_macos` or `docker_linux`: what starts and restarts Docker here."""
+    from . import docker_linux, docker_macos
+
+    return docker_linux if platforms.docker_manager() == "systemd" else docker_macos
 
 
 class DesktopUnavailable(RuntimeError):
@@ -367,7 +366,7 @@ class DesktopManager:
         self._docker_override = docker_path
         self._idle_ttl = idle_ttl
         self._controls = {}
-        self._status = DockerStatus(image_tag=image_tag(), docker_problem=UNSUPPORTED)
+        self._status = DockerStatus(image_tag=image_tag())
         self._sessions: dict[str, DesktopSession] = {}
         self._session_locks: dict[str, asyncio.Lock] = {}
         self._reaper: asyncio.Task | None = None
@@ -398,26 +397,19 @@ class DesktopManager:
             image_tag=image_tag(),
             docker_action=self._status.docker_action,
         )
-        if UNSUPPORTED:
-            status.docker_problem = UNSUPPORTED
-            self._status = status
-            return status
         docker = self.docker()
         if docker is None:
             self._status = status
             return status
         status.docker_available = True
-        desktop = await self._run(docker, "desktop", "version", timeout=10)
-        status.docker_desktop_available = desktop.exit_code == 0 and bool(desktop.stdout.strip())
+        manager = _docker_manager()
+        status.docker_desktop_available = await manager.manageable(self._run, docker)
 
         info = await self._run(docker, "info", "--format", "{{.ServerVersion}}", timeout=10)
         # Some Docker versions exit zero for a formatted info query even when the
         # daemon is unreachable. A running engine must return its server version.
         if info.exit_code != 0 or not info.stdout.strip():
-            status.docker_problem = (
-                "Docker is installed but its engine is not running. Start Docker Desktop "
-                "(or OrbStack) and try again."
-            )
+            status.docker_problem = manager.problem(info)
             self._status = self._current(status)
             return status
 
@@ -447,25 +439,12 @@ class DesktopManager:
         if self._status.building or self._status.docker_action:
             raise DesktopUnavailable("Wait for the current Docker operation to finish.")
         docker = self.docker()
+        manager = _docker_manager()
         if not docker or not self._status.docker_desktop_available:
-            raise DesktopUnavailable(
-                "Open Docker Desktop or OrbStack to start or restart its engine, then check again."
-            )
+            raise DesktopUnavailable(manager.UNMANAGED)
         self._status.docker_action = action
         try:
-            app = docker_desktop_app(docker)
-            result = CommandResult(0, "", "")
-            if action == "restart":
-                result = await self._run(docker, "desktop", "stop", "--timeout", "60", timeout=65)
-            # A hung Docker Desktop keeps its window with no engine behind it, and its own stop
-            # cannot end it. Only with its engine down does no container run that quitting it
-            # could interrupt, so only then are its processes quit by force before it is opened
-            # again; a stop that failed while the engine answers is reported instead.
-            if app and not await self._desktop_engine_up(docker):
-                await self._force_quit(app)
-                result = CommandResult(0, "", "")
-            if result.exit_code == 0:
-                result = await self._open_desktop(docker, app)
+            result = await manager.manage(self._run, docker, action, self._desktop_engine_up)
         finally:
             try:
                 await self.refresh_status()
@@ -473,52 +452,19 @@ class DesktopManager:
                 self._status.docker_action = None
         if result.exit_code != 0:
             detail = (result.stderr or result.stdout).strip()[-1000:]
-            raise DesktopUnavailable(
-                f"Could not {action} Docker. {detail or 'Open Docker Desktop and try again.'}"
-            )
+            raise DesktopUnavailable(f"Could not {action} Docker. {detail or manager.FAILED}")
         if self._status.docker_problem:
             raise DesktopUnavailable(self._status.docker_problem)
         return self._status
 
     async def _desktop_engine_up(self, docker: str) -> bool:
-        """Whether Docker Desktop's own engine answers. Plain commands use the active context,
-        which can be another daemon: one that is down while Docker Desktop runs fine."""
+        """Whether Docker Desktop's own engine answers, on macOS or Linux. Plain commands use the
+        active context, which can be another daemon: one that is down while Docker Desktop runs
+        fine."""
         own = await self._run(
             docker, "--context", "desktop-linux", "info", "--format", "{{.ServerVersion}}", timeout=10
         )
         return own.exit_code == 0 and bool(own.stdout.strip())
-
-    async def _open_desktop(self, docker: str, app: Path | None) -> CommandResult:
-        """Open Docker Desktop through Launch Services, as the Dock does, and wait for its engine.
-        Started by `docker desktop start`, or relaunched by its restart, it runs as a child of
-        this app, and macOS then keeps it out of its own group container: it cannot read its
-        settings and stops with "settings-store.json: operation not permitted"."""
-        target = ["-a", str(app)] if app else ["-b", "com.docker.docker"]
-        opened = await self._run("/usr/bin/open", *target, timeout=30)
-        if opened.exit_code != 0:
-            return opened
-        loop = asyncio.get_running_loop()
-        deadline = loop.time() + 120
-        while not await self._desktop_engine_up(docker):
-            if loop.time() > deadline:
-                return CommandResult(
-                    1, "", "Docker Desktop opened, but its engine did not start within two minutes."
-                )
-            await asyncio.sleep(2)
-        return CommandResult(0, "", "")
-
-    async def _force_quit(self, app: Path) -> None:
-        """Stop this user's processes that run from inside the Docker Desktop app, asking first
-        and killing what is left. The network helper Docker installs elsewhere is not touched."""
-        prefix = f"{app}/Contents/MacOS/"
-        pattern = "^" + "".join(f"\\{char}" if char in ".^$*+?()[]{}|\\" else char for char in prefix)
-        user = str(os.getuid())
-        await self._run("pkill", "-TERM", "-U", user, "-f", pattern, timeout=10)
-        for _ in range(20):
-            if (await self._run("pgrep", "-U", user, "-f", pattern, timeout=10)).exit_code != 0:
-                return
-            await asyncio.sleep(0.5)
-        await self._run("pkill", "-KILL", "-U", user, "-f", pattern, timeout=10)
 
     # -- image ---------------------------------------------------------------------------
 
@@ -774,8 +720,6 @@ class DesktopManager:
             return False
 
     async def _start_session(self, conversation_id: str, copy: str | None = None) -> DesktopSession:
-        if UNSUPPORTED:
-            raise DesktopUnavailable(UNSUPPORTED)
         status = await self.refresh_status()
         if not status.docker_available:
             raise DesktopUnavailable(
@@ -788,7 +732,7 @@ class DesktopManager:
             # No "Settings" here: a conversation sets the desktop up where it is needed, as an
             # agent's own desktop tools do.
             raise DesktopUnavailable(
-                "The desktop image is not built yet, so computer use is not set up on this Mac."
+                f"The desktop image is not built yet, so computer use is not set up on {platforms.this_computer()}."
             )
         docker = self.docker()
         assert docker is not None
