@@ -38,7 +38,7 @@ Use real isolated repositories, actual tool loops and protocol fixtures where yo
 
 | Marker | Meaning | Runs |
 |---|---|---|
-| `sandbox` | Runs commands through the app's tools (Git, edits, terminals, discovery), so it needs macOS Seatbelt | macOS; skipped elsewhere |
+| `sandbox` | Runs commands through the app's tools (Git, edits, terminals, discovery), so it needs the sandbox (Seatbelt, or Bubblewrap on Linux) | macOS and the `linux` job; skipped where there's no sandbox |
 | `destructive` | Runs a real deletion command in a temporary repository | CI only (the macOS job). Never locally. |
 | `live` | Talks to real external services | Only with `-m live` |
 
@@ -81,7 +81,7 @@ A flaky test is a bug. Don't retry it, lengthen a timeout, or add a sleep. A tes
 
 These use synthetic data, clean up after themselves, and are not needed for docs-only or tests-only changes.
 
-- `scripts/verify-coding-features.py --backend <frozen engine>`: a frozen build's tools, terminals, history, helpers and restart, with a scripted model.
+- `scripts/verify-coding-features.py --backend <frozen engine>`: a frozen build's sandbox self-check, tools, terminals, history, helpers and restart, with a scripted model. CI's `macos-app` job runs it, with `verify-release.py --ad-hoc`, `macos-manifest.mjs --check` and `verify-native.py`, on changes that can alter the built app.
 - `scripts/verify-coding-live.py [--provider openrouter] --cache-check`: real model calls through an existing sign-in or a key file; measures provider-reported cached tokens. Report misses as well as hits. Cross-chat cache hits are reported, not required.
 - `scripts/verify-harness-live.py --auth-file <sign-in>`: one real-model scenario per capability a release ships (conversation, coding, web, documents, computer, helpers, approval), each passing only on a random code the tool must have produced. Required before a release ([RELEASING.md](RELEASING.md#before-a-release)).
 - `scripts/verify-orchestration-live.py`: real parallel delegation with a cost stop.
