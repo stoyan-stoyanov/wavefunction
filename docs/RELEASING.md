@@ -4,18 +4,13 @@ A version tag builds a signed, notarized app on GitHub Actions and opens a **dra
 
 ## Before a release
 
-Check the commit you will tag, on `main`. Run `npm run setup` first, so your local dependencies match the lockfiles. Every check below uses synthetic data in a throwaway folder and cleans up after itself; none of them touches your own app data.
+Check the commit you will tag, on `main`. Every check below uses synthetic data in a throwaway folder and cleans up after itself; none of them touches your own app data.
 
-| Check | Command | What it proves |
+| Check | How | What it proves |
 |---|---|---|
-| Every suite | `npm run check -- --all` | Tests, types and lint for the engine, interface, desktop shell and launcher |
-| The app builds | `npm run desktop:build` | The bundled engine and the app build from the lockfiles |
-| The bundled engine | `uv run --no-sync --project backend python scripts/verify-coding-features.py --backend backend/dist/wavefunction-backend/wavefunction-backend` | Tools, terminals, history, helpers and restart in the packaged engine, with a scripted model |
-| Each capability, with a real model | `uv run --no-sync --project backend python scripts/verify-harness-live.py --auth-file ~/.codex/auth.json` | A conversation's memory, coding, web search and page reading, uploaded documents, computer use, helpers, and the approval card for a command that can't be undone |
+| Checks | The commit's **Checks** run on GitHub passed. Every push to `main` runs all of it. | Tests, types and lint for the engine, interface and desktop shell, on Linux and macOS, including the tests that run real deletion commands. Its `macos-app` job also builds the Mac app as a release does, checks the bundled engine with a scripted model and the bundle against `src-tauri/macos-bundle.txt`, and launches the app: the bundled tools, and data surviving a restart |
 | Linux, from scratch | `gh workflow run linux-from-scratch.yml --ref main`, then check that its run passed | README's Linux build on bare Ubuntu 24.04, x86-64 and arm64, and in the built app: the sandbox and its AppArmor message, notifications, terminal copy and paste, F11, Ctrl+Q, the AppImage updating itself, and computer use |
-| The native app | `uv run --no-sync --project backend python scripts/verify-native.py --app src-tauri/target/release/bundle/macos/Wavefunction.app` | Launch, the bundled tools, and data surviving a restart. It refuses to run beside existing Wavefunction data, so run it from a macOS account without any. |
-
-Tests that run real deletion commands (`destructive`) never run locally: check instead that the commit's **Checks** run on GitHub passed, which ran them on macOS.
+| Each capability, with a real model | `npm run setup`, then `uv run --no-sync --project backend python scripts/verify-harness-live.py --auth-file ~/.codex/auth.json` | A conversation's memory, coding, web search and page reading, uploaded documents, computer use, helpers, and the approval card for a command that can't be undone |
 
 About the real-model check:
 
@@ -65,8 +60,8 @@ About the real-model check:
    It then downloads the draft's `latest.json`, adds a `linux-x86_64` entry for the AppImage, and uploads it again in place of the Mac build's. The job fails, keeping the Mac build's file, unless the `darwin-aarch64` entry and everything else in the file read back unchanged.
 
    A Linux failure leaves the Mac draft as it is. Re-run the failed jobs to retry it without rebuilding the Mac app, or publish without Linux files; installed AppImages then report that the update has no Linux download and stay on their version.
-4. Review the draft. Install its DMG and use it for a few minutes: send a message, attach a document, and check that **Settings › About** shows the new version. Wait for `attach-linux` if you want the Linux files in the release: it replaces `latest.json`, so publishing before it finishes can leave the published release without one for a moment. Then publish it.
-5. Open an installed copy of the previous version. Shortly after launch, it should offer the update in **Settings › About**, with this release's notes, and install it. No local check can cover this step.
+4. Review the draft. Quit Wavefunction, open the draft's DMG and run the app from the disk image, so the installed copy stays on the previous version for step 5. Use it for a few minutes: send a message, attach a document, and check that **Settings › About** shows the new version. Quit it. Wait for `attach-linux` if you want the Linux files in the release: it replaces `latest.json`, so publishing before it finishes can leave the published release without one for a moment. Then publish it.
+5. Open your installed copy, still the previous version. Shortly after launch, it should offer the update in **Settings › About**, with this release's notes, and install it. No local check can cover this step.
 
 ## The changelog
 
