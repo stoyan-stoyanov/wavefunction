@@ -35,7 +35,7 @@ CI runs these jobs on every pull request and push to `main`, and all must pass:
 | native | macOS | clippy and the Rust tests |
 | macos-app | macOS | the app built as a release builds it, signed ad hoc: the frozen engine's sandbox and a scripted session, the release files, the bundle against `src-tauri/macos-bundle.txt`, and a launch. On `main`, and on pull requests that change the shell, packaging or platform code |
 
-`linux` runs too but isn't required: the sandbox tests on Linux, the `.deb` and AppImage built and started, and clippy and the Rust tests for the shell's Linux code. If `macos-app` reports a bundle difference you intended, rewrite the file with `node scripts/macos-manifest.mjs --write` on a built app (or paste the manifest the job prints) and say why in the pull request.
+`linux` runs too but isn't required: the sandbox tests on Linux, the `.deb` and AppImage built and started, and clippy and the Rust tests for the shell's Linux code. The separate **Linux from scratch** workflow, run by hand before a release and on changes to it, builds the app on bare Ubuntu 24.04 (x86-64 and arm64) by following README's Linux steps, then drives the built app under a virtual display to check the Linux desktop features; its `evidence-*` artifact has screenshots and a recording. If `macos-app` reports a bundle difference you intended, rewrite the file with `node scripts/macos-manifest.mjs --write` on a built app (or paste the manifest the job prints) and say why in the pull request.
 
 A newer push to a pull request cancels its older run. On `main` a started run finishes; when several merges queue up behind it, GitHub keeps only the newest waiting one.
 

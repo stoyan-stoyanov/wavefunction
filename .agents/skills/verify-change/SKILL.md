@@ -27,7 +27,7 @@ While iterating, run the narrowest test:
 | The sandbox, irreversible-command checks, deletion safeguards | Tests by inspection, classification and mocks only. Tests that must run a real deletion are marked `destructive` and run in CI, never locally. |
 | The desktop shell (`src-tauri/`) | `npm run check` covers compile and tests. Behavior in the real app needs a rebuild: ask before using [rebuild-wavefunction](../rebuild-wavefunction/SKILL.md). |
 | Packaging, the frozen engine's spec, bundled resources | A frozen check: `npm run sidecar:build`, then `uv run --no-sync --project backend python scripts/verify-coding-features.py --backend backend/dist/wavefunction-backend/wavefunction-backend`. CI's `macos-app` job also builds and launches the app. |
-| Anything for Linux | Show the Mac didn't change: the prompt-surface fixture and `src-tauri/macos-bundle.txt` unchanged (or the diff explained), `backend-macos`, `native` and `macos-app` green. The non-required `linux` job is the Linux evidence. |
+| Anything for Linux | Show the Mac didn't change: the prompt-surface fixture and `src-tauri/macos-bundle.txt` unchanged (or the diff explained), `backend-macos`, `native` and `macos-app` green. The non-required `linux` job is the Linux evidence; for desktop behaviour, run the Linux from scratch workflow. |
 | Storage: tables, settings, files on disk | Exercise it with existing data and with a fresh folder, both success and rejection. |
 | Docs only | Check that the links resolve and the commands you name exist. |
 

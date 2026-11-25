@@ -13,6 +13,7 @@ import signal
 import socket
 import sqlite3
 import subprocess
+import sys
 import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -140,6 +141,28 @@ def until(operation, seconds=30):
     raise AssertionError("Synthetic coding feature check timed out")
 
 
+def host_pid(pid, ancestor):
+    """This side's number for a process a sandboxed shell reported as `pid` (`$!`, `$$`). On Linux
+    each command has a PID namespace of its own, whose numbers mean other processes outside it.
+    As backend/tests/support.py's `host_pid`."""
+    if sys.platform != "linux":
+        return pid
+    parents, inner = {}, {}
+    for status in Path("/proc").glob("[0-9]*/status"):
+        try:
+            fields = dict(line.split(":\t", 1) for line in status.read_text().splitlines() if ":\t" in line)
+        except OSError:
+            continue
+        number = int(status.parent.name)
+        parents[number], inner[number] = int(fields["PPid"]), int(fields["NSpid"].split()[-1])
+    for number, inside in inner.items():
+        up = number
+        while inside == pid and up in parents and up > 1:
+            if (up := parents[up]) == ancestor:
+                return number
+    raise LookupError(f"No process {pid} under {ancestor}")
+
+
 def alive(pid):
     try:
         os.kill(pid, 0)
@@ -152,7 +175,9 @@ def main(args):
     result = {}
     process, client = None, None
     children, sidecars, ports = set(), set(), []
-    with TemporaryDirectory(prefix="harness-features-frozen-", dir="/private/tmp") as temporary:
+    with TemporaryDirectory(
+        prefix="harness-features-frozen-", dir="/private/tmp" if sys.platform == "darwin" else None
+    ) as temporary:
         root = Path(temporary)
         folder, data = root / "repository", root / "app-data"
         folder.mkdir()
@@ -360,10 +385,14 @@ def main(args):
                     return re.search(r"SMOKE_CHILD=(\d+)", text)
 
                 match = until(output)
-                child = int(match[1])
+                child = host_pid(int(match[1]), process.pid)
                 children.add(child)
                 assert "PRIVATE-NATIVE-MARKER" not in text
-                assert "Operation not permitted" in text or "Permission denied" in text
+                # Bubblewrap leaves paths the chat can't read out of the sandbox altogether.
+                denied = ["Operation not permitted", "Permission denied"]
+                if sys.platform == "linux":
+                    denied.append("No such file or directory")
+                assert any(reason in text for reason in denied), text
                 assert "35 93" in text, text
                 assert request("GET", url + "/output", params={"cursor": 0})["text"]
                 assert (
@@ -395,7 +424,10 @@ def main(args):
                 return re.search(r"SHUTDOWN_CHILD=(\d+)", text)
 
             match = until(shutdown_output)
-            shutdown_pids = {int(match[1]), int(re.search(r"SHUTDOWN_SHELL=(\d+)", text)[1])}
+            shutdown_pids = {
+                host_pid(int(match[1]), process.pid),
+                host_pid(int(re.search(r"SHUTDOWN_SHELL=(\d+)", text)[1]), process.pid),
+            }
             children.update(shutdown_pids)
             stop()
             until(lambda: not any(alive(pid) for pid in shutdown_pids), 5)
@@ -573,7 +605,7 @@ def main(args):
             log.close()
             for child in children:
                 if alive(child):
-                    # These PIDs came from the synthetic shell's own $! output.
+                    # The synthetic shell's own $! and $$, translated by host_pid.
                     os.kill(child, signal.SIGKILL)
             until(lambda: not any(alive(child) for child in children), 5)
             for port in ports:
