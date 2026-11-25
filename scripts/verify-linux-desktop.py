@@ -168,7 +168,9 @@ class Driver:
         )
 
     def click(self, element):
-        self.call("POST", f"/session/{self.id}/element/{element[ELEMENT]}/click")
+        """Click through the page: WebKitWebDriver's own element click doesn't reach the app's buttons
+        under Xvfb. The checks press their keys and the terminal's double-click with xdotool."""
+        self.script("arguments[0].click()", element)
 
     def rect(self, element):
         return self.call("GET", f"/session/{self.id}/element/{element[ELEMENT]}/rect")
@@ -310,8 +312,10 @@ def check_desktop():
             driver.click(until("Show workbench", lambda: driver.find('[aria-label="Show workbench"]'), 20))
         driver.click(until("the Terminal tab", lambda: driver.find("[role=tab]", "Terminal"), 20))
         driver.click(until("New Terminal", lambda: driver.find("button", "New Terminal"), 20))
-        driver.click(until("the terminal", lambda: driver.find(".xterm-screen"), 30))
+        until("the terminal", lambda: driver.find(".xterm-screen"), 30)
         time.sleep(3)
+        run("xdotool", "windowactivate", "--sync", window)
+        driver.script("document.querySelector('.xterm-helper-textarea').focus()")
         pasted = f"PASTED-{secrets.token_hex(3)}"
         subprocess.run(
             ["xclip", "-selection", "clipboard"], input=f"echo {pasted} > pasted.txt", text=True, check=True
