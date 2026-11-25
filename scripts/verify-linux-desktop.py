@@ -340,13 +340,14 @@ def check_desktop():
         run("xdotool", "key", "Return")
         time.sleep(2)
         row = driver.rect(driver.find(".xterm-rows > div"))
-        geometry = dict(
-            line.split("=") for line in run("xdotool", "getwindowgeometry", "--shell", window).splitlines()
-        )
+        # xdotool counts the window manager's title bar into the window's top edge; xwininfo doesn't.
+        info = run("xwininfo", "-id", window)
+        left, top, width = (int(re.search(rf"{field}:\s+(-?\d+)", info)[1])
+                            for field in ("Absolute upper-left X", "Absolute upper-left Y", "Width"))  # fmt: skip
         # The page is zoomed (115% by default), so its CSS pixels aren't the screen's.
-        scale = int(geometry["WIDTH"]) / driver.script("return window.innerWidth")
-        x = int(geometry["X"]) + round((row["x"] + 12) * scale)
-        y = int(geometry["Y"]) + round((row["y"] + row["height"] / 2) * scale)
+        scale = width / driver.script("return window.innerWidth")
+        x = left + round((row["x"] + 12) * scale)
+        y = top + round((row["y"] + row["height"] / 2) * scale)
         run("xdotool", "mousemove", str(x), str(y), "click", "--repeat", "2", "--delay", "100", "1")
         run("xdotool", "key", "ctrl+shift+c")
         until(
