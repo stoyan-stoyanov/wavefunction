@@ -86,7 +86,13 @@ function terminalKeys(terminal: Terminal, toggleFind: () => void, open: () => bo
     if (key === "v")
       void navigator.clipboard
         .readText()
-        .then((text) => open() && terminal.paste(text))
+        .then((text) => {
+          if (!open()) return;
+          if (text) terminal.paste(text);
+          // WebKitGTK reads only MIME text formats here, which X11 apps such as xterm don't offer.
+          // Its own paste reads theirs too, into the terminal's focused textarea.
+          else document.execCommand("paste");
+        })
         .catch(() => undefined);
     else if (terminal.hasSelection())
       void navigator.clipboard.writeText(terminal.getSelection()).catch(() => undefined);

@@ -316,18 +316,21 @@ def check_desktop():
         time.sleep(3)
         run("xdotool", "windowactivate", "--sync", window)
         driver.script("document.querySelector('.xterm-helper-textarea').focus()")
-        pasted = f"PASTED-{secrets.token_hex(3)}"
-        subprocess.run(
-            ["xclip", "-selection", "clipboard"], input=f"echo {pasted} > pasted.txt", text=True, check=True
-        )
-        run("xdotool", "key", "ctrl+shift+v")
-        time.sleep(1)
-        run("xdotool", "key", "Return")
-        until(
-            "the pasted command to run",
-            lambda: any(pasted in p.read_text() for p in (Path.home() / "projects").rglob("pasted.txt")),
-            20,
-        )
+        # Text copied in a GTK or Wayland app comes as text/plain; from xterm, only as UTF8_STRING.
+        for name, formats in [("text/plain", ["-t", "text/plain;charset=utf-8"]), ("UTF8_STRING", [])]:
+            pasted = f"PASTED-{secrets.token_hex(3)}"
+            subprocess.run(["xclip", "-selection", "clipboard", *formats],
+                           input=f"echo {pasted} >> pasted.txt", text=True, check=True)  # fmt: skip
+            run("xdotool", "key", "ctrl+shift+v")
+            time.sleep(1)
+            run("xdotool", "key", "Return")
+            until(
+                f"the command pasted as {name} to run",
+                lambda pasted=pasted: any(
+                    pasted in p.read_text() for p in (Path.home() / "projects").rglob("pasted.txt")
+                ),
+                20,
+            )
         copied = f"COPIED-{secrets.token_hex(3)}"
         run("xdotool", "type", "--delay", "40", f"clear; echo {copied}")
         run("xdotool", "key", "Return")
@@ -345,7 +348,7 @@ def check_desktop():
             10,
         )
         screen("terminal")
-        return "Ctrl+Shift+V pasted and ran a command; Ctrl+Shift+C copied a selection"
+        return "Ctrl+Shift+V pasted text/plain and UTF8_STRING text; Ctrl+Shift+C copied a selection"
 
     def fullscreen():
         state = lambda: run("xprop", "-id", window, "_NET_WM_STATE")  # noqa: E731
