@@ -339,7 +339,10 @@ def check_desktop():
         geometry = dict(
             line.split("=") for line in run("xdotool", "getwindowgeometry", "--shell", window).splitlines()
         )
-        x, y = int(geometry["X"]) + int(row["x"]) + 30, int(geometry["Y"]) + int(row["y"] + row["height"] / 2)
+        # The page is zoomed (115% by default), so its CSS pixels aren't the screen's.
+        scale = int(geometry["WIDTH"]) / driver.script("return window.innerWidth")
+        x = int(geometry["X"]) + round((row["x"] + 12) * scale)
+        y = int(geometry["Y"]) + round((row["y"] + row["height"] / 2) * scale)
         run("xdotool", "mousemove", str(x), str(y), "click", "--repeat", "2", "--delay", "100", "1")
         run("xdotool", "key", "ctrl+shift+c")
         until(
