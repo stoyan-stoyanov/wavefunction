@@ -13,6 +13,7 @@ import signal
 import socket
 import sqlite3
 import subprocess
+import sys
 import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -152,7 +153,9 @@ def main(args):
     result = {}
     process, client = None, None
     children, sidecars, ports = set(), set(), []
-    with TemporaryDirectory(prefix="harness-features-frozen-", dir="/private/tmp") as temporary:
+    with TemporaryDirectory(
+        prefix="harness-features-frozen-", dir="/private/tmp" if sys.platform == "darwin" else None
+    ) as temporary:
         root = Path(temporary)
         folder, data = root / "repository", root / "app-data"
         folder.mkdir()

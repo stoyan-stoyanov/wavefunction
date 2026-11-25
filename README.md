@@ -130,7 +130,7 @@ To build it yourself, on arm64 among others, follow these steps for Ubuntu 24.04
 2. Install Bubblewrap and the libraries Tauri needs:
 
    ```sh
-   sudo apt install bubblewrap build-essential file libwebkit2gtk-4.1-dev \
+   sudo apt install bubblewrap build-essential file git libwebkit2gtk-4.1-dev \
      libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
    ```
 
