@@ -30,7 +30,6 @@ DISPLAY = ":99"
 SIZE = "1920x1080"
 MODEL_PORT, UPDATE_PORT, DRIVER_PORT = 8766, 8765, 4444
 APPARMOR = Path("/proc/sys/kernel/apparmor_restrict_unprivileged_userns")
-ELEMENT = "element-6066-11e4-a52e-4f735466cecf"
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--app", required=True, help="The installed app's binary.")
@@ -173,7 +172,12 @@ class Driver:
         self.script("arguments[0].click()", element)
 
     def rect(self, element):
-        return self.call("GET", f"/session/{self.id}/element/{element[ELEMENT]}/rect")
+        """Where `element` is in the page, in CSS pixels. WebKitWebDriver's own rect refuses the
+        terminal's rows as "not interactable"."""
+        return self.script(
+            "const r = arguments[0].getBoundingClientRect(); return {x: r.x, y: r.y, height: r.height}",
+            element,
+        )
 
     def close(self):
         with contextlib.suppress(Exception):
