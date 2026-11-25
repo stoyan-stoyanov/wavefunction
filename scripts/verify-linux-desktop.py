@@ -67,11 +67,15 @@ def until(what, check, seconds=60):
 
 
 def alive(pid):
+    """Whether `pid` runs. A process that has exited is a zombie until its parent reaps it, so reap
+    this script's own children first and count a zombie as gone."""
+    for process in started:
+        process.poll()
     try:
-        os.kill(pid, 0)
-        return True
-    except ProcessLookupError:
+        state = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[0]
+    except (FileNotFoundError, ProcessLookupError):
         return False
+    return state != "Z"
 
 
 def screen(name):
@@ -299,8 +303,11 @@ def check_desktop():
         return f"task {ended['status']}; clicking the notification opened its chat"
 
     def terminal():
-        tab = until("the Terminal tab", lambda: driver.find("[role=tab]", "Terminal"), 20)
-        driver.click(tab)
+        # The workbench starts closed, and its Terminal tab has no terminal until one is made.
+        if not driver.find("[role=tab]", "Terminal"):
+            driver.click(until("Show workbench", lambda: driver.find('[aria-label="Show workbench"]'), 20))
+        driver.click(until("the Terminal tab", lambda: driver.find("[role=tab]", "Terminal"), 20))
+        driver.click(until("New Terminal", lambda: driver.find("button", "New Terminal"), 20))
         driver.click(until("the terminal", lambda: driver.find(".xterm-screen"), 30))
         time.sleep(3)
         pasted = f"PASTED-{secrets.token_hex(3)}"

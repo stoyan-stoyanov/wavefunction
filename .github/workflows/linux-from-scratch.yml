@@ -17,9 +17,6 @@ on:
 permissions:
   contents: read
   actions: read
-concurrency:
-  group: linux-from-scratch-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   build:
     if: ${{ !inputs.build }}
