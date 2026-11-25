@@ -12,6 +12,7 @@ Check the commit you will tag, on `main`. Run `npm run setup` first, so your loc
 | The app builds | `npm run desktop:build` | The bundled engine and the app build from the lockfiles |
 | The bundled engine | `uv run --no-sync --project backend python scripts/verify-coding-features.py --backend backend/dist/wavefunction-backend/wavefunction-backend` | Tools, terminals, history, helpers and restart in the packaged engine, with a scripted model |
 | Each capability, with a real model | `uv run --no-sync --project backend python scripts/verify-harness-live.py --auth-file ~/.codex/auth.json` | A conversation's memory, coding, web search and page reading, uploaded documents, computer use, helpers, and the approval card for a command that can't be undone |
+| Linux, from scratch | `gh workflow run linux-from-scratch.yml --ref main`, then check that its run passed | README's Linux build on bare Ubuntu 24.04, x86-64 and arm64, and in the built app: the sandbox and its AppArmor message, notifications, terminal copy and paste, F11, Ctrl+Q, the AppImage updating itself, and computer use |
 | The native app | `uv run --no-sync --project backend python scripts/verify-native.py --app src-tauri/target/release/bundle/macos/Wavefunction.app` | Launch, the bundled tools, and data surviving a restart. It refuses to run beside existing Wavefunction data, so run it from a macOS account without any. |
 
 Tests that run real deletion commands (`destructive`) never run locally: check instead that the commit's **Checks** run on GitHub passed, which ran them on macOS.
