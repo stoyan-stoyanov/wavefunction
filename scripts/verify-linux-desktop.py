@@ -97,19 +97,19 @@ def sha256(path):
 
 
 def engine():
-    """(app pid, port, token) of the running app's engine, read from its arguments."""
-    for line in run("ps", "-ax", "-o", "args=").splitlines():
+    """(engine pid, app pid, port, token) of the running app's engine, read from its arguments."""
+    for line in run("ps", "-ax", "-o", "pid=,args=").splitlines():
         parent = re.search(r"--parent-pid\s+(\d+)", line)
         port = re.search(r"--port\s+(\d+)", line)
         token = re.search(r"--token\s+([a-f0-9]{64})", line)
         if parent and port and token and alive(int(parent[1])):
-            return int(parent[1]), int(port[1]), token[1]
+            return int(line.split()[0]), int(parent[1]), int(port[1]), token[1]
     return None
 
 
 class Engine:
     def __init__(self):
-        self.app, port, self.token = until("the app's engine", engine, 90)
+        self.pid, self.app, port, self.token = until("the app's engine", engine, 90)
         self.base = f"http://127.0.0.1:{port}"
         until("the engine to answer", lambda: self.call("GET", "/health") is not None, 60)
 
@@ -129,7 +129,7 @@ class Engine:
         if alive(self.app):
             os.kill(self.app, signal.SIGTERM)
         until("the app to stop", lambda: not alive(self.app), 20)
-        until("its engine to stop", lambda: engine() is None, 20)
+        until("its engine to stop", lambda: not alive(self.pid), 20)
 
 
 class Driver:
@@ -260,7 +260,9 @@ def check_desktop():
         folder = Path.home() / "projects" / title.split()[0].lower()
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "README.md").write_text(f"# {title}\n")
-        chats[title] = api.call("POST", "/api/coding/threads", {"title": title, "folder": str(folder)})
+        # Setup isn't done, and the sidebar doesn't show, until there is a project.
+        project = api.call("POST", "/api/coding/projects", {"name": title.split()[0], "folder": str(folder)})
+        chats[title] = api.call("POST", "/api/coding/threads", {"title": title, "project_id": project["id"]})
     # The page read the model settings at launch.
     driver.call("POST", f"/session/{driver.id}/refresh")
     until("both chats in the sidebar", lambda: driver.find("[aria-current], aside *", "Second chat"), 30)
@@ -355,7 +357,7 @@ def check_desktop():
         run("xdotool", "windowactivate", "--sync", window)
         run("xdotool", "key", "ctrl+q")
         until("the app to quit", lambda: not alive(api.app), 20)
-        until("its engine to stop", lambda: engine() is None, 20)
+        until("its engine to stop", lambda: not alive(api.pid), 20)
         return "Ctrl+Q quit the app and its engine"
 
     for name, check in [

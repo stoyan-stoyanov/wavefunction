@@ -366,7 +366,11 @@ def main(args):
                 child = int(match[1])
                 children.add(child)
                 assert "PRIVATE-NATIVE-MARKER" not in text
-                assert "Operation not permitted" in text or "Permission denied" in text
+                # Bubblewrap leaves paths the chat can't read out of the sandbox altogether.
+                denied = ["Operation not permitted", "Permission denied"]
+                if sys.platform == "linux":
+                    denied.append("No such file or directory")
+                assert any(reason in text for reason in denied), text
                 assert "35 93" in text, text
                 assert request("GET", url + "/output", params={"cursor": 0})["text"]
                 assert (
