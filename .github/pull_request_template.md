@@ -46,7 +46,7 @@ Accepted proposal: #
 
 ## Small change
 
-<!-- Docs, tests or polish that don't change how the app behaves. -->
+<!-- Docs, tests or polish that don't change how the app behaves. Only this part and the checks are needed. -->
 
 **What changed and why:**
 

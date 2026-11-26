@@ -157,7 +157,7 @@ npm run check
 
 ## Contributing
 
-Interested in contributing? We welcome new contributors. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md), and report security issues privately as described in [SECURITY.md](SECURITY.md).
+Interested in contributing? We welcome new contributors. Start with [CONTRIBUTING.md](CONTRIBUTING.md#your-first-contribution) and the issues labelled [good first issue](https://github.com/stoyan-stoyanov/wavefunction/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22), and read the [code of conduct](CODE_OF_CONDUCT.md). Questions go in [Discussions](https://github.com/stoyan-stoyanov/wavefunction/discussions), and test reports from Linux or local models are always welcome. Report security issues privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

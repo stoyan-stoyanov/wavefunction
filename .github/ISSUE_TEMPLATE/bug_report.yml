@@ -32,9 +32,11 @@ body:
     validations:
       required: true
   - type: input
-    id: macos
+    id: os
     attributes:
-      label: macOS version
+      label: Operating system
+      description: The macOS version, or the Linux distribution and version.
+      placeholder: macOS 26.1, or Ubuntu 24.04
     validations:
       required: true
   - type: input

@@ -24,6 +24,10 @@ export const site = {
   updateManifest: `${github}/releases/latest/download/latest.json`,
   license: `${github}/blob/main/LICENSE`,
   issues: `${github}/issues`,
+  // Open issues labelled for newcomers, the first place a contributor should look.
+  goodFirstIssues: `${github}/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22`,
+  discussions: `${github}/discussions`,
+  testReport: `${github}/issues/new?template=test_report.yml`,
   contributing: `${github}/blob/main/CONTRIBUTING.md`,
   bugReport: `${github}/issues/new?template=bug_report.yml`,
   // A post with the homepage link, tagged so visits from it show up as their own source.
