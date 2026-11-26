@@ -10,6 +10,7 @@ import {
   RepositoryVisual,
   SetupVisual,
 } from "@/components/feature-visuals";
+import { CookieSettings } from "@/components/analytics-consent";
 import { ComputerVisual } from "@/components/computer-visual";
 import { HeroVideo } from "@/components/hero-video";
 import { DownloadLink } from "@/components/download-link";
@@ -804,6 +805,7 @@ function Footer() {
           <a href={site.security} className="transition-colors hover:text-text">
             Security
           </a>
+          <CookieSettings className="transition-colors hover:text-text" />
         </nav>
       </Container>
     </footer>
