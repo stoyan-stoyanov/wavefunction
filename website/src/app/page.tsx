@@ -5,16 +5,18 @@ import {
   BusyIdeVisual,
   CleanAppVisual,
   ConnectorsVisual,
+  ContributeVisual,
   Mark,
   PrivacyVisual,
   RepositoryVisual,
+  RoutinesVisual,
   SetupVisual,
 } from "@/components/feature-visuals";
-import { CookieSettings } from "@/components/analytics-consent";
 import { ComputerVisual } from "@/components/computer-visual";
 import { HeroVideo } from "@/components/hero-video";
-import { DownloadLink } from "@/components/download-link";
-import { AppleIcon, GitHubIcon } from "@/components/icons";
+import { buttonShape, Container, Download, Footer, Nav, Star } from "@/components/chrome";
+import { StarLink } from "@/components/download-link";
+import { BranchIcon, FlaskIcon, GitHubIcon, MegaphoneIcon, StarIcon } from "@/components/icons";
 import { Timeline } from "@/components/timeline";
 import { WaveField } from "@/components/wave-field";
 import { site } from "@/lib/site";
@@ -67,84 +69,26 @@ export default function Home() {
           __html: JSON.stringify([WEBSITE_JSON_LD, APPLICATION_JSON_LD]).replace(/</g, "\\u003c"),
         }}
       />
-      <Nav />
+      <Nav logoHref="#top" />
       <main>
         <Hero />
         <WhyWavefunction />
-        <Minimal />
         <ParallelWorkflows />
+        <Minimal />
         <ComputerUse />
+        <Routines />
         <Providers />
         <Privacy />
         <OpenSource />
         <Stats />
         <Extras />
         <Designs />
+        <Contribute />
         <FAQ />
         <Closing />
       </main>
-      <Footer />
+      <Footer logoHref="#top" />
     </>
-  );
-}
-
-function Container({
-  children,
-  className = "",
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`mx-auto w-full max-w-[1200px] px-5 sm:px-8 ${className}`}>
-      {children}
-    </div>
-  );
-}
-
-function Logo() {
-  return (
-    <a
-      href="#top"
-      className="flex items-center gap-2.5 text-base font-semibold tracking-[-0.01em] sm:gap-3 sm:text-[17px]"
-    >
-      <Image
-        src="/wavefunction-mark.svg"
-        alt=""
-        width={350}
-        height={331}
-        className="h-auto w-9 shrink-0 sm:w-10"
-        priority
-      />
-      Wavefunction
-    </a>
-  );
-}
-
-function Download({ size = "lg" }: { size?: "sm" | "lg" }) {
-  const shape =
-    size === "lg"
-      ? "h-12 gap-2.5 rounded-xl px-5 text-[15px]"
-      : "h-9 gap-2 rounded-[10px] px-3.5 text-sm";
-  return (
-    <DownloadLink
-      className={`inline-flex items-center bg-text font-medium text-white transition-colors hover:bg-text/85 ${shape}`}
-    >
-      <AppleIcon />
-      {size === "lg" ? "Download for macOS" : "Download"}
-    </DownloadLink>
-  );
-}
-
-function Source({ label = "View source" }: { label?: string }) {
-  return (
-    <a
-      href={site.github}
-      className="inline-flex h-12 items-center gap-2.5 rounded-xl bg-panel px-5 text-[15px] font-medium transition-colors hover:bg-panel-raised"
-    >
-      <GitHubIcon />
-      {label}
-    </a>
   );
 }
 
@@ -193,43 +137,6 @@ function Screenshot({
   );
 }
 
-function Nav() {
-  return (
-    <header className="sticky top-0 z-40 bg-bg/85 backdrop-blur-sm">
-      <Container className="flex h-16 items-center gap-3 sm:gap-8">
-        <Logo />
-        <nav
-          className="ml-auto hidden items-center gap-7 text-sm text-soft md:flex"
-          aria-label="Sections"
-        >
-          <a href="#why" className="transition-colors hover:text-text">
-            Why Wavefunction
-          </a>
-          <a href="#how" className="transition-colors hover:text-text">
-            How it works
-          </a>
-          <a href="#models" className="transition-colors hover:text-text">
-            Models
-          </a>
-          <a href="#privacy" className="transition-colors hover:text-text">
-            Privacy
-          </a>
-        </nav>
-        <div className="ml-auto flex items-center gap-2 md:ml-0">
-          <a
-            href={site.github}
-            className="hidden size-9 place-items-center rounded-[10px] text-soft transition-colors hover:bg-panel hover:text-text sm:grid"
-            aria-label="Wavefunction on GitHub"
-          >
-            <GitHubIcon className="size-[18px]" />
-          </a>
-          <Download size="sm" />
-        </div>
-      </Container>
-    </header>
-  );
-}
-
 function Hero() {
   return (
     <section id="top" className="relative -mt-16 overflow-x-clip bg-bg pt-16">
@@ -240,7 +147,7 @@ function Hero() {
       >
         <WaveField className="h-full w-full" center={0.37} intensity={1} />
       </div>
-      <Container className="relative pt-14 sm:pt-24">
+      <Container className="relative flex flex-col items-center pt-14 text-center sm:pt-24">
         <h1 className="enter max-w-[19ch] text-balance text-[clamp(2.3rem,6.4vw,5.3rem)] font-semibold leading-[1.02] tracking-[-0.045em] [animation-delay:80ms]">
           {/* One sentence per line, so phones never break mid-phrase. */}
           {site.headline.split(/(?<=\.) /).map((line) => (
@@ -249,12 +156,16 @@ function Hero() {
             </span>
           ))}
         </h1>
-        <p className="enter mt-6 max-w-[30rem] text-lg leading-relaxed text-soft [animation-delay:160ms] sm:text-xl">
-          {site.subtitle}
+        <p className="enter mt-6 max-w-[48rem] text-lg leading-relaxed text-soft [animation-delay:160ms] sm:text-xl">
+          {site.subtitle.map((line) => (
+            <span key={line} className="sm:block">
+              {line}{" "}
+            </span>
+          ))}
         </p>
-        <div className="enter mt-10 flex flex-wrap gap-3 [animation-delay:240ms]">
+        <div className="enter mt-10 flex flex-wrap justify-center gap-3 [animation-delay:240ms]">
           <Download />
-          <Source />
+          <Star place="hero" />
         </div>
         <p className="enter mt-5 text-sm text-faint [animation-delay:300ms]">
           Free and MIT licensed. Use local models, your own API keys or a
@@ -411,6 +322,54 @@ function ComputerUse() {
   );
 }
 
+function Routines() {
+  return (
+    <section id="routines" className="scroll-mt-16 pt-44 sm:pt-64">
+      <Container>
+        <h2 className="reveal max-w-[24ch] text-[clamp(2rem,4.4vw,3.5rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+          Scheduled tasks that remember the last run
+        </h2>
+        <p className="reveal mt-7 max-w-[40rem] text-lg leading-relaxed text-soft sm:text-xl">
+          Ask a chat to do something every few minutes, every morning or once
+          next week. Wavefunction turns it into a routine: a chat of its own
+          that gets the same instruction on schedule.
+        </p>
+        <div className="mt-16 grid gap-14 lg:grid-cols-[1.25fr_0.75fr] lg:items-center lg:gap-16">
+          <div className="reveal grid place-items-center rounded-[28px] bg-panel px-4 py-12 sm:px-8 sm:py-16">
+            <RoutinesVisual />
+          </div>
+          <ul className="grid gap-x-10 gap-y-10 md:grid-cols-3 lg:grid-cols-1 lg:gap-y-8">
+            {[
+              {
+                title: "Set up in plain words",
+                description:
+                  "Say “every weekday at 9, review yesterday’s merged pull requests.” The routine gets the model and access of the chat you asked, and you can change its instruction or schedule in its settings.",
+              },
+              {
+                title: "Picks up where it left off",
+                description:
+                  "Every run lands in the same chat, so it knows what it found last time.",
+              },
+              {
+                title: "Reports where you want",
+                description:
+                  "Send each finished run to another chat, which picks it up from there.",
+              },
+            ].map(({ title, description }) => (
+              <li key={title} className="reveal border-t border-text/15 pt-6">
+                <h3 className="text-[17px] font-medium">{title}</h3>
+                <p className="mt-3 text-[16px] leading-relaxed text-soft">
+                  {description}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Container>
+    </section>
+  );
+}
+
 // The providers the app's model settings offer, and how each one connects.
 const PROVIDERS = [
   { logo: "openai", name: "ChatGPT", connect: "Sign in with Plus or Pro" },
@@ -486,8 +445,10 @@ function Privacy() {
         <h2 className="reveal text-balance text-[clamp(2.5rem,6vw,4.75rem)] font-semibold leading-none tracking-[-0.045em]">
           Secure and private
         </h2>
-        <p className="reveal mt-7 max-w-[36ch] text-lg leading-relaxed text-soft sm:text-xl">
-          Use local models or require zero data retention from your provider.
+        <p className="reveal mt-7 max-w-[40ch] text-lg leading-relaxed text-soft sm:text-xl">
+          Zero telemetry: Wavefunction sends no usage data, analytics or crash
+          reports. Use local models or require zero data retention from your
+          provider.
         </p>
         <div className="mt-12 sm:mt-16">
           <PrivacyVisual />
@@ -576,7 +537,7 @@ function OpenSource() {
           Interested in contributing? We welcome new contributors.
         </p>
         <div className="reveal mt-8">
-          <Source label="View on GitHub" />
+          <Star place="open-source" />
         </div>
         <div className="mt-14 sm:mt-20">
           <RepositoryVisual />
@@ -626,29 +587,33 @@ function Designs() {
           Designs restyle the whole app. Pick a built-in one, like Nostalgia
           or Retro, or ask the agent to make one for you.
         </p>
-        <div className="mt-12 grid gap-4 sm:mt-16 lg:grid-cols-3">
+        <div className="mt-12 grid gap-4 sm:mt-16 sm:grid-cols-2 lg:gap-5">
           {[
-            {
-              src: "/wavefunction-design-nostalgia.jpg",
-              alt: "The Nostalgia design: a glass title bar, an Explorer-style sidebar and classic controls.",
-            },
             {
               src: "/wavefunction-design-retro.jpg",
               alt: "The Retro design: pixel type, pixel icons and pixel art of a desk on the new-session screen.",
             },
             {
+              src: "/wavefunction-design-nostalgia.jpg",
+              alt: "The Nostalgia design: a glass title bar, an Explorer-style sidebar and classic controls.",
+            },
+            {
               src: "/wavefunction-design-night-light.jpg",
               alt: "Night Light, a design the agent made in a chat: warm charcoal colours and a sleeping moon on the new-session screen.",
             },
-          ].map(({ src, alt }) => (
+          ].map(({ src, alt }, index) => (
             <Image
               key={src}
               src={src}
               alt={alt}
               width={1920}
               height={1440}
-              sizes="(min-width: 1200px) 368px, (min-width: 1024px) 33vw, 100vw"
-              className="reveal w-full rounded-[20px] sm:rounded-[24px]"
+              sizes={
+                index === 0
+                  ? "(min-width: 1200px) 1152px, 100vw"
+                  : "(min-width: 1200px) 568px, (min-width: 640px) 50vw, 100vw"
+              }
+              className={`reveal w-full rounded-[20px] sm:rounded-[24px] ${index === 0 ? "sm:col-span-2" : ""}`}
             />
           ))}
         </div>
@@ -694,9 +659,9 @@ function FAQ() {
         "Sign in with ChatGPT, use an API key from OpenAI, Anthropic, Google Gemini, OpenRouter or Vercel AI Gateway, or run models locally through Ollama, LM Studio or another OpenAI-compatible server. Choose the model that fits each conversation.",
     },
     {
-      question: "How do I keep my work private?",
+      question: "Is it truly private?",
       answer:
-        "Your conversations and settings are stored on your computer. Use a local model to keep model inference local, or configure a provider with zero data retention. The models and connectors you choose determine which services receive your data.",
+        "Yes. Wavefunction collects nothing: no telemetry, no usage data, no analytics and no crash reports. Your conversations and settings stay on your computer. What leaves it goes only to the models, connectors and websites you use, and to GitHub to check for updates. Use a local model through Ollama or LM Studio to keep inference on your computer too, or a provider with zero data retention.",
     },
     {
       question: "How does parallel work happen?",
@@ -753,6 +718,112 @@ function FAQ() {
   );
 }
 
+const LINK = "font-medium text-accent transition-colors hover:text-text";
+
+function Contribute() {
+  return (
+    <section id="contribute" className="scroll-mt-16 pt-44 sm:pt-64">
+      <Container>
+        <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:items-center lg:gap-16">
+          <div>
+            <h2 className="reveal max-w-[16ch] text-[clamp(2rem,4.4vw,3.5rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+              Contribute and support
+            </h2>
+            <p className="reveal mt-7 max-w-[34rem] text-lg leading-relaxed text-soft sm:text-xl">
+              Wavefunction is built in the open. Run it from source in a few
+              minutes, with no account or model needed.
+            </p>
+            <div className="reveal mt-9 flex flex-wrap gap-3">
+              <StarLink
+                place="contribute"
+                className={`inline-flex items-center bg-text font-medium text-white transition-colors hover:bg-text/85 ${buttonShape("lg")}`}
+              >
+                <GitHubIcon />
+                Star on GitHub
+              </StarLink>
+              <a
+                href={site.contributing}
+                className={`inline-flex items-center bg-panel font-medium transition-colors hover:bg-panel-raised ${buttonShape("lg")}`}
+              >
+                Contributing guide
+              </a>
+            </div>
+          </div>
+          <div className="reveal min-w-0 rounded-[28px] bg-panel p-4 sm:p-8 lg:p-10">
+            <ContributeVisual />
+          </div>
+        </div>
+        <ul className="mt-12 grid gap-3 sm:mt-16 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+          {[
+            {
+              icon: <BranchIcon className="size-7" />,
+              title: "Fix or build something",
+              description:
+                "Browse the issues on GitHub, and read the contributing guide for how to send a change.",
+              links: (
+                <>
+                  <a href={site.issues} className={LINK}>
+                    Issues
+                  </a>
+                  <a href={site.contributing} className={LINK}>
+                    Contributing guide
+                  </a>
+                </>
+              ),
+            },
+            {
+              icon: <FlaskIcon className="size-7" />,
+              title: "Test it on your setup",
+              description:
+                "Run it on your Linux distribution or macOS version, or with your local models in Ollama or LM Studio, and tell us what breaks.",
+              links: (
+                <a href={site.bugReport} className={LINK}>
+                  Report a bug
+                </a>
+              ),
+            },
+            {
+              icon: <StarIcon className="size-7" />,
+              title: "Star it on GitHub",
+              description: "Stars help other developers find Wavefunction.",
+              links: (
+                <StarLink place="contribute-tile" className={LINK}>
+                  Star on GitHub
+                </StarLink>
+              ),
+            },
+            {
+              icon: <MegaphoneIcon className="size-7" />,
+              title: "Spread the word",
+              description:
+                "Tell a friend, or share it where developers talk about coding agents.",
+              links: (
+                <a href={site.shareOnX} className={LINK}>
+                  Share on X
+                </a>
+              ),
+            },
+          ].map(({ icon, title, description, links }) => (
+            <li
+              key={title}
+              className="reveal flex flex-col rounded-[20px] bg-panel p-6 sm:rounded-[24px] sm:p-7"
+            >
+              <span className="text-text">{icon}</span>
+              <h3 className="mt-6 text-[17px] font-medium">{title}</h3>
+              <p className="mt-3 flex-1 text-[16px] leading-relaxed text-soft">
+                {description}
+              </p>
+              <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-[15px]">
+                {links}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Container>
+    </section>
+  );
+}
+
 function Closing() {
   return (
     <section className="relative mt-44 overflow-x-clip pb-32 pt-24 sm:mt-64 sm:pb-44">
@@ -783,31 +854,10 @@ function Closing() {
         </p>
         <div className="reveal mt-10 flex flex-wrap justify-center gap-3">
           <Download />
-          <Source />
+          <Star place="closing" />
         </div>
       </Container>
     </section>
   );
 }
 
-function Footer() {
-  return (
-    <footer className="pb-12 pt-6 text-sm text-soft">
-      <Container className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
-        <Logo />
-        <nav className="flex gap-6" aria-label="Project">
-          <a href={site.github} className="transition-colors hover:text-text">
-            GitHub
-          </a>
-          <a href={site.license} className="transition-colors hover:text-text">
-            MIT License
-          </a>
-          <a href={site.security} className="transition-colors hover:text-text">
-            Security
-          </a>
-          <CookieSettings className="transition-colors hover:text-text" />
-        </nav>
-      </Container>
-    </footer>
-  );
-}

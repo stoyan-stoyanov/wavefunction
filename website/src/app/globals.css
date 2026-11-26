@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* For visitors on a device the app doesn't run on (phones, tablets, Windows, Linux), which the
+   script in the root layout marks before the page paints. Their main button is Star, not Download. */
+@custom-variant no-download (&:is([data-download="none"] *));
+
 /* White space, soft blue waves, and slate text echo the desktop photograph. */
 :root {
   --bg: #ffffff;
