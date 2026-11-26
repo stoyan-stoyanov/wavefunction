@@ -153,7 +153,7 @@ Once it's ready, open the pull request as ready for review, not as a draft. If y
 
 ## Tests
 
-The test suites have a hard limit: 240 backend cases and 230 frontend cases, and a time budget. The test runner fails if they go over, and a whole-suite run prints the current count.
+The test suites have a hard limit: 250 backend cases and 230 frontend cases, and a time budget. The test runner fails if they go over, and a whole-suite run prints the current count.
 
 The limit exists because coding agents, left to themselves, add tests for the sake of it. A test that restates the code doesn't catch bugs. It slows the suite down and makes every later change harder. So:
 

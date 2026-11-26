@@ -64,6 +64,20 @@ chmod +x Wavefunction-<version>-linux-x86_64.AppImage
         </li>
       </List>
 
+      <H2 id="sandbox-troubleshooting">If the sandbox won’t start</H2>
+      <P>
+        If <UI>Settings › Access</UI> says the sandbox is unavailable, your distribution may be
+        stopping Bubblewrap from creating the user namespaces it needs. Ubuntu 23.10 and later do
+        this through AppArmor unless a profile allows it. This command lifts the restriction until
+        the next restart:
+      </P>
+      <Code>{`sudo sysctl kernel.apparmor_restrict_unprivileged_userns=0`}</Code>
+      <P>
+        For a lasting fix, add an AppArmor profile for <C>/usr/bin/bwrap</C> that allows user
+        namespaces. The downloads also need glibc 2.35 or later, which Ubuntu 22.04 and Debian 12
+        have.
+      </P>
+
       <H2 id="build">Build it yourself</H2>
       <P>
         For arm64, or to build from source on Ubuntu 24.04 or later, follow the steps in the{" "}
