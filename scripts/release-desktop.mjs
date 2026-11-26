@@ -146,7 +146,8 @@ if (env.TAURI_SIGNING_PRIVATE_KEY || env.TAURI_SIGNING_PRIVATE_KEY_PATH) {
 if (existsSync(legal)) run("/usr/bin/ditto", ["-c", "-k", "--norsrc", "--noextattr", "--noacl", "--keepParent", legal,
   join(out, `${stem}-notices-and-sources.zip`)]);
 
-const sums = readdirSync(out).filter((file) => !file.endsWith(".sig") && file !== "SHA256SUMS")
+// Not latest.json: the Release workflow's attach-linux job replaces it after this list is uploaded.
+const sums = readdirSync(out).filter((file) => !file.endsWith(".sig") && !["SHA256SUMS", "latest.json"].includes(file))
   .map((file) => `${createHash("sha256").update(readFileSync(join(out, file))).digest("hex")}  ${file}`);
 writeFileSync(join(out, "SHA256SUMS"), sums.join("\n") + "\n");
 console.log(`Release files in ${out}:\n  ${readdirSync(out).join("\n  ")}`);

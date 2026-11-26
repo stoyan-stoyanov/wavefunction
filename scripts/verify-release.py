@@ -3,7 +3,7 @@
 Run with backend/.venv/bin/python (it needs `cryptography`), given the folder that holds the files,
 normally dist/release:
 
-- every file matches SHA256SUMS;
+- every file SHA256SUMS lists matches it;
 - Gatekeeper accepts the DMG and the app inside it as notarized Developer ID, and both staples hold;
 - `syspolicy_check distribution` passes and the app carries its third-party notices;
 - the app's identifier and version are this checkout's;
