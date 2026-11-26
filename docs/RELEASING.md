@@ -65,7 +65,7 @@ About the real-model check:
 
 ## The changelog
 
-[CHANGELOG.md](../CHANGELOG.md) is written for people who use the app, not for reviewers. A pull request that changes what users see or can do adds one line under `## Unreleased`, in the group that fits (`Added`, `Changed`, `Fixed`, `Removed` or `Security`), ending with a link to the pull request. Say what changed for the user, not what changed in the code. Tests, refactors, CI, docs, dependency updates and website changes get no line.
+[CHANGELOG.md](../CHANGELOG.md) is written for people who use the app, not for reviewers. A pull request that changes what users see or can do adds one line under `## Unreleased`, in the group that fits (`Added`, `Changed`, `Fixed`, `Removed` or `Security`), ending with a link to the pull request, and for a change from someone outside the project, their GitHub username, such as `([#91](…), thanks @username)`. Say what changed for the user, not what changed in the code. Tests, refactors, CI, docs, dependency updates and website changes get no line.
 
 A release's section becomes its GitHub release notes and the notes **Settings › About** shows next to **Install and restart**.
 

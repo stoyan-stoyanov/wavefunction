@@ -65,7 +65,7 @@ export default function Page() {
         </li>
       </List>
       <P>
-        It also loads skills from <C>~/.codex/skills</C>.
+        It also loads skills from <C>~/.codex/skills</C> and <C>~/.config/opencode/skills</C>.
       </P>
 
       <DocFooter path="/docs/connectors-and-skills" />

@@ -731,7 +731,11 @@ function Contribute() {
             </h2>
             <p className="reveal mt-7 max-w-[34rem] text-lg leading-relaxed text-soft sm:text-xl">
               Wavefunction is built in the open. Run it from source in a few
-              minutes, with no account or model needed.
+              minutes, with no account or model needed, and ask anything in{" "}
+              <a href={site.discussions} className="text-accent underline decoration-accent/30 underline-offset-[3px] hover:decoration-accent">
+                Discussions
+              </a>
+              .
             </p>
             <div className="reveal mt-9 flex flex-wrap gap-3">
               <StarLink
@@ -759,11 +763,11 @@ function Contribute() {
               icon: <BranchIcon className="size-7" />,
               title: "Fix or build something",
               description:
-                "Browse the issues on GitHub, and read the contributing guide for how to send a change.",
+                "Start with an issue labelled good first issue, and read the contributing guide for how to send a change.",
               links: (
                 <>
-                  <a href={site.issues} className={LINK}>
-                    Issues
+                  <a href={site.goodFirstIssues} className={LINK}>
+                    Good first issues
                   </a>
                   <a href={site.contributing} className={LINK}>
                     Contributing guide
@@ -777,9 +781,14 @@ function Contribute() {
               description:
                 "Run it on your Linux distribution or macOS version, or with your local models in Ollama or LM Studio, and tell us what breaks.",
               links: (
-                <a href={site.bugReport} className={LINK}>
-                  Report a bug
-                </a>
+                <>
+                  <a href={site.testReport} className={LINK}>
+                    Send a test report
+                  </a>
+                  <a href={site.bugReport} className={LINK}>
+                    Report a bug
+                  </a>
+                </>
               ),
             },
             {

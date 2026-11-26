@@ -2,12 +2,15 @@
 
 Thanks for taking the time to help.
 
-Wavefunction is a small coding agent for macOS. We want it to stay small, so we're careful about what goes in. Bug fixes are always welcome. New features need a short proposal first, so you don't spend a weekend on something we can't merge.
+Wavefunction is a small coding agent for macOS and Linux. We want it to stay small, so we're careful about what goes in. Bug fixes are always welcome. New features need a short proposal first, so you don't spend a weekend on something we can't merge.
 
-Every pull request also has to show that it works, with reproduction steps, verification steps and evidence. We ask for these to make agentic coding smooth: a coding agent can follow the steps to check a change end to end, and the evidence shows what you saw. It also keeps the code in `main` verified.
+Bug fixes and features have to show that they work, with reproduction steps, verification steps and evidence. We ask for these to make agentic coding smooth: a coding agent can follow the steps to check a change end to end, and the evidence shows what you saw. It also keeps the code in `main` verified. Small changes, such as docs, tests and polish, only need a sentence on what changed and why.
+
+Questions are welcome in [Discussions](https://github.com/stoyan-stoyanov/wavefunction/discussions).
 
 This page covers:
 
+- [Your first contribution](#your-first-contribution)
 - [Before you start](#before-you-start)
 - [What we accept](#what-we-accept)
 - [Proposing a feature](#proposing-a-feature)
@@ -17,6 +20,14 @@ This page covers:
 - [How your pull request is reviewed](#how-your-pull-request-is-reviewed)
 - [Tests](#tests)
 - [Using a coding agent](#using-a-coding-agent)
+
+## Your first contribution
+
+1. Pick an issue labelled [good first issue](https://github.com/stoyan-stoyanov/wavefunction/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22) or [help wanted](https://github.com/stoyan-stoyanov/wavefunction/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22help%20wanted%22), and comment that you're taking it, so two people don't do the same work.
+2. Set up as described in [Setting up](#setting-up), then run `npm run dev:fixture` to see the app in your browser with no account or model needed.
+3. Make the change, run `npm run check`, and open a pull request. For docs, tests or polish, fill in only the **Small change** part of the template.
+
+You don't have to write code to help. Trying Wavefunction on your Linux distribution or with your local models and [sending a test report](https://github.com/stoyan-stoyanov/wavefunction/issues/new?template=test_report.yml) tells us what works where, and it's one of the most useful things you can do right now.
 
 ## Before you start
 
@@ -56,7 +67,7 @@ Things we're likely to accept: fixes, performance work, accessibility, support f
 
 ## Setting up
 
-You need macOS, Node.js 22+ and [uv](https://docs.astral.sh/uv/), which installs Python 3.12.
+You need macOS or Linux, Node.js 22+ and [uv](https://docs.astral.sh/uv/), which installs Python 3.12. On Linux, also install Bubblewrap (`sudo apt install bubblewrap`): the app runs commands through it, and without it runs none.
 
 ```sh
 npm run setup         # frontend packages and the Python environment, from their lockfiles
@@ -74,7 +85,7 @@ npm --prefix frontend test -- src/coding/composer.test.tsx
 
 ### The desktop app
 
-Changes to the Rust shell (`src-tauri`) or the packaged app also need Rust and the Xcode Command Line Tools. `npm run check` runs clippy and the Rust tests; they need only an empty `backend/dist/wavefunction-backend` folder in place of the frozen engine, which it creates.
+Changes to the Rust shell (`src-tauri`) or the packaged app also need Rust, plus the Xcode Command Line Tools on a Mac or the libraries in [the README's Linux steps](README.md#linux-experimental) on Linux. `npm run check` runs clippy and the Rust tests; they need only an empty `backend/dist/wavefunction-backend` folder in place of the frozen engine, which it creates.
 
 `npm run desktop:dev` builds the frozen engine and runs the app with the interface reloading as you edit. It uses the same data folder as an installed Wavefunction unless `WAVEFUNCTION_DEV_DATA_DIR` names another. `npm run desktop:build` builds the app into `src-tauri/target/release/bundle/macos/`. [Development](docs/DEVELOPMENT.md) covers the rest, and the [architecture](docs/ARCHITECTURE.md) explains how the pieces fit together.
 
@@ -97,6 +108,10 @@ Keep each pull request to one change. Unrelated cleanup, refactors and dependenc
 Fill in the [pull request template](.github/pull_request_template.md). What it asks for depends on the kind of change.
 
 If your change is one users will notice, add a line for it under `Unreleased` in [CHANGELOG.md](CHANGELOG.md), written for them. [Releasing](docs/RELEASING.md#the-changelog) says how.
+
+### Small changes
+
+Docs, tests and polish that don't change how the app behaves: say what changed and why, and run the [checks](#checks).
 
 ### Bug fixes
 
@@ -134,11 +149,11 @@ Once it's ready, open the pull request as ready for review, not as a draft. If y
 1. **CI.** Every pull request runs the frontend (lint, tests and build), the backend on Linux (Ruff and tests), the backend on macOS (the whole suite, sandbox and destructive cases included, and the launcher test), and the native shell (clippy and the Rust tests). The macOS jobs skip docs-only changes. `all-checks` passes when they all have.
 2. **An automated review** may comment with findings. Fix the ones that describe a real bug in normal use; for the rest, a one-line reply saying why is enough.
 3. **A maintainer reviews it.** They check that it's one change, that a feature has an accepted proposal, and that the tests earn their place. They, or their coding agent, follow your verification steps, so write them to be followed. The review looks for bugs your change introduces, not for style that lint already covers or refactors it didn't need. [AGENTS.md](AGENTS.md#code-review) has the rules reviews follow.
-4. **A maintainer merges it** once checks pass and the review is done.
+4. **A maintainer merges it** once checks pass and the review is done. When the change ships, its line in the release notes thanks you by your GitHub username.
 
 ## Tests
 
-The test suites have a hard limit: 240 backend cases and 230 frontend cases, and a time budget. The test runner fails if they go over, and a whole-suite run prints the current count.
+The test suites have a hard limit: 250 backend cases and 230 frontend cases, and a time budget. The test runner fails if they go over, and a whole-suite run prints the current count.
 
 The limit exists because coding agents, left to themselves, add tests for the sake of it. A test that restates the code doesn't catch bugs. It slows the suite down and makes every later change harder. So:
 

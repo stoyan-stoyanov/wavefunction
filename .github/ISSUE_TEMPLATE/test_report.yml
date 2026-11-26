@@ -1,0 +1,57 @@
+name: Test report
+description: Tell us how Wavefunction ran on your system or with your model, whether it worked or not
+labels: [test report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing. Reports that everything worked are as useful as reports of what broke. Don't include credentials, tokens, private code or personal data. If something is clearly broken, a [bug report](https://github.com/stoyan-stoyanov/wavefunction/issues/new?template=bug_report.yml) is fine too.
+  - type: dropdown
+    id: tested
+    attributes:
+      label: What you tested
+      multiple: true
+      options:
+        - A Linux distribution
+        - A local model (Ollama, LM Studio or another server)
+        - Computer use
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: The macOS version, or the Linux distribution and version, and the desktop environment if it's Linux.
+      placeholder: Fedora 41, GNOME
+    validations:
+      required: true
+  - type: input
+    id: install
+    attributes:
+      label: Wavefunction version and how you installed it
+      description: Settings › About shows the version. For example the DMG, the AppImage, the .deb, or built from source at a commit.
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model provider and model
+      description: For example Ollama with a named model and its context window, LM Studio, or OpenRouter.
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked
+      description: What you tried and what went well, such as a task that finished, helpers that ran in parallel, or computer use.
+    validations:
+      required: true
+  - type: textarea
+    id: broke
+    attributes:
+      label: What didn't work
+      description: What went wrong and what you expected. Redact paths, names and anything private before pasting logs.
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware
+      description: The CPU or chip and the memory, which matter most for local models.

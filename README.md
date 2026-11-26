@@ -52,7 +52,7 @@ Computer use needs Docker Desktop, or Docker Engine on Linux, and a model that c
 
 ## Connectors and skills
 
-70+ ready-made connectors, plus any MCP server you add. Wavefunction follows your `AGENTS.md` and loads `SKILL.md` skills from the `.agents/skills`, `.claude/skills` and `.opencode/skills` folders in your projects and home folder, and from `~/.codex/skills`, so it works with the setup you already use.
+70+ ready-made connectors, plus any MCP server you add. Wavefunction follows your `AGENTS.md` and loads `SKILL.md` skills from the `.agents/skills`, `.claude/skills` and `.opencode/skills` folders in your projects and home folder, and from `~/.codex/skills` and `~/.config/opencode/skills`, so it works with the setup you already use.
 
 ![The connector catalog: Gmail, Outlook, Google, Microsoft 365, Airtable, Asana, Atlassian and more](docs/assets/wavefunction-connectors-dark.png)
 
@@ -84,8 +84,8 @@ When only some runs reported a figure, it says how many ("Reported for 12 of 15 
 
 Use local models or require zero data retention. With **Require zero data retention** on in Settings → Models, OpenRouter and Vercel AI Gateway send chats only to providers that keep no prompts or responses. Other providers set it on your account with them.
 
-- Your conversations, skills and settings stay on your Mac, in `~/Library/Application Support/app.harness.coding` (the app's identifier from before it was named Wavefunction, kept so existing data stays where it is). Provider and connector keys are local files only your user account can read; they are not encrypted.
-- Commands run in the macOS sandbox by default, and folders outside your project need your grant. A command that needs to run outside the sandbox asks first, unless you've given that chat full access.
+- Your conversations, skills and settings stay on your computer, in `~/Library/Application Support/app.harness.coding` on a Mac and `~/.local/share/app.harness.coding` on Linux (the app's identifier from before it was named Wavefunction, kept so existing data stays where it is). Provider and connector keys are local files only your user account can read; they are not encrypted.
+- Commands run in a sandbox by default, the macOS sandbox on a Mac and Bubblewrap on Linux, and folders outside your project need your grant. A command that needs to run outside the sandbox asks first, unless you've given that chat full access.
 - A fixed check asks before commands it recognizes as irreversible, such as deletes or force pushes. It catches an overeager agent, not every case; see the [known issues](docs/KNOWN_ISSUES.md) and [SECURITY.md](SECURITY.md).
 
 ## Get started
@@ -157,7 +157,7 @@ npm run check
 
 ## Contributing
 
-Interested in contributing? We welcome new contributors. Start with [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md), and report security issues privately as described in [SECURITY.md](SECURITY.md).
+Interested in contributing? We welcome new contributors. Start with [CONTRIBUTING.md](CONTRIBUTING.md#your-first-contribution) and the issues labelled [good first issue](https://github.com/stoyan-stoyanov/wavefunction/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22), and read the [code of conduct](CODE_OF_CONDUCT.md). Questions go in [Discussions](https://github.com/stoyan-stoyanov/wavefunction/discussions), and test reports from Linux or local models are always welcome. Report security issues privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

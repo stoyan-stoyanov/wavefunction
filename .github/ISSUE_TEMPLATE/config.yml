@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Ask a question
+    url: https://github.com/stoyan-stoyanov/wavefunction/discussions
+    about: Questions, ideas and setups that work for you go in Discussions.
   - name: Report a security vulnerability
     url: https://github.com/stoyan-stoyanov/wavefunction/security/advisories/new
     about: Report security problems privately, not as a public issue.

@@ -4,7 +4,7 @@ Read [AGENTS.md](../AGENTS.md) first. Where a document and the code disagree, th
 
 ## Setup
 
-You need macOS, Node.js 22 (`.nvmrc`) and [uv](https://docs.astral.sh/uv/), which installs Python 3.12. Native work also needs Rust and the Xcode Command Line Tools.
+You need macOS or Linux, Node.js 22 (`.nvmrc`) and [uv](https://docs.astral.sh/uv/), which installs Python 3.12. On Linux, also install Bubblewrap (`sudo apt install bubblewrap`), which the sandbox runs commands through. Native work also needs Rust, plus the Xcode Command Line Tools on a Mac or the libraries in [the README's Linux steps](../README.md#linux-experimental) on Linux.
 
 ```sh
 npm run setup
