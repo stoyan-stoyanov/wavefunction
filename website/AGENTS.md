@@ -11,3 +11,5 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 `next dev` can keep serving an old `globals.css`, and old `/_next/image` copies of a replaced file. If a change doesn't show, stop the server, delete `.next/dev` and start it again.
 
 Web Analytics is on through `<Analytics />` in the root layout. On the Pro plan every page view is a billed event, and UTM breakdowns need the Web Analytics Plus add-on. Instead, links we post carry a `?ref=` tag, and each Download click sends a `Download` event whose `source` is that tag, else the referring site, else `direct` (`components/download-link.tsx`).
+
+Google Analytics (tag `GTM-55MJR4N3`, in the same Google account as the Search Console domain property) sets cookies, so `components/analytics-consent.tsx` loads it only after consent for visitors whose time zone is in the EU, EEA, UK or Switzerland, and right away for everyone else. Nothing about it is in the static HTML.

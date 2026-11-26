@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { ConsentBanner, GoogleTag } from "@/components/analytics-consent";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -30,7 +31,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
       <body className="min-h-dvh font-sans">
         {children}
+        <ConsentBanner />
         <Analytics />
+        <GoogleTag />
       </body>
     </html>
   );

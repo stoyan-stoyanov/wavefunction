@@ -14,13 +14,18 @@ function source() {
   return host === window.location.hostname.replace(/^www\./, "") ? "direct" : host;
 }
 
-// Counts each click as a Web Analytics "Download" event, so downloads trace back to a channel.
+// Counts each click as a "Download" event in Web Analytics, and in Google Analytics when it's loaded,
+// so downloads trace back to a channel.
 export function DownloadLink({ className, children }: { className: string; children: ReactNode }) {
   return (
     <a
       href={site.download}
       className={className}
-      onClick={() => track("Download", { source: source() })}
+      onClick={() => {
+        const from = source();
+        track("Download", { source: from });
+        window.gtag?.("event", "download", { source: from });
+      }}
     >
       {children}
     </a>
