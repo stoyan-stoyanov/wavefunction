@@ -48,7 +48,7 @@ About the real-model check:
    - `Wavefunction-<version>-macos-arm64.app.tar.gz` and its `.sig`, which installed apps update from
    - `latest.json`, the update manifest, with the release's changelog section as its notes
    - `Wavefunction-<version>-macos-arm64-notices-and-sources.zip`: the third-party notices, also inside the app under `Contents/Resources/legal`, and the source archives of the bundled Python and Rust dependencies
-   - `SHA256SUMS`
+   - `SHA256SUMS`, for the files to download and the notices; not `latest.json`, which `attach-linux` replaces
    The draft's description is the same changelog section.
 
    A separate `linux` job builds the experimental x86-64 downloads on Ubuntu 22.04, unsigned except for the AppImage's updater signature, made with the same updater key. Once both it and the Mac build pass, `attach-linux` adds them to the draft:
