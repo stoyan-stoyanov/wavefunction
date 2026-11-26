@@ -50,3 +50,40 @@ export function KeyIcon({ className = "size-5" }: IconProps) {
     </svg>
   );
 }
+
+export function BranchIcon({ className = "size-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...line} aria-hidden>
+      <circle cx="7" cy="5.5" r="2" />
+      <circle cx="7" cy="18.5" r="2" />
+      <circle cx="17" cy="8.5" r="2" />
+      <path d="M7 7.5v9M17 10.5c0 4-10 2.5-10 6" />
+    </svg>
+  );
+}
+
+export function FlaskIcon({ className = "size-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...line} aria-hidden>
+      <path d="M9.5 3.5h5M10.5 3.5v6L5.2 18.6A1.6 1.6 0 0 0 6.6 21h10.8a1.6 1.6 0 0 0 1.4-2.4L13.5 9.5v-6" />
+      <path d="M7.8 15h8.4" />
+    </svg>
+  );
+}
+
+export function StarIcon({ className = "size-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...line} aria-hidden>
+      <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9L12 16.9l-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" />
+    </svg>
+  );
+}
+
+export function MegaphoneIcon({ className = "size-5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} {...line} aria-hidden>
+      <path d="M4 10v4h3l8 4.5v-13L7 10z" />
+      <path d="M18.5 9.5a3.5 3.5 0 0 1 0 5M7 14l1 5h2.5l-1-4.4" />
+    </svg>
+  );
+}

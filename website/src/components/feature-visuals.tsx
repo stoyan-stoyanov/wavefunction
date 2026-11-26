@@ -88,7 +88,7 @@ export function CleanAppVisual() {
 
 export function PrivacyVisual() {
   return (
-    <div className="reveal grid grid-cols-3 items-stretch gap-2 sm:gap-6">
+    <div className="reveal grid grid-cols-2 items-stretch gap-2 sm:grid-cols-4 sm:gap-6">
       <div className="flex min-w-0 flex-col items-center rounded-[20px] bg-panel px-2 py-7 text-center sm:rounded-[24px] sm:px-3 sm:py-12">
         <svg viewBox="0 0 32 32" className="size-10 text-text sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <rect x="6" y="5" width="20" height="16" rx="2" />
@@ -109,6 +109,14 @@ export function PrivacyVisual() {
           <path d="M16 21.5V24" />
         </svg>
         <h3 className="mt-5 text-[13px] font-medium tracking-[-0.02em] sm:mt-6 sm:text-lg"><abbr title="Zero data retention" className="no-underline">ZDR</abbr></h3>
+      </div>
+      <div className="flex min-w-0 flex-col items-center rounded-[20px] bg-panel px-2 py-7 text-center sm:rounded-[24px] sm:px-3 sm:py-12">
+        <svg viewBox="0 0 32 32" className="size-10 text-text sm:size-16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <circle cx="16" cy="16" r="11" />
+          <path d="M11.5 20.5v-3m4.5 3v-7m4.5 7v-5" />
+          <path d="M8.2 8.2l15.6 15.6" />
+        </svg>
+        <h3 className="mt-5 text-[13px] font-medium tracking-[-0.02em] sm:mt-6 sm:text-lg">Zero telemetry</h3>
       </div>
     </div>
   );
@@ -222,6 +230,68 @@ export function SetupVisual() {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// Routines as the app's sidebar lists them: a clock, the chat's title and when it runs, in the
+// words the app uses (`describe` in backend/src/wavefunction/routine_timing.py).
+const ROUTINES = [
+  { title: "Review merged pull requests", when: "On weekdays at 09:00", running: true },
+  { title: "Check for flaky tests", when: "Every 2 hours" },
+  { title: "Update dependencies", when: "On the 1st of each month at 10:00" },
+  { title: "Tidy up stale branches", when: "At weekends at 08:00" },
+];
+
+export function RoutinesVisual() {
+  return (
+    <div className="app-dark w-full max-w-[400px] rounded-xl bg-bg p-2 text-[13px] leading-5 ring-1 ring-text/15 shadow-[0_20px_48px_-24px_rgb(27_38_56/0.6)]" aria-hidden>
+      {ROUTINES.map((routine) => (
+        <div key={routine.title} className={`flex items-start gap-3 rounded-lg px-3 py-2.5 ${routine.running ? "bg-panel" : ""}`}>
+          <svg viewBox="0 0 16 16" className="mt-[3px] size-3.5 shrink-0 text-soft" aria-hidden>
+            <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M8 4.75V8l2.25 1.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-text">{routine.title}</div>
+            <div className="text-soft">{routine.when}</div>
+          </div>
+          {routine.running && (
+            <span className="mt-px flex items-center gap-1.5 text-[12px] text-accent">
+              <span className="size-1.5 rounded-full bg-current" />
+              Running
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Running Wavefunction from source, as the contributing guide's "Setting up" section does it.
+const SETUP_COMMANDS = [
+  { command: "git clone https://github.com/stoyan-stoyanov/wavefunction" },
+  { command: "cd wavefunction" },
+  { command: "npm run setup", note: "packages and the Python environment" },
+  { command: "npm run dev:fixture", note: "the app in your browser, no account needed" },
+];
+
+export function ContributeVisual() {
+  return (
+    <div className="app-dark w-full overflow-hidden rounded-xl bg-bg ring-1 ring-text/15 shadow-[0_20px_48px_-24px_rgb(27_38_56/0.6)]" aria-hidden>
+      <div className="flex items-center gap-1.5 border-b border-text/10 px-4 py-3">
+        <span className="size-2.5 rounded-full bg-text/20" />
+        <span className="size-2.5 rounded-full bg-text/20" />
+        <span className="size-2.5 rounded-full bg-text/20" />
+      </div>
+      <div className="space-y-3 overflow-x-auto px-5 py-5 font-mono text-[12.5px] leading-5 sm:text-[13px]">
+        {SETUP_COMMANDS.map(({ command, note }) => (
+          <div key={command} className="whitespace-nowrap">
+            <span className="text-accent">$</span> <span className="text-text">{command}</span>
+            {note && <div className="text-faint"># {note}</div>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
