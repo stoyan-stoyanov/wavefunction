@@ -20,7 +20,7 @@
 
 <p align="center">Free and MIT licensed. Use local models, your own API keys or a ChatGPT sign-in.</p>
 
-![Wavefunction on a Mac: projects and their chats in the sidebar, and a new session ready to start](docs/assets/wavefunction-new-chat-dark.png)
+https://github.com/user-attachments/assets/35396a61-2598-412f-b543-0353646b373b
 
 ## Why Wavefunction
 
@@ -33,6 +33,8 @@
 Keep the conversation going. Give it a task, then another, and another. Wavefunction splits the work across subagents, steers them as your plans change, and brings their work together.
 
 Wavefunction has one built-in coding agent. Each chat is a separate conversation with it, with its own model, folder and history, and chats run side by side. A project is a folder, usually a Git repository, and groups the chats that work in it.
+
+![Wavefunction on a Mac: projects and their chats in the sidebar, and a new session ready to start](docs/assets/wavefunction-new-chat-dark.png)
 
 - **Worktrees.** In a Git repository a new chat starts on its own branch in its own checkout, so chats in one project don't step on each other. Untick **New worktree** before the first message to work in the project's folder instead.
 - **Talk to it while it works.** A message sent during a task steers that task. **Queue follow-up** runs it after the task instead. When the agent needs a decision, it asks with a question card.

@@ -315,7 +315,7 @@ function ComputerUse() {
           </ul>
         </div>
         <p className="reveal mt-10 text-sm text-faint">
-          Needs Docker Desktop and a model that can read images. macOS only for now.
+          Needs Docker Desktop, or Docker Engine on Linux, and a model that can read images.
         </p>
       </Container>
     </section>
@@ -676,7 +676,7 @@ function FAQ() {
     {
       question: "Which platforms are supported?",
       answer:
-        "Wavefunction runs on macOS: download the app, connect a model, and start a conversation. Linux support is experimental: build it from source with the steps in the README.",
+        "Wavefunction runs on macOS and Linux. On a Mac with Apple Silicon, download the app, connect a model, and start a conversation. On x86-64 Linux, install the AppImage or the .deb from the latest release, or build it from source on other architectures; Linux support is experimental.",
     },
   ];
 
