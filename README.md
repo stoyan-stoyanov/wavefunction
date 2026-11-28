@@ -13,6 +13,7 @@
   <a href="https://github.com/stoyan-stoyanov/wavefunction/releases/latest">Download for macOS</a> ·
   <a href="#linux-experimental">Linux (experimental)</a> ·
   <a href="https://www.wavefunction.si">Website</a> ·
+  <a href="https://www.wavefunction.si/docs">Docs</a> ·
   <a href="#build-from-source">Build from source</a> ·
   <a href="CONTRIBUTING.md">Contribute</a>
 </p>
@@ -27,7 +28,9 @@
 - **Free to choose.** Pick any model and switch whenever you like. Run models locally or require zero data retention. You're never tied to one provider's plans or limits.
 - **Open source, on the desktop.** Most open-source agents shine in the terminal. Wavefunction is built to be a great desktop app: minimal, considered and fast, and open source down to the prompt.
 
-## Agents and sessions
+## Built for parallel work
+
+Keep the conversation going. Give it a task, then another, and another. Wavefunction splits the work across subagents, steers them as your plans change, and brings their work together.
 
 Wavefunction has one built-in coding agent. Each chat is a separate conversation with it, with its own model, folder and history, and chats run side by side. A project is a folder, usually a Git repository, and groups the chats that work in it.
 
@@ -36,9 +39,10 @@ Wavefunction has one built-in coding agent. Each chat is a separate conversation
 - **Helpers.** For bigger tasks the agent starts helpers: child chats that work in parallel and report back. They share the parent's checkout by default, or get an isolated worktree whose changes the parent reviews and brings in. Open one to read its transcript, redirect it or stop it.
 - **Going back.** Fork a chat from any message, or rewind to put the code and the conversation back to how they were at that point.
 - **Long conversations.** The ring in the message box shows how full the context is. Near the limit the conversation is summarised, keeping your requests and the confirmed state of the work. **Compact now** does it on demand.
-- **Routines.** A chat can set up a routine: a chat that gets the same instruction on a schedule, such as every 15 minutes or weekdays at 9, while the app is open.
 - **Projects from a chat.** Ask a chat to create a project (and clone a repository into it), archive old chats or remove a project.
 - **Modes.** Plan mode reads and explains without changing anything. Full access runs commands outside the sandbox without asking each time; commands that can't be undone still ask.
+
+More in the docs: [parallel work](https://www.wavefunction.si/docs/parallel-work). The blog post [How parallel helpers work in Wavefunction, and how we optimized them](https://www.wavefunction.si/blog/parallel-execution) goes deeper.
 
 ## Computer use that leaves your computer alone
 
@@ -48,7 +52,35 @@ Other agents take over your mouse, keyboard and screen to get things done. Wavef
 - **Secure sign-ins.** When a site needs your login, you sign in privately. The agent pauses and never sees what you type, and the chat stays signed in for next time.
 - **Files in and out.** Downloads come to your computer in the folder you choose, and files you add are ready to upload.
 
-Computer use needs Docker Desktop, or Docker Engine on Linux, and a model that can read images.
+Computer use needs Docker Desktop, or Docker Engine on Linux, and a model that can read images. More in the docs: [computer use](https://www.wavefunction.si/docs/computer-use).
+
+## Scheduled tasks
+
+Ask a chat to do something every few minutes, every morning or once next week. Wavefunction turns it into a routine: a chat of its own that gets the same instruction on schedule, while the app is open.
+
+- **Set up in plain words.** Say "every weekday at 9, review yesterday's merged pull requests." The routine gets the model and access of the chat you asked, and you can change its instruction or schedule in its settings.
+- **Picks up where it left off.** Every run lands in the same chat, so it knows what it found last time.
+- **Reports where you want.** Send each finished run to another chat, which picks it up from there.
+
+More in the docs: [scheduled tasks](https://www.wavefunction.si/docs/routines).
+
+## Bring your own model
+
+Sign in with ChatGPT, use your own API keys, or run models on your own computer. Pick a model for each chat and switch whenever you like.
+
+| Provider | How it connects |
+|---|---|
+| ChatGPT | Sign in with Plus or Pro |
+| Anthropic, Google Gemini, OpenAI, OpenRouter, Vercel AI Gateway | API key |
+| Ollama | On your computer or your server |
+| LM Studio and other OpenAI-compatible servers | The server's base URL, and its API key if it needs one |
+
+<p>
+  <img src="docs/assets/wavefunction-onboarding-provider-dark.png" width="49%" alt="Setup, step 1: connect a provider">
+  <img src="docs/assets/wavefunction-onboarding-models-dark.png" width="49%" alt="Setup, step 2: choose your models">
+</p>
+
+More in the docs: [connect a model](https://www.wavefunction.si/docs/models), [sign in with ChatGPT](https://www.wavefunction.si/docs/chatgpt), [Ollama](https://www.wavefunction.si/docs/ollama) and [LM Studio](https://www.wavefunction.si/docs/lm-studio).
 
 ## Connectors and skills
 
@@ -56,16 +88,20 @@ Computer use needs Docker Desktop, or Docker Engine on Linux, and a model that c
 
 ![The connector catalog: Gmail, Outlook, Google, Microsoft 365, Airtable, Asana, Atlassian and more](docs/assets/wavefunction-connectors-dark.png)
 
+More in the docs: [connectors and skills](https://www.wavefunction.si/docs/connectors-and-skills).
+
 ## Designs
 
 A design changes how the whole app looks, with CSS, images and fonts; it never runs code. Pick one in **Settings › General › Design**: the built-in Nostalgia, with a glass title bar and a classic navigation pane, or Retro, a dark terminal room with pixel type and art. Or ask the agent for one. It writes the design with its design skill, checks that it loads, and saves it to your themes folder for you to pick.
+
+![The Nostalgia design: a glass title bar, an Explorer-style sidebar and classic controls](website/public/wavefunction-design-nostalgia.jpg)
 
 <p>
   <img src="docs/assets/wavefunction-design-retro.jpg" width="49%" alt="The Retro design: pixel type, pixel icons and pixel art of a desk on the new-session screen">
   <img src="docs/assets/wavefunction-design-night-light.jpg" width="49%" alt="Night Light, a design the agent made in a chat: warm charcoal colours and a sleeping moon on the new-session screen">
 </p>
 
-Your own designs go in the `themes` folder Settings shows; [frontend/src/themes](frontend/src/themes/README.md) explains what a design can change.
+Your own designs go in the `themes` folder Settings shows; [frontend/src/themes](frontend/src/themes/README.md) explains what a design can change. More in the docs: [designs](https://www.wavefunction.si/docs/designs).
 
 ## Usage tracking
 
@@ -82,11 +118,15 @@ When only some runs reported a figure, it says how many ("Reported for 12 of 15 
 
 ## Secure and private
 
+Zero telemetry: Wavefunction sends no usage data, analytics or crash reports. What leaves your computer goes only to the models, connectors and websites you use, and to GitHub to check for updates.
+
 Use local models or require zero data retention. With **Require zero data retention** on in Settings → Models, OpenRouter and Vercel AI Gateway send chats only to providers that keep no prompts or responses. Other providers set it on your account with them.
 
-- Your conversations, skills and settings stay on your Mac, in `~/Library/Application Support/app.harness.coding` (the app's identifier from before it was named Wavefunction, kept so existing data stays where it is). Provider and connector keys are local files only your user account can read; they are not encrypted.
-- Commands run in the macOS sandbox by default, and folders outside your project need your grant. A command that needs to run outside the sandbox asks first, unless you've given that chat full access.
+- Your conversations, skills and settings stay on your computer, in `~/Library/Application Support/app.harness.coding` on macOS and `~/.local/share/app.harness.coding` on Linux (the app's identifier from before it was named Wavefunction, kept so existing data stays where it is). Provider and connector keys are local files only your user account can read; they are not encrypted.
+- Commands run in a sandbox by default, the macOS sandbox or Bubblewrap on Linux, and folders outside your project need your grant. A command that needs to run outside the sandbox asks first, unless you've given that chat full access.
 - A fixed check asks before commands it recognizes as irreversible, such as deletes or force pushes. It catches an overeager agent, not every case; see the [known issues](docs/KNOWN_ISSUES.md) and [SECURITY.md](SECURITY.md).
+
+More in the docs: [privacy and security](https://www.wavefunction.si/docs/privacy).
 
 ## Get started
 
@@ -94,12 +134,7 @@ On a Mac, download the DMG from the [latest release](https://github.com/stoyan-s
 
 You need a Mac with Apple Silicon (macOS 11 or later). Setup walks you through connecting a provider, choosing models and creating your first project. Model usage is billed by your provider.
 
-On Linux (x86-64), the same release has an AppImage and a `.deb`: see [Linux](#linux-experimental). Linux support is experimental.
-
-<p>
-  <img src="docs/assets/wavefunction-onboarding-provider-dark.png" width="49%" alt="Setup, step 1: connect a provider">
-  <img src="docs/assets/wavefunction-onboarding-models-dark.png" width="49%" alt="Setup, step 2: choose your models">
-</p>
+On Linux (x86-64), the same release has an AppImage and a `.deb`: see [Linux](#linux-experimental) or the [Linux docs](https://www.wavefunction.si/docs/linux). Linux support is experimental.
 
 ## Build from source
 
